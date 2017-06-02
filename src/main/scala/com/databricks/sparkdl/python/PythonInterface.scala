@@ -16,12 +16,12 @@
 
 package com.databricks.sparkdl.python
 
+import scala.collection.mutable
+
 import org.apache.spark.sql.{Column, SQLContext}
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
 import org.apache.spark.sql.types.{ArrayType, DoubleType, FloatType}
-
-import scala.collection.mutable
 
 /**
  * This file contains some interfaces with the JVM runtime: theses functions create UDFs and

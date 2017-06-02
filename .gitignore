@@ -19,3 +19,6 @@ project/plugins/project/
 
 # intellij
 .idea/
+
+# MacOS
+.DS_Store
