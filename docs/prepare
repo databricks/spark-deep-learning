@@ -1,0 +1,73 @@
+#!/bin/bash
+
+_bsd_="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+function help {
+    cat << _HELP_EOF_
+  [[ HELP ]]
+  $(basename ${BASH_SOURCE[0]}) -s <dir> -t <dir>
+    options
+       -s <path_to_spark_home>
+          Spark distribution directory
+          http://spark.apache.org/downloads.html
+
+       -t <path_to_tensorframes_home>
+          Tensorframes home directory
+          https://github.com/databricks/tensorframes.git
+_HELP_EOF_
+}
+
+function quit_with { >&2 echo "ERROR: $@"; help; exit 1; }
+
+while getopts "s:t:" CMD_OPT; do
+    case "${CMD_OPT}" in
+        s) spark_home="${OPTARG}" ;;
+        t) tensorframes_home="${OPTARG}" ;;
+        \?) help; exit 1 ;;
+    esac
+done
+
+[[ -n "${spark_home}" ]] || \
+    quit_with "must provide Spark home"
+[[ -n "${tensorframes_home}" ]] || \
+    quit_with "must provide Tensorframes home"
+
+set -ex
+_tfrm_py_pkg="$(find "${tensorframes_home}/src" -type d -name 'python' | head -n1)"
+find "${tensorframes_home}" \
+     -type f -name "requirements.txt" \
+     -exec pip install --user -r {} \;
+
+[[ -d "${_tfrm_py_pkg}" ]] || \
+    quit_with "cannot find spark package: tensorframes"
+[[ -f "${_tfrm_py_pkg}/tensorframes/__init__.py" ]] || \
+    quit_with "tensorframes directory does not point to a python package"
+
+(cd "${_bsd_}/../python"
+ echo "Creating symlink to tensorframes"
+ rm -f tensorframes
+ ln -s "${_tfrm_py_pkg}/tensorframes" .
+
+ [[ -f requirements.txt ]] || \
+     quit_with "cannot find python requirements file"
+
+ pip install --user -r requirements.txt
+)
+
+
+# Build the wrapper script for jekyll
+touch "${_bsd_}/jekyll"
+cat << _JEKYLL_EOF_ | tee "${_bsd_}/jekyll"
+#!/bin/bash
+
+export SPARK_HOME=${spark_home}
+export PYTHONPATH=$(find ${HOME}/.local -type d -name 'site-packages' | head -n1):${_bsd_}/../python:${spark_home}/python:$(find "${spark_home}/python/lib" -name 'py4j-*-src.zip')
+
+(cd ${_bsd_}/../python && sphinx-apidoc -f -o docs sparkdl)
+
+pushd "${_bsd_}"
+jekyll \$@
+popd
+_JEKYLL_EOF_
+
+chmod +x "${_bsd_}/jekyll"

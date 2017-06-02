@@ -1,0 +1,38 @@
+sparkdl package
+===============
+
+Subpackages
+-----------
+
+.. toctree::
+
+    sparkdl.image
+    sparkdl.transformers
+
+Submodules
+----------
+
+sparkdl\.neurospark module
+--------------------------
+
+.. automodule:: sparkdl.neurospark
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+sparkdl\.utils module
+---------------------
+
+.. automodule:: sparkdl.utils
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: sparkdl
+    :members:
+    :undoc-members:
+    :show-inheritance:

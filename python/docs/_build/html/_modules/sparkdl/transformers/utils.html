@@ -1,0 +1,169 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>sparkdl.transformers.utils &#8212; pysparkdl 0.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.1.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.transformers.utils</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Licensed to the Apache Software Foundation (ASF) under one or more</span>
+<span class="c1"># contributor license agreements.  See the NOTICE file distributed with</span>
+<span class="c1"># this work for additional information regarding copyright ownership.</span>
+<span class="c1"># The ASF licenses this file to You under the Apache License, Version 2.0</span>
+<span class="c1"># (the &quot;License&quot;); you may not use this file except in compliance with</span>
+<span class="c1"># the License.  You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#    http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">pyspark.ml.param</span> <span class="k">import</span> <span class="n">TypeConverters</span>
+
+<span class="kn">from</span> <span class="nn">sparkdl.image.imageIO</span> <span class="k">import</span> <span class="n">imageType</span>
+
+
+<span class="c1"># image stuff</span>
+
+<span class="n">IMAGE_INPUT_PLACEHOLDER_NAME</span> <span class="o">=</span> <span class="s2">&quot;sparkdl_image_input&quot;</span>
+
+<div class="viewcode-block" id="imageInputPlaceholder"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.imageInputPlaceholder">[docs]</a><span class="k">def</span> <span class="nf">imageInputPlaceholder</span><span class="p">(</span><span class="n">nChannels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">nChannels</span><span class="p">],</span>
+                          <span class="n">name</span><span class="o">=</span><span class="n">IMAGE_INPUT_PLACEHOLDER_NAME</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ImageNetConstants"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.ImageNetConstants">[docs]</a><span class="k">class</span> <span class="nc">ImageNetConstants</span><span class="p">:</span>
+    <span class="n">NUM_CLASSES</span> <span class="o">=</span> <span class="mi">1000</span></div>
+
+<span class="c1"># probably use a separate module for each network once we have featurizers.</span>
+<div class="viewcode-block" id="InceptionV3Constants"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.InceptionV3Constants">[docs]</a><span class="k">class</span> <span class="nc">InceptionV3Constants</span><span class="p">:</span>
+    <span class="n">INPUT_SHAPE</span> <span class="o">=</span> <span class="p">(</span><span class="mi">299</span><span class="p">,</span> <span class="mi">299</span><span class="p">)</span>
+    <span class="n">NUM_OUTPUT_FEATURES</span> <span class="o">=</span> <span class="mi">131072</span></div>
+
+
+<span class="c1"># general transformer stuff</span>
+
+<span class="c1"># 1. Sometimes the tf graph contains a bunch of stuff that doesn&#39;t lead to the</span>
+<span class="c1"># output. TensorFrames does not like that, so we strip out the parts that</span>
+<span class="c1"># are not necessary for the computation at hand.</span>
+<span class="c1"># 2. We need to freeze the variables whose values are stored in the current</span>
+<span class="c1"># session into constants to pass the graph around.</span>
+<div class="viewcode-block" id="stripAndFreezeGraph"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.stripAndFreezeGraph">[docs]</a><span class="k">def</span> <span class="nf">stripAndFreezeGraph</span><span class="p">(</span><span class="n">tf_graph_def</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">output_tensors</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A typical usage would look like:</span>
+<span class="sd">      tf_graph_def = tf_graph.as_graph_def(add_shapes=True)</span>
+<span class="sd">      sess = tf.Session(graph=tf_graph)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">output_graph_def</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">graph_util</span><span class="o">.</span><span class="n">convert_variables_to_constants</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span>
+                                                                    <span class="n">tf_graph_def</span><span class="p">,</span>
+                                                                    <span class="p">[</span><span class="n">op_name</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">output_tensors</span><span class="p">],</span>
+                                                                    <span class="n">variable_names_blacklist</span><span class="o">=</span><span class="p">[])</span>
+    <span class="n">g2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">g2</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">import_graph_def</span><span class="p">(</span><span class="n">output_graph_def</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">g2</span></div>
+
+<div class="viewcode-block" id="op_name"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.op_name">[docs]</a><span class="k">def</span> <span class="nf">op_name</span><span class="p">(</span><span class="n">tensor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param tensor: tensorflow.Tensor or a string</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_tensor_name</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<span class="k">def</span> <span class="nf">_tensor_name</span><span class="p">(</span><span class="n">tensor</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_tensor_name</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">TypeConverters</span><span class="o">.</span><span class="n">toString</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.1.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.5.
+    </div>
+  </body>
+</html>
