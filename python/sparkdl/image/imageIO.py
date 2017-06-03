@@ -74,22 +74,30 @@ def imageToStruct(imgArray, imageType=None):
     :param imageType: ImageType, type of the image. If unspecified, it is inferred from imgArray.
     :return: list, image as a DataFrame Row compatible list.
     """
-    arr = imgArray
-    if imageType is None:
-        # Sometimes tensors have a leading "batch-size" dimension. Assume to be 1 if it exists.
-        if len(imgArray.shape) == 4:
-            if imgArray.shape[0] != 1:
-                raise ValueError("The first dimension of a 4-d image array is expected to be 1.")
-            arr = imgArray.reshape(imgArray.shape[1:])
+    # Sometimes tensors have a leading "batch-size" dimension. Assume to be 1 if it exists.
+    if len(imgArray.shape) == 4:
+        if imgArray.shape[0] != 1:
+            raise ValueError("The first dimension of a 4-d image array is expected to be 1.")
+        imgArray = imgArray.reshape(imgArray.shape[1:])
 
-        sparkMode = _arrayToSparkMode(arr)
-        if sparkMode in [SparkMode.FLOAT32, SparkMode.RGB_FLOAT32]:
-            arr = arr.astype(np.float32)
+    if imageType is None:
+        sparkMode = _arrayToSparkMode(imgArray)
+        imageType = sparkModeLookup[sparkMode]
     else:
         sparkMode = imageType.sparkMode
 
-    height, width, nChannels = arr.shape
-    data = bytearray(arr.tobytes())
+    height, width, nChannels = imgArray.shape
+    if imageType.nChannels != nChannels:
+        msg = "Image of type {} should have {} channels, but array has {} channels."
+        raise ValueError(msg.format(sparkMode, imageType.nChannels, nChannels))
+
+    # Convert the array to match the image type.
+    if not np.can_cast(imgArray, imageType.dtype, 'same_kind'):
+        msg = "Array of type {} cannot safely be cast to image type {}."
+        raise ValueError(msg.format(imgArray.dtype, imageType.dtype))
+    imgArray = np.array(imgArray, dtype=imageType.dtype, copy=False)
+
+    data = bytearray(imgArray.tobytes())
     return Row(mode=sparkMode, height=height, width=width, nChannels=nChannels, data=data)
 
 

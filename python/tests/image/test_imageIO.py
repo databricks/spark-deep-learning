@@ -95,6 +95,30 @@ class TestReadImages(SparkDLTestCase):
 
         self.assertRaises(ValueError, imageIO._resizeFunction, [1, 2, 3])
 
+    def test_imageToStruct(self):
+        # Check converting with matching types
+        height, width, chan = array.shape
+        imgAsStruct = imageIO.imageToStruct(array)
+        self.assertEqual(imgAsStruct.height, height)
+        self.assertEqual(imgAsStruct.width, width)
+        self.assertEqual(imgAsStruct.data, array.tobytes())
+
+        # Check casting
+        RBG_float32 = imageIO.sparkModeLookup[imageIO.SparkMode.RGB_FLOAT32]
+        imgAsStruct = imageIO.imageToStruct(array, RBG_float32)
+        self.assertEqual(imgAsStruct.height, height)
+        self.assertEqual(imgAsStruct.width, width)
+        self.assertEqual(len(imgAsStruct.data), array.size * 4)
+
+        # Check channel miss match
+        float32imgType = imageIO.sparkModeLookup[imageIO.SparkMode.FLOAT32]
+        self.assertRaises(ValueError, imageIO.imageToStruct, array, float32imgType)
+
+        # Check that unsafe cast raises error
+        floatArray = np.zeros((3, 4, 3), dtype='float32')
+        RGBimgType = imageIO.sparkModeLookup[imageIO.SparkMode.RGB]
+        self.assertRaises(ValueError, imageIO.imageToStruct, floatArray, RGBimgType)
+
     def test_image_round_trip(self):
         # Test round trip: array -> png -> sparkImg -> array
         binarySchema = StructType([StructField("data", BinaryType(), False)])
