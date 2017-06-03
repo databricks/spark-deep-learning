@@ -48,9 +48,9 @@ a=( ${SCALA_VERSION//./ } )
 scala_version_major_minor="${a[0]}.${a[1]}"
 echo "List of assembly jars found, the last one will be used:"
 assembly_path="$DIR/../target/scala-$scala_version_major_minor"
-echo `ls $assembly_path/sparkdl-assembly*.jar`
+echo `ls $assembly_path/spark-deep-learning-assembly*.jar`
 JAR_PATH=""
-for assembly in $assembly_path/sparkdl-assembly*.jar ; do
+for assembly in $assembly_path/spark-deep-learning-assembly*.jar ; do
   JAR_PATH=$assembly
 done
 
