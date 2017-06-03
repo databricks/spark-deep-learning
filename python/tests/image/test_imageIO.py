@@ -20,7 +20,6 @@ import numpy as np
 import PIL.Image
 
 # pyspark
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, udf
 from pyspark.sql.types import BinaryType, StringType, StructField, StructType
 
@@ -81,6 +80,20 @@ class TestReadImages(SparkDLTestCase):
         self.assertEqual(len(imgRow), len(imageIO.imgSchema.names))
         for n in imageIO.imgSchema.names:
             imgRow[n]
+
+    def test_resize(self):
+        imgAsRow = imageIO.imageToStruct(array)
+        smaller = imageIO._resizeFunction([4, 5])
+        smallerImg = smaller(imgAsRow)
+        for n in imageIO.imgSchema.names:
+            smallerImg[n]
+        self.assertEqual(smallerImg.height, 4)
+        self.assertEqual(smallerImg.width, 5)
+
+        sameImage = imageIO._resizeFunction([imgAsRow.height, imgAsRow.width])(imgAsRow)
+        self.assertEqual(sameImage, sameImage)
+
+        self.assertRaises(ValueError, imageIO._resizeFunction, [1, 2, 3])
 
     def test_image_round_trip(self):
         # Test round trip: array -> png -> sparkImg -> array

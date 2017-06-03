@@ -24,6 +24,7 @@ from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql.functions import udf
 from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
 
+from sparkdl.image.imageIO import resizeImage
 from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.transformers.tf_image import TFImageTransformer
@@ -209,13 +210,17 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
 
     def _transform(self, dataset):
         modelGraphSpec = _buildTFGraphForName(self.getModelName(), self.getFeaturize())
-        tfTransformer = TFImageTransformer(inputCol=self.getInputCol(),
+        inputCol = self.getInputCol()
+        resizedCol = "__sdl_imagesResized"
+        tfTransformer = TFImageTransformer(inputCol=resizedCol,
                                            outputCol=self.getOutputCol(),
                                            graph=modelGraphSpec["graph"],
                                            inputTensor=modelGraphSpec["inputTensorName"],
                                            outputTensor=modelGraphSpec["outputTensorName"],
                                            outputMode=modelGraphSpec["outputMode"])
-        return tfTransformer.transform(dataset)
+        resizeUdf = resizeImage(modelGraphSpec["inputTensorSize"])
+        result = tfTransformer.transform(dataset.withColumn(resizedCol, resizeUdf(inputCol)))
+        return result.drop(resizedCol)
 
 
 def _buildTFGraphForName(name, featurize):
@@ -229,17 +234,20 @@ def _buildTFGraphForName(name, featurize):
     outputTensorName = modelData["outputTensorName"]
     graph = stripAndFreezeGraph(sess.graph.as_graph_def(add_shapes=True), sess, [outputTensorName])
 
-    return dict(inputTensorName=modelData["inputTensorName"], outputTensorName=outputTensorName,
-                outputMode="vector", graph=graph)
+    modelData["graph"] = graph
+    return modelData
 
 
 def _buildInceptionV3Session(featurize):
     sess = tf.Session()
     with sess.as_default():
         K.set_learning_phase(0)
-        image_string = imageInputPlaceholder(nChannels=3)
-        resized_images = tf.image.resize_images(image_string, InceptionV3Constants.INPUT_SHAPE)
-        preprocessed = inception_v3.preprocess_input(resized_images)
+        inputImage = imageInputPlaceholder(nChannels=3)
+        preprocessed = inception_v3.preprocess_input(inputImage)
         model = InceptionV3(input_tensor=preprocessed, weights="imagenet",
                             include_top=(not featurize))
-    return dict(inputTensorName=image_string.name, outputTensorName=model.output.name, session=sess)
+    return dict(inputTensorName=inputImage.name,
+                outputTensorName=model.output.name,
+                session=sess,
+                inputTensorSize=InceptionV3Constants.INPUT_SHAPE,
+                outputMode="vector")

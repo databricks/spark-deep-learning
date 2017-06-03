@@ -135,6 +135,26 @@ def _arrayToSparkMode(arr):
                          "and dtype %s" % (num_channels, arr.dtype.string))
 
 
+def _resizeFunction(size):
+
+    if len(size) != 2:
+        raise ValueError("New image size should have for [hight, width] but got {}".format(size))
+
+    def resizeImageAsRow(imgAsRow):
+        imgAsArray = imageToArray(imgAsRow)
+        imgType = imageType(imgAsRow)
+        imgAsPil = Image.fromarray(imgAsArray, imgType.pilMode)
+        imgAsPil = imgAsPil.resize(size[::-1])
+        imgAsArray = np.array(imgAsPil)
+        return imageToStruct(imgAsArray, imgType)
+
+    return resizeImageAsRow
+
+
+def resizeImage(size):
+    return udf(_resizeFunction(size), imgSchema)
+
+
 def _decodeImage(imageData):
     """
     Decode compressed image data into a DataFrame image row.
