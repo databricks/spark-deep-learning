@@ -63,7 +63,7 @@ pilModeLookup = {t.pilMode: t for t in supportedImageTypes
 sparkModeLookup = {t.sparkMode: t for t in supportedImageTypes}
 
 
-def imageToStruct(imgArray, imageType=None):
+def imageToStruct(imgArray, sparkMode=None):
     """
     Create spark image row from numpy array and (optional) imageType.
 
@@ -80,11 +80,9 @@ def imageToStruct(imgArray, imageType=None):
             raise ValueError("The first dimension of a 4-d image array is expected to be 1.")
         imgArray = imgArray.reshape(imgArray.shape[1:])
 
-    if imageType is None:
+    if sparkMode is None:
         sparkMode = _arrayToSparkMode(imgArray)
-        imageType = sparkModeLookup[sparkMode]
-    else:
-        sparkMode = imageType.sparkMode
+    imageType = sparkModeLookup[sparkMode]
 
     height, width, nChannels = imgArray.shape
     if imageType.nChannels != nChannels:
@@ -160,7 +158,7 @@ def _resizeFunction(size):
         imgAsPil = Image.fromarray(imgAsArray, imgType.pilMode)
         imgAsPil = imgAsPil.resize(size[::-1])
         imgAsArray = np.array(imgAsPil)
-        return imageToStruct(imgAsArray, imgType)
+        return imageToStruct(imgAsArray, imgType.sparkMode)
 
     return resizeImageAsRow
 
@@ -196,7 +194,7 @@ def _decodeImage(imageData):
         warn(msg.format(mode=img.mode))
         return None
     imgArray = np.asarray(img)
-    image = imageToStruct(imgArray, mode)
+    image = imageToStruct(imgArray, mode.sparkMode)
     return image
 
 # Creating a UDF on import can cause SparkContext issues sometimes.

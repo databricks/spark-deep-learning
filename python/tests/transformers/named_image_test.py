@@ -69,8 +69,8 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         imageType = imageIO.pilModeLookup["RGB"]
 
         def rowWithImage(img):
-            # return [imageIO.imageToStruct(img.astype('uint8'), imageType)]
-            row = imageIO.imageToStruct(img.astype('uint8'), imageType)
+            # return [imageIO.imageToStruct(img.astype('uint8'), imageType.sparkMode)]
+            row = imageIO.imageToStruct(img.astype('uint8'), imageType.sparkMode)
             # re-order row to avoid pyspark bug
             return [[getattr(row, field.name) for field in imageIO.imgSchema]]
 

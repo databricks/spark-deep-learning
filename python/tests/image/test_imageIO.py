@@ -96,6 +96,7 @@ class TestReadImages(SparkDLTestCase):
         self.assertRaises(ValueError, imageIO._resizeFunction, [1, 2, 3])
 
     def test_imageToStruct(self):
+        SparkMode = imageIO.SparkMode
         # Check converting with matching types
         height, width, chan = array.shape
         imgAsStruct = imageIO.imageToStruct(array)
@@ -104,20 +105,17 @@ class TestReadImages(SparkDLTestCase):
         self.assertEqual(imgAsStruct.data, array.tobytes())
 
         # Check casting
-        RBG_float32 = imageIO.sparkModeLookup[imageIO.SparkMode.RGB_FLOAT32]
-        imgAsStruct = imageIO.imageToStruct(array, RBG_float32)
+        imgAsStruct = imageIO.imageToStruct(array, SparkMode.RGB_FLOAT32)
         self.assertEqual(imgAsStruct.height, height)
         self.assertEqual(imgAsStruct.width, width)
         self.assertEqual(len(imgAsStruct.data), array.size * 4)
 
         # Check channel miss match
-        float32imgType = imageIO.sparkModeLookup[imageIO.SparkMode.FLOAT32]
-        self.assertRaises(ValueError, imageIO.imageToStruct, array, float32imgType)
+        self.assertRaises(ValueError, imageIO.imageToStruct, array, SparkMode.FLOAT32)
 
         # Check that unsafe cast raises error
         floatArray = np.zeros((3, 4, 3), dtype='float32')
-        RGBimgType = imageIO.sparkModeLookup[imageIO.SparkMode.RGB]
-        self.assertRaises(ValueError, imageIO.imageToStruct, floatArray, RGBimgType)
+        self.assertRaises(ValueError, imageIO.imageToStruct, floatArray, SparkMode.RGB)
 
     def test_image_round_trip(self):
         # Test round trip: array -> png -> sparkImg -> array
@@ -155,7 +153,7 @@ class TestReadImages(SparkDLTestCase):
         def silly(imgRow):
             imType = imageIO.imageType(imgRow)
             array = imageIO.imageToArray(imgRow)
-            return imageIO.imageToStruct(array, imType)
+            return imageIO.imageToStruct(array, imType.sparkMode)
         silly_udf = udf(silly, imageIO.imgSchema)
 
         df = imageIO.readImages(self.binaryFilesMock, "path")
