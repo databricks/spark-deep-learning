@@ -77,15 +77,15 @@ class TestReadImages(SparkDLTestCase):
         self.assertIsNone(badImg)
         imgRow = imageIO._decodeImage(pngData)
         self.assertIsNotNone(imgRow)
-        self.assertEqual(len(imgRow), len(imageIO.imgSchema.names))
-        for n in imageIO.imgSchema.names:
+        self.assertEqual(len(imgRow), len(imageIO.imageSchema.names))
+        for n in imageIO.imageSchema.names:
             imgRow[n]
 
     def test_resize(self):
         imgAsRow = imageIO.imageArrayToStruct(array)
         smaller = imageIO._resizeFunction([4, 5])
         smallerImg = smaller(imgAsRow)
-        for n in imageIO.imgSchema.names:
+        for n in imageIO.imageSchema.names:
             smallerImg[n]
         self.assertEqual(smallerImg.height, 4)
         self.assertEqual(smallerImg.width, 5)
@@ -123,7 +123,7 @@ class TestReadImages(SparkDLTestCase):
         df = self.session.createDataFrame([[bytearray(pngData)]], binarySchema)
 
         # Convert to images
-        decImg = udf(imageIO._decodeImage, imageIO.imgSchema)
+        decImg = udf(imageIO._decodeImage, imageIO.imageSchema)
         imageDF = df.select(decImg("data").alias("image"))
         row = imageDF.first()
 
@@ -154,7 +154,7 @@ class TestReadImages(SparkDLTestCase):
             imType = imageIO.imageType(imgRow)
             array = imageIO.imageStructToArray(imgRow)
             return imageIO.imageArrayToStruct(array, imType.sparkMode)
-        silly_udf = udf(silly, imageIO.imgSchema)
+        silly_udf = udf(silly, imageIO.imageSchema)
 
         df = imageIO.readImages(self.binaryFilesMock, "path")
         df = df.filter(col('image').isNotNull()).withColumn("test", silly_udf('image'))

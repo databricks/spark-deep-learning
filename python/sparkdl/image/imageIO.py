@@ -28,7 +28,7 @@ from pyspark.sql.types import (BinaryType, IntegerType, StringType, StructField,
 from pyspark.sql.functions import udf
 
 
-imgSchema = StructType([StructField("mode", StringType(), False),
+imageSchema = StructType([StructField("mode", StringType(), False),
                         StructField("height", IntegerType(), False),
                         StructField("width", IntegerType(), False),
                         StructField("nChannels", IntegerType(), False),
@@ -68,7 +68,7 @@ def imageArrayToStruct(imgArray, sparkMode=None):
     """
     Create spark image row from numpy array and (optional) imageType.
 
-    to_image_udf = udf(arrayToImageRow, imgSchema)
+    to_image_udf = udf(arrayToImageRow, imageSchema)
     df.withColumn("output_img", to_image_udf(df["np_arr_col"])
 
     :param imgArray: ndarray, image data.
@@ -114,7 +114,7 @@ def imageStructToArray(imageRow):
     """
     Convert an image to a numpy array.
 
-    :param imageRow: Row, must use imgSchema.
+    :param imageRow: Row, must use imageSchema.
     :return: ndarray, image data.
     """
     imType = imageType(imageRow)
@@ -173,7 +173,7 @@ def resizeImage(size):
     :param size: tuple, target size of new image in the form (height, width). 
     :return: udf, a udf for resizing an image column to `size`.
     """
-    return udf(_resizeFunction(size), imgSchema)
+    return udf(_resizeFunction(size), imageSchema)
 
 
 def _decodeImage(imageData):
@@ -199,7 +199,7 @@ def _decodeImage(imageData):
     return image
 
 # Creating a UDF on import can cause SparkContext issues sometimes.
-# decodeImage = udf(_decodeImage, imgSchema)
+# decodeImage = udf(_decodeImage, imageSchema)
 
 def filesToDF(sc, path, numPartitions=None):
     """
@@ -225,8 +225,8 @@ def readImages(sc, imageDirectory, numPartition=None):
     :param sc: spark context
     :param imageDirectory: str, file path.
     :param numPartition: int, number or partitions to use for reading files.
-    :return: DataFrame, with columns: (filepath: str, image: imgSchema).
+    :return: DataFrame, with columns: (filepath: str, image: imageSchema).
     """
-    decodeImage = udf(_decodeImage, imgSchema)
+    decodeImage = udf(_decodeImage, imageSchema)
     imageData = filesToDF(sc, imageDirectory, numPartitions=numPartition)
     return imageData.select("filePath", decodeImage("fileData").alias("image"))

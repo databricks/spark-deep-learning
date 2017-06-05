@@ -72,13 +72,13 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
             # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
             row = imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)
             # re-order row to avoid pyspark bug
-            return [[getattr(row, field.name) for field in imageIO.imgSchema]]
+            return [[getattr(row, field.name) for field in imageIO.imageSchema]]
 
         # test: predictor vs keras on resized images
         # Run sparkDL inceptionV3 transformer on resized images and compare result to above keras
         # result.
         rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
-        dfType = StructType([StructField("image", imageIO.imgSchema)])
+        dfType = StructType([StructField("image", imageIO.imageSchema)])
         imageDf = rdd.toDF(dfType)
 
         transformer = DeepImagePredictor(inputCol='image', modelName="InceptionV3",

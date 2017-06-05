@@ -21,7 +21,7 @@ from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
 
-from sparkdl.image.imageIO import imgSchema, sparkModeLookup, SparkMode
+from sparkdl.image.imageIO import imageSchema, sparkModeLookup, SparkMode
 from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 import sparkdl.transformers.utils as utils
@@ -224,7 +224,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol):
             mode = orig_image.mode if orig_image.mode == "float32" else "RGB-float32"
             return [mode, height, width, orig_image.nChannels,
                     bytearray(np.array(numeric_data).astype(np.float32).tobytes())]
-        to_image_udf = udf(to_image, imgSchema)
+        to_image_udf = udf(to_image, imageSchema)
         return (
             df.withColumn(self.getOutputCol(),
                           to_image_udf(df[self.getInputCol()], df[tfs_output_col]))
