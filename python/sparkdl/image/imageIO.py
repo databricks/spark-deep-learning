@@ -110,7 +110,7 @@ def imageType(imageRow):
     return sparkModeLookup[imageRow.mode]
 
 
-def imageToArray(imageRow):
+def imageStructToArray(imageRow):
     """
     Convert an image to a numpy array.
 
@@ -154,12 +154,12 @@ def _resizeFunction(size):
         raise ValueError("New image size should have for [hight, width] but got {}".format(size))
 
     def resizeImageAsRow(imgAsRow):
-        imgAsArray = imageToArray(imgAsRow)
+        imgAsArray = imageStructToArray(imgAsRow)
         imgType = imageType(imgAsRow)
         imgAsPil = Image.fromarray(imgAsArray, imgType.pilMode)
         imgAsPil = imgAsPil.resize(size[::-1])
         imgAsArray = np.array(imgAsPil)
-        return imageToStruct(imgAsArray, imgType.sparkMode)
+        return imageArrayToStruct(imgAsArray, imgType.sparkMode)
 
     return resizeImageAsRow
 

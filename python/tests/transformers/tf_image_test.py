@@ -20,7 +20,7 @@ from keras.preprocessing.image import img_to_array, load_img
 import numpy as np
 import tensorflow as tf
 
-from sparkdl.image.imageIO import imageToArray
+from sparkdl.image.imageIO import imageStructToArray
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.tf_image import TFImageTransformer
 import sparkdl.transformers.utils as utils
@@ -109,7 +109,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             values = {}
             topK = {}
             for img_row in image_collected:
-                image = np.expand_dims(imageToArray(img_row[input_col]), axis=0)
+                image = np.expand_dims(imageStructToArray(img_row[input_col]), axis=0)
                 uri = img_row[id_col]
                 output = sess.run([output_tensor],
                                   feed_dict={

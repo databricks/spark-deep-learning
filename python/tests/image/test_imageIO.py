@@ -127,7 +127,7 @@ class TestReadImages(SparkDLTestCase):
         imageDF = df.select(decImg("data").alias("image"))
         row = imageDF.first()
 
-        testArray = imageIO.imageToArray(row.image)
+        testArray = imageIO.imageStructToArray(row.image)
         self.assertEqual(testArray.shape, array.shape)
         self.assertEqual(testArray.dtype, array.dtype)
         self.assertTrue(np.all(array == testArray))
@@ -152,7 +152,7 @@ class TestReadImages(SparkDLTestCase):
     def test_silly_udf(self):
         def silly(imgRow):
             imType = imageIO.imageType(imgRow)
-            array = imageIO.imageToArray(imgRow)
+            array = imageIO.imageStructToArray(imgRow)
             return imageIO.imageArrayToStruct(array, imType.sparkMode)
         silly_udf = udf(silly, imageIO.imgSchema)
 
