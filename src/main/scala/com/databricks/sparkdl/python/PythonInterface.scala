@@ -13,23 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.databricks.sparkdl.python
 
 import scala.collection.mutable
 
-import org.apache.spark.sql.{Column, SQLContext}
-import org.apache.spark.sql.functions.udf
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
+import org.apache.spark.sql.{Column, SQLContext, SparkSession}
+import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.sparkdl_stubs.{PipelinedUDF, UDFUtils}
 import org.apache.spark.sql.types.{ArrayType, DoubleType, FloatType}
 
 /**
- * This file contains some interfaces with the JVM runtime: theses functions create UDFs and
- * transform UDFs using java code.
- */
+  * This file contains some interfaces with the JVM runtime: theses functions create UDFs and
+  * transform UDFs using java code.
+  */
 // TODO: this pattern is repeated over and over again, it should be standard somewhere.
 class PythonInterface {
-private var _sqlCtx: SQLContext = null
+  private var _sqlCtx: SQLContext = null
 
   def sqlContext(ctx: SQLContext): this.type = {
     _sqlCtx = ctx
@@ -37,13 +38,23 @@ private var _sqlCtx: SQLContext = null
   }
 
   /**
-   * Takes a column, which may contain either arrays of floats or doubles, and returns the
-   * content, cast as MLlib's vectors.
-   */
+    * Takes a column, which may contain either arrays of floats or doubles, and returns the
+    * content, cast as MLlib's vectors.
+    */
   def listToVectorFunction(col: Column): Column = {
     Conversions.convertToVector(col)
   }
+
+  /**
+    * Create an UDF as the result of chainning multiple UDFs
+    */
+  def pipeline(name: String, udfNames: Seq[String]) = {
+    require(_sqlCtx != null)
+    require(udfNames.nonEmpty)
+    UDFUtils.pipeline(_sqlCtx, name, udfNames)
+  }
 }
+
 
 object Conversions {
   private def floatArrayToVector(x: Array[Float]): Vector = {
