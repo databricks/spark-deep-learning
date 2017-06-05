@@ -23,6 +23,7 @@ from PIL import Image
 
 # pyspark
 from pyspark import Row
+from pyspark import SparkContext
 from pyspark.sql.types import (BinaryType, IntegerType, StringType, StructField, StructType)
 from pyspark.sql.functions import udf
 
@@ -63,7 +64,7 @@ pilModeLookup = {t.pilMode: t for t in supportedImageTypes
 sparkModeLookup = {t.sparkMode: t for t in supportedImageTypes}
 
 
-def imageToStruct(imgArray, sparkMode=None):
+def imageArrayToStruct(imgArray, sparkMode=None):
     """
     Create spark image row from numpy array and (optional) imageType.
 
@@ -194,7 +195,7 @@ def _decodeImage(imageData):
         warn(msg.format(mode=img.mode))
         return None
     imgArray = np.asarray(img)
-    image = imageToStruct(imgArray, mode.sparkMode)
+    image = imageArrayToStruct(imgArray, mode.sparkMode)
     return image
 
 # Creating a UDF on import can cause SparkContext issues sometimes.

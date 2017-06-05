@@ -121,6 +121,6 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol):
         loader = self.getOrDefault(self.imageLoader)
         def load(uri):
             img = loader(uri)
-            return imageIO.imageToStruct(img)
+            return imageIO.imageArrayToStruct(img)
         load_udf = udf(load, imageIO.imgSchema)
         return dataset.withColumn(self._loadedImageCol(), load_udf(dataset[self.getInputCol()]))
