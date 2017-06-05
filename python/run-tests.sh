@@ -20,11 +20,17 @@
 # Return on any failure
 set -e
 
+# if (got > 1 argument OR ( got 1 argument AND that argument does not exist)) then
+# print usage and exit.
 if [[ $# -gt 1 || ($# = 1 && ! -e $1) ]]; then
   echo "run_tests.sh [target]"
   echo ""
   echo "Run python tests for this package."
   echo "  target -- either a test file or directory [default tests]"
+  if [[ ($# = 1 && ! -e $1) ]]; then
+    echo
+    echo "ERROR: Could not find $1"
+  fi
   exit 1
 fi
 
