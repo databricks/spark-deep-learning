@@ -136,6 +136,12 @@ def _arrayToSparkMode(arr):
 
 
 def _resizeFunction(size):
+    """ Creates a resize function.
+    
+    :param size: tuple, size of new image: (height, width). 
+    :return: function: image => image, a function that converts an input image to an image with 
+    of `size`.
+    """
 
     if len(size) != 2:
         raise ValueError("New image size should have for [hight, width] but got {}".format(size))
@@ -152,6 +158,14 @@ def _resizeFunction(size):
 
 
 def resizeImage(size):
+    """ Create a udf for resizing image.
+    
+    Example usage:
+    dataFrame.select(resizeImage((height, width))('imageColumn'))
+    
+    :param size: tuple, target size of new image in the form (height, width). 
+    :return: udf, a udf for resizing an image column to `size`.
+    """
     return udf(_resizeFunction(size), imgSchema)
 
 
