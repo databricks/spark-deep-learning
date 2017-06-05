@@ -66,14 +66,15 @@ sparkModeLookup = {t.sparkMode: t for t in supportedImageTypes}
 
 def imageArrayToStruct(imgArray, sparkMode=None):
     """
-    Create spark image row from numpy array and (optional) imageType.
+    Create a row representation of an image from an image array and (optional) imageType.
 
     to_image_udf = udf(arrayToImageRow, imageSchema)
     df.withColumn("output_img", to_image_udf(df["np_arr_col"])
 
     :param imgArray: ndarray, image data.
-    :param imageType: ImageType, type of the image. If unspecified, it is inferred from imgArray.
-    :return: list, image as a DataFrame Row compatible list.
+    :param sparkMode: spark mode, type information for the image, will be inferred from array if
+        the mode is not provide. See SparkMode for valid modes.
+    :return: Row, image as a DataFrame Row.
     """
     # Sometimes tensors have a leading "batch-size" dimension. Assume to be 1 if it exists.
     if len(imgArray.shape) == 4:
