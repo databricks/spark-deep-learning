@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 
+from .graph_builder import GraphBuilderSession, GraphFunction
 from .image.imageIO import imageSchema, imageType, readImages
 from .transformers.keras_image import KerasImageFileTransformer
 from .transformers.named_image import DeepImagePredictor, DeepImageFeaturizer
@@ -23,5 +24,6 @@ __all__ = [
     'imageSchema', 'imageType', 'readImages',
     'TFImageTransformer',
     'DeepImagePredictor', 'DeepImageFeaturizer',
+    "GraphBuilderSession", "GraphFunction",
     'KerasImageFileTransformer',
     'imageInputPlaceholder', 'stripAndFreezeGraph']
