@@ -56,7 +56,7 @@ for lib in "$SPARK_HOME/python/lib"/*zip ; do
 done
 
 # The current directory of the script.
-DIR=$( dirname "${BASH_SOURCE[0]}" )
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 a=( ${SCALA_VERSION//./ } )
 scala_version_major_minor="${a[0]}.${a[1]}"
