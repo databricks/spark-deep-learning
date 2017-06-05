@@ -20,6 +20,20 @@
 # Return on any failure
 set -e
 
+# if (got > 1 argument OR ( got 1 argument AND that argument does not exist)) then
+# print usage and exit.
+if [[ $# -gt 1 || ($# = 1 && ! -e $1) ]]; then
+  echo "run_tests.sh [target]"
+  echo ""
+  echo "Run python tests for this package."
+  echo "  target -- either a test file or directory [default tests]"
+  if [[ ($# = 1 && ! -e $1) ]]; then
+    echo
+    echo "ERROR: Could not find $1"
+  fi
+  exit 1
+fi
+
 # assumes run from python/ directory
 if [ -z "$SPARK_HOME" ]; then
     echo 'You need to set $SPARK_HOME to run these tests.' >&2
@@ -66,14 +80,19 @@ export PYSPARK_SUBMIT_ARGS="--driver-memory 4g --executor-memory 4g --jars $JAR_
 # Run test suites
 
 # TODO: make sure travis has the right version of nose
-if [ $# -gt 0 ]; then
-  if [ "$1" != "" ]; then
-    noseOptionsArr="$DIR/tests/$1"
-  fi
+if [ -f "$1" ]; then
+  noseOptionsArr="$1"
 else
+  if [ -d "$1" ]; then
+    targetDir=$1
+  else
+    targetDir=$DIR/tests
+  fi
   # add all python files in the test dir recursively
-  noseOptionsArr="$(find $DIR/tests -type f | grep "\.py" | grep -v "\.pyc" | grep -v "\.py~" | grep -v "__init__.py")"
+  echo "============= Searching for tests in: $targetDir ============="
+  noseOptionsArr="$(find "$targetDir" -type f | grep "\.py" | grep -v "\.pyc" | grep -v "\.py~" | grep -v "__init__.py")"
 fi
+
 for noseOptions in $noseOptionsArr
 do
   echo "============= Running the tests in: $noseOptions ============="
@@ -88,7 +107,5 @@ done
 
 
 # Run doc tests
-
-cd "$DIR"
 
 #$PYSPARK_PYTHON -u ./sparkdl/ourpythonfilewheneverwehaveone.py "$@"
