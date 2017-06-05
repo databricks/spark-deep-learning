@@ -53,7 +53,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                                          inputTensor=image_arr, outputTensor=preprocessed.name,
                                          outputMode="vector")
 
-        image_df = image_utils.getSampleImageDF(self.sc)
+        image_df = image_utils.getSampleImageDF()
         df = transformer.transform(image_df.limit(5))
 
         for row in df.collect():
@@ -80,7 +80,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         transformer = TFImageTransformer(inputCol="image", outputCol=outputCol, graph=g,
                                          inputTensor=image_arr.name, outputTensor=processed_images,
                                          outputMode=outputMode)
-        image_df = image_utils.getSampleImageDF(self.sc)
+        image_df = image_utils.getSampleImageDF()
         return transformer.transform(image_df.limit(5))
 
     def test_image_output(self):
@@ -121,7 +121,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
 
     def test_prediction_vs_tensorflow_inceptionV3(self):
         output_col = "prediction"
-        image_df = image_utils.getSampleImageDF(self.sc)
+        image_df = image_utils.getSampleImageDF()
 
         # An example of how a pre-trained keras model can be used with TFImageTransformer
         with KSessionWrap() as (sess, g):

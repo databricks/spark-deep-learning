@@ -92,7 +92,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         # test: predictor vs keras on raw images
         # Run sparkDL inceptionV3 transformer on raw (original size) images and compare result to
         # above keras (using keras resizing) result.
-        origImgDf = getSampleImageDF(self.sc)
+        origImgDf = getSampleImageDF()
         fullPredict = transformer.transform(origImgDf).collect()
         fullPredict = np.array([i.prediction for i in fullPredict])
 
@@ -107,7 +107,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         transformer = DeepImagePredictor(inputCol="image", outputCol=output_col,
                                          modelName="InceptionV3", decodePredictions=True, topK=topK)
 
-        image_df = getSampleImageDF(self.sc)
+        image_df = getSampleImageDF()
         transformed_df = transformer.transform(image_df.limit(5))
 
         collected = transformed_df.collect()
@@ -122,7 +122,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         transformer = DeepImageFeaturizer(inputCol="image", outputCol=output_col,
                                           modelName="InceptionV3")
 
-        image_df = getSampleImageDF(self.sc)
+        image_df = getSampleImageDF()
         transformed_df = transformer.transform(image_df.limit(5))
 
         collected = transformed_df.collect()
@@ -145,7 +145,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         # add arbitrary labels to run logistic regression
         # TODO: it's weird that the test fails on some combinations of labels. check why.
         label_udf = udf(lambda x: abs(hash(x)) % 2, IntegerType())
-        image_df = getSampleImageDF(self.sc)
+        image_df = getSampleImageDF()
         train_df = image_df.withColumn("label", label_udf(image_df["filePath"]))
 
         lrModel = pipeline.fit(train_df)

@@ -134,7 +134,7 @@ class TestReadImages(SparkDLTestCase):
 
     def test_readImages(self):
         # Test that reading
-        imageDF = imageIO.readImages(self.binaryFilesMock, "some/path")
+        imageDF = imageIO._readImages("some/path", 2, self.binaryFilesMock)
         self.assertTrue("image" in imageDF.schema.names)
         self.assertTrue("filePath" in imageDF.schema.names)
 
@@ -156,7 +156,7 @@ class TestReadImages(SparkDLTestCase):
             return imageIO.imageArrayToStruct(array, imType.sparkMode)
         silly_udf = udf(silly, imageIO.imageSchema)
 
-        df = imageIO.readImages(self.binaryFilesMock, "path")
+        df = imageIO._readImages("path", 2, self.binaryFilesMock)
         df = df.filter(col('image').isNotNull()).withColumn("test", silly_udf('image'))
         self.assertEqual(df.first().test.data, array.tobytes())
         df.printSchema()

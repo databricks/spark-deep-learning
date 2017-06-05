@@ -219,7 +219,7 @@ def filesToDF(sc, path, numPartitions=None):
     return rdd.toDF(schema)
 
 
-def readImages(sc, imageDirectory, numPartition=None):
+def readImages(imageDirectory, numPartition=None):
     """
     Read a directory of images (or a single image) into a DataFrame.
 
@@ -228,6 +228,10 @@ def readImages(sc, imageDirectory, numPartition=None):
     :param numPartition: int, number or partitions to use for reading files.
     :return: DataFrame, with columns: (filepath: str, image: imageSchema).
     """
+    return _readImages(imageDirectory, numPartition, SparkContext.getOrCreate())
+
+
+def _readImages(imageDirectory, numPartition, sc):
     decodeImage = udf(_decodeImage, imageSchema)
     imageData = filesToDF(sc, imageDirectory, numPartitions=numPartition)
     return imageData.select("filePath", decodeImage("fileData").alias("image"))
