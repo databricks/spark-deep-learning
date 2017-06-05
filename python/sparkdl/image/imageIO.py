@@ -135,6 +135,40 @@ def _arrayToSparkMode(arr):
                          "and dtype %s" % (num_channels, arr.dtype.string))
 
 
+def _resizeFunction(size):
+    """ Creates a resize function.
+    
+    :param size: tuple, size of new image: (height, width). 
+    :return: function: image => image, a function that converts an input image to an image with 
+    of `size`.
+    """
+
+    if len(size) != 2:
+        raise ValueError("New image size should have for [hight, width] but got {}".format(size))
+
+    def resizeImageAsRow(imgAsRow):
+        imgAsArray = imageToArray(imgAsRow)
+        imgType = imageType(imgAsRow)
+        imgAsPil = Image.fromarray(imgAsArray, imgType.pilMode)
+        imgAsPil = imgAsPil.resize(size[::-1])
+        imgAsArray = np.array(imgAsPil)
+        return imageToStruct(imgAsArray, imgType)
+
+    return resizeImageAsRow
+
+
+def resizeImage(size):
+    """ Create a udf for resizing image.
+    
+    Example usage:
+    dataFrame.select(resizeImage((height, width))('imageColumn'))
+    
+    :param size: tuple, target size of new image in the form (height, width). 
+    :return: udf, a udf for resizing an image column to `size`.
+    """
+    return udf(_resizeFunction(size), imgSchema)
+
+
 def _decodeImage(imageData):
     """
     Decode compressed image data into a DataFrame image row.

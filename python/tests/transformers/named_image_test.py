@@ -99,7 +99,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         self.assertEqual(kerasPredict.shape, fullPredict.shape)
         # We use a large tolerance below because of differences in the resize step
         # TODO: match keras resize step to get closer prediction
-        np.testing.assert_array_almost_equal(kerasPredict, fullPredict, decimal=1)
+        np.testing.assert_array_almost_equal(kerasPredict, fullPredict, decimal=6)
 
     def test_inceptionV3_prediction_decoded(self):
         output_col = "prediction"
