@@ -53,11 +53,12 @@ class GraphFunctionFactory(object):
             # This is the default behavior of Python Image Library
             shape = tf.reshape(tf.stack([height, width, num_channels], axis=0), 
                                shape=(3,), name='shape')
-            if "RGB" == img_dtype:
+            if SparkMode.RGB == img_dtype:
                 image_uint8 = tf.decode_raw(image_buffer, tf.uint8, name="decode_raw")
                 image_float = tf.to_float(image_uint8)
             else:
-                assert img_dtype == SparkMode.FLOAT32, "Unsupported dtype for image: %s" % img_dtype
+                assert img_dtype == SparkMode.RGB_FLOAT32, \
+                    "Unsupported dtype for image: {}".format(img_dtype)
                 image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
 
             image_reshaped = tf.reshape(image_float, shape, name="reshaped")
@@ -148,8 +149,9 @@ class GraphFunctionFactory(object):
             for idx, (scope, gfn) in enumerate(functions):
                 # Give a scope to each function to avoid name conflict
                 if scope is None or len(scope.strip()) == 0:
-                    scope = 'GFN-BLK-{}'.format(idx)
-                logger.info('merge: stage {}, scope {}'.format(idx, scope))
+                    scope = 'GFN-BLK-{}'.format(idx)                
+                _msg = 'merge: stage {}, scope {}'.format(idx, scope)
+                logger.info(_msg)
                 input_map = dict(zip(gfn.input_names, prev_outputs))
                 _, fetches = builder.import_graph_function(
                     gfn, name=scope, input_map=input_map)
