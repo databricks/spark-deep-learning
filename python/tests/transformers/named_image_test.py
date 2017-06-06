@@ -69,16 +69,16 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         imageType = imageIO.pilModeLookup["RGB"]
 
         def rowWithImage(img):
-            # return [imageIO.imageToStruct(img.astype('uint8'), imageType)]
-            row = imageIO.imageToStruct(img.astype('uint8'), imageType)
+            # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
+            row = imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)
             # re-order row to avoid pyspark bug
-            return [[getattr(row, field.name) for field in imageIO.imgSchema]]
+            return [[getattr(row, field.name) for field in imageIO.imageSchema]]
 
         # test: predictor vs keras on resized images
         # Run sparkDL inceptionV3 transformer on resized images and compare result to above keras
         # result.
         rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
-        dfType = StructType([StructField("image", imageIO.imgSchema)])
+        dfType = StructType([StructField("image", imageIO.imageSchema)])
         imageDf = rdd.toDF(dfType)
 
         transformer = DeepImagePredictor(inputCol='image', modelName="InceptionV3",
@@ -92,7 +92,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         # test: predictor vs keras on raw images
         # Run sparkDL inceptionV3 transformer on raw (original size) images and compare result to
         # above keras (using keras resizing) result.
-        origImgDf = getSampleImageDF(self.sc)
+        origImgDf = getSampleImageDF()
         fullPredict = transformer.transform(origImgDf).collect()
         fullPredict = np.array([i.prediction for i in fullPredict])
 
@@ -107,7 +107,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         transformer = DeepImagePredictor(inputCol="image", outputCol=output_col,
                                          modelName="InceptionV3", decodePredictions=True, topK=topK)
 
-        image_df = getSampleImageDF(self.sc)
+        image_df = getSampleImageDF()
         transformed_df = transformer.transform(image_df.limit(5))
 
         collected = transformed_df.collect()
@@ -122,7 +122,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         transformer = DeepImageFeaturizer(inputCol="image", outputCol=output_col,
                                           modelName="InceptionV3")
 
-        image_df = getSampleImageDF(self.sc)
+        image_df = getSampleImageDF()
         transformed_df = transformer.transform(image_df.limit(5))
 
         collected = transformed_df.collect()
@@ -145,7 +145,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         # add arbitrary labels to run logistic regression
         # TODO: it's weird that the test fails on some combinations of labels. check why.
         label_udf = udf(lambda x: abs(hash(x)) % 2, IntegerType())
-        image_df = getSampleImageDF(self.sc)
+        image_df = getSampleImageDF()
         train_df = image_df.withColumn("label", label_udf(image_df["filePath"]))
 
         lrModel = pipeline.fit(train_df)

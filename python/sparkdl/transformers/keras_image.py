@@ -116,11 +116,12 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol):
         """
         Load image files specified in dataset as image format specified in sparkdl.image.imageIO.
         """
-        # plan 1: udf(loader() + convert from np.array to imgSchema) -> call TFImageTransformer
+        # plan 1: udf(loader() + convert from np.array to imageSchema) -> call TFImageTransformer
         # plan 2: udf(loader()) ... we don't support np.array as a dataframe column type...
         loader = self.getOrDefault(self.imageLoader)
+
         def load(uri):
             img = loader(uri)
-            return imageIO.imageToStruct(img)
-        load_udf = udf(load, imageIO.imgSchema)
+            return imageIO.imageArrayToStruct(img)
+        load_udf = udf(load, imageIO.imageSchema)
         return dataset.withColumn(self._loadedImageCol(), load_udf(dataset[self.getInputCol()]))

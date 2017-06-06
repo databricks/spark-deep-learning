@@ -23,15 +23,16 @@ from PIL import Image
 
 # pyspark
 from pyspark import Row
+from pyspark import SparkContext
 from pyspark.sql.types import (BinaryType, IntegerType, StringType, StructField, StructType)
 from pyspark.sql.functions import udf
 
 
-imgSchema = StructType([StructField("mode", StringType(), False),
-                        StructField("height", IntegerType(), False),
-                        StructField("width", IntegerType(), False),
-                        StructField("nChannels", IntegerType(), False),
-                        StructField("data", BinaryType(), False)])
+imageSchema = StructType([StructField("mode", StringType(), False),
+                          StructField("height", IntegerType(), False),
+                          StructField("width", IntegerType(), False),
+                          StructField("nChannels", IntegerType(), False),
+                          StructField("data", BinaryType(), False)])
 
 
 # ImageType class for holding metadata about images stored in DataFrames.
@@ -63,33 +64,40 @@ pilModeLookup = {t.pilMode: t for t in supportedImageTypes
 sparkModeLookup = {t.sparkMode: t for t in supportedImageTypes}
 
 
-def imageToStruct(imgArray, imageType=None):
+def imageArrayToStruct(imgArray, sparkMode=None):
     """
-    Create spark image row from numpy array and (optional) imageType.
+    Create a row representation of an image from an image array and (optional) imageType.
 
-    to_image_udf = udf(arrayToImageRow, imgSchema)
+    to_image_udf = udf(arrayToImageRow, imageSchema)
     df.withColumn("output_img", to_image_udf(df["np_arr_col"])
 
     :param imgArray: ndarray, image data.
-    :param imageType: ImageType, type of the image. If unspecified, it is inferred from imgArray.
-    :return: list, image as a DataFrame Row compatible list.
+    :param sparkMode: spark mode, type information for the image, will be inferred from array if
+        the mode is not provide. See SparkMode for valid modes.
+    :return: Row, image as a DataFrame Row.
     """
-    arr = imgArray
-    if imageType is None:
-        # Sometimes tensors have a leading "batch-size" dimension. Assume to be 1 if it exists.
-        if len(imgArray.shape) == 4:
-            if imgArray.shape[0] != 1:
-                raise ValueError("The first dimension of a 4-d image array is expected to be 1.")
-            arr = imgArray.reshape(imgArray.shape[1:])
+    # Sometimes tensors have a leading "batch-size" dimension. Assume to be 1 if it exists.
+    if len(imgArray.shape) == 4:
+        if imgArray.shape[0] != 1:
+            raise ValueError("The first dimension of a 4-d image array is expected to be 1.")
+        imgArray = imgArray.reshape(imgArray.shape[1:])
 
-        sparkMode = _arrayToSparkMode(arr)
-        if sparkMode in [SparkMode.FLOAT32, SparkMode.RGB_FLOAT32]:
-            arr = arr.astype(np.float32)
-    else:
-        sparkMode = imageType.sparkMode
+    if sparkMode is None:
+        sparkMode = _arrayToSparkMode(imgArray)
+    imageType = sparkModeLookup[sparkMode]
 
-    height, width, nChannels = arr.shape
-    data = bytearray(arr.tobytes())
+    height, width, nChannels = imgArray.shape
+    if imageType.nChannels != nChannels:
+        msg = "Image of type {} should have {} channels, but array has {} channels."
+        raise ValueError(msg.format(sparkMode, imageType.nChannels, nChannels))
+
+    # Convert the array to match the image type.
+    if not np.can_cast(imgArray, imageType.dtype, 'same_kind'):
+        msg = "Array of type {} cannot safely be cast to image type {}."
+        raise ValueError(msg.format(imgArray.dtype, imageType.dtype))
+    imgArray = np.array(imgArray, dtype=imageType.dtype, copy=False)
+
+    data = bytearray(imgArray.tobytes())
     return Row(mode=sparkMode, height=height, width=width, nChannels=nChannels, data=data)
 
 
@@ -103,11 +111,11 @@ def imageType(imageRow):
     return sparkModeLookup[imageRow.mode]
 
 
-def imageToArray(imageRow):
+def imageStructToArray(imageRow):
     """
     Convert an image to a numpy array.
 
-    :param imageRow: Row, must use imgSchema.
+    :param imageRow: Row, must use imageSchema.
     :return: ndarray, image data.
     """
     imType = imageType(imageRow)
@@ -147,12 +155,12 @@ def _resizeFunction(size):
         raise ValueError("New image size should have for [hight, width] but got {}".format(size))
 
     def resizeImageAsRow(imgAsRow):
-        imgAsArray = imageToArray(imgAsRow)
+        imgAsArray = imageStructToArray(imgAsRow)
         imgType = imageType(imgAsRow)
         imgAsPil = Image.fromarray(imgAsArray, imgType.pilMode)
         imgAsPil = imgAsPil.resize(size[::-1])
         imgAsArray = np.array(imgAsPil)
-        return imageToStruct(imgAsArray, imgType)
+        return imageArrayToStruct(imgAsArray, imgType.sparkMode)
 
     return resizeImageAsRow
 
@@ -166,7 +174,7 @@ def resizeImage(size):
     :param size: tuple, target size of new image in the form (height, width). 
     :return: udf, a udf for resizing an image column to `size`.
     """
-    return udf(_resizeFunction(size), imgSchema)
+    return udf(_resizeFunction(size), imageSchema)
 
 
 def _decodeImage(imageData):
@@ -188,11 +196,11 @@ def _decodeImage(imageData):
         warn(msg.format(mode=img.mode))
         return None
     imgArray = np.asarray(img)
-    image = imageToStruct(imgArray, mode)
+    image = imageArrayToStruct(imgArray, mode.sparkMode)
     return image
 
 # Creating a UDF on import can cause SparkContext issues sometimes.
-# decodeImage = udf(_decodeImage, imgSchema)
+# decodeImage = udf(_decodeImage, imageSchema)
 
 def filesToDF(sc, path, numPartitions=None):
     """
@@ -211,15 +219,19 @@ def filesToDF(sc, path, numPartitions=None):
     return rdd.toDF(schema)
 
 
-def readImages(sc, imageDirectory, numPartition=None):
+def readImages(imageDirectory, numPartition=None):
     """
     Read a directory of images (or a single image) into a DataFrame.
 
     :param sc: spark context
     :param imageDirectory: str, file path.
     :param numPartition: int, number or partitions to use for reading files.
-    :return: DataFrame, with columns: (filepath: str, image: imgSchema).
+    :return: DataFrame, with columns: (filepath: str, image: imageSchema).
     """
-    decodeImage = udf(_decodeImage, imgSchema)
+    return _readImages(imageDirectory, numPartition, SparkContext.getOrCreate())
+
+
+def _readImages(imageDirectory, numPartition, sc):
+    decodeImage = udf(_decodeImage, imageSchema)
     imageData = filesToDF(sc, imageDirectory, numPartitions=numPartition)
     return imageData.select("filePath", decodeImage("fileData").alias("image"))

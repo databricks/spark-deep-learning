@@ -20,7 +20,7 @@ from keras.preprocessing.image import img_to_array, load_img
 import numpy as np
 import tensorflow as tf
 
-from sparkdl.image.imageIO import imageToArray
+from sparkdl.image.imageIO import imageStructToArray
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.tf_image import TFImageTransformer
 import sparkdl.transformers.utils as utils
@@ -53,7 +53,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                                          inputTensor=image_arr, outputTensor=preprocessed.name,
                                          outputMode="vector")
 
-        image_df = image_utils.getSampleImageDF(self.sc)
+        image_df = image_utils.getSampleImageDF()
         df = transformer.transform(image_df.limit(5))
 
         for row in df.collect():
@@ -80,7 +80,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         transformer = TFImageTransformer(inputCol="image", outputCol=outputCol, graph=g,
                                          inputTensor=image_arr.name, outputTensor=processed_images,
                                          outputMode=outputMode)
-        image_df = image_utils.getSampleImageDF(self.sc)
+        image_df = image_utils.getSampleImageDF()
         return transformer.transform(image_df.limit(5))
 
     def test_image_output(self):
@@ -109,7 +109,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             values = {}
             topK = {}
             for img_row in image_collected:
-                image = np.expand_dims(imageToArray(img_row[input_col]), axis=0)
+                image = np.expand_dims(imageStructToArray(img_row[input_col]), axis=0)
                 uri = img_row[id_col]
                 output = sess.run([output_tensor],
                                   feed_dict={
@@ -121,7 +121,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
 
     def test_prediction_vs_tensorflow_inceptionV3(self):
         output_col = "prediction"
-        image_df = image_utils.getSampleImageDF(self.sc)
+        image_df = image_utils.getSampleImageDF()
 
         # An example of how a pre-trained keras model can be used with TFImageTransformer
         with KSessionWrap() as (sess, g):

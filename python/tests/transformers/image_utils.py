@@ -39,8 +39,8 @@ def _getSampleJPEGDir():
     return os.path.join(cur_dir, "../resources/images-animals-small/" )
 
 
-def getSampleImageDF(sc):
-    return imageIO.readImages(sc, _getSampleJPEGDir())
+def getSampleImageDF():
+    return imageIO.readImages(_getSampleJPEGDir())
 
 def getSampleImagePathsDF(sqlContext, colName):
     dirpath = _getSampleJPEGDir()
