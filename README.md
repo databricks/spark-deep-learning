@@ -51,7 +51,7 @@ own or known popular models to image data to make predictions or transform them 
 * Distributed hyper-parameter tuning : via Spark MLlib Pipelines (coming soon)
 
 To try running the examples below, check out the Databricks notebook
-[Deep Learning Piplines on Databricks](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html).
+[Deep Learning Pipelines on Databricks](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html).
 
 
 ### Working with images in Spark
