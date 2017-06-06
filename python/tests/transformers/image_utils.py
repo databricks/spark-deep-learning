@@ -36,7 +36,7 @@ from sparkdl.transformers.utils import ImageNetConstants, InceptionV3Constants
 
 def _getSampleJPEGDir():
     cur_dir = os.path.dirname(__file__)
-    return os.path.join(cur_dir, "../resources/images-animals-small/" )
+    return os.path.join(cur_dir, "../resources/images")
 
 
 def getSampleImageDF():
