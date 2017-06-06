@@ -19,7 +19,6 @@ from .transformers.named_image import DeepImagePredictor, DeepImageFeaturizer
 from .transformers.tf_image import TFImageTransformer
 from .transformers.utils import imageInputPlaceholder, stripAndFreezeGraph
 
-# TODO: separate out images & transformers
 __all__ = [
     'imageSchema', 'imageType', 'readImages',
     'TFImageTransformer',

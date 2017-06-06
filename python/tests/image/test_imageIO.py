@@ -110,7 +110,7 @@ class TestReadImages(SparkDLTestCase):
         self.assertEqual(imgAsStruct.width, width)
         self.assertEqual(len(imgAsStruct.data), array.size * 4)
 
-        # Check channel miss match
+        # Check channel mismatch
         self.assertRaises(ValueError, imageIO.imageArrayToStruct, array, SparkMode.FLOAT32)
 
         # Check that unsafe cast raises error
@@ -149,15 +149,17 @@ class TestReadImages(SparkDLTestCase):
         self.assertEqual(imageIO.imageType(img).nChannels, array.shape[2])
         self.assertEqual(img.data, array.tobytes())
 
-    def test_silly_udf(self):
-        def silly(imgRow):
+    def test_udf_schema(self):
+        # Test that utility functions can be used to create a udf that accepts and return
+        # imageSchema
+        def do_nothing(imgRow):
             imType = imageIO.imageType(imgRow)
             array = imageIO.imageStructToArray(imgRow)
             return imageIO.imageArrayToStruct(array, imType.sparkMode)
-        silly_udf = udf(silly, imageIO.imageSchema)
+        do_nothing_udf = udf(do_nothing, imageIO.imageSchema)
 
         df = imageIO._readImages("path", 2, self.binaryFilesMock)
-        df = df.filter(col('image').isNotNull()).withColumn("test", silly_udf('image'))
+        df = df.filter(col('image').isNotNull()).withColumn("test", do_nothing_udf('image'))
         self.assertEqual(df.first().test.data, array.tobytes())
         df.printSchema()
 

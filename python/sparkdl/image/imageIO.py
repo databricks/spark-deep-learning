@@ -29,10 +29,10 @@ from pyspark.sql.functions import udf
 
 
 imageSchema = StructType([StructField("mode", StringType(), False),
-                        StructField("height", IntegerType(), False),
-                        StructField("width", IntegerType(), False),
-                        StructField("nChannels", IntegerType(), False),
-                        StructField("data", BinaryType(), False)])
+                          StructField("height", IntegerType(), False),
+                          StructField("width", IntegerType(), False),
+                          StructField("nChannels", IntegerType(), False),
+                          StructField("data", BinaryType(), False)])
 
 
 # ImageType class for holding metadata about images stored in DataFrames.
