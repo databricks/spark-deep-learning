@@ -24,6 +24,5 @@ __all__ = [
     'imageSchema', 'imageType', 'readImages',
     'TFImageTransformer',
     'DeepImagePredictor', 'DeepImageFeaturizer',
-    "GraphBuilderSession", "GraphFunction",
     'KerasImageFileTransformer',
     'imageInputPlaceholder', 'stripAndFreezeGraph']
