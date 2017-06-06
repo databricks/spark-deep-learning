@@ -24,6 +24,7 @@ import tensorflow as tf
 import keras.backend as K
 from keras.applications import InceptionV3
 from keras.applications import inception_v3 as iv3
+from keras.preprocessing.image import load_img, img_to_array
 
 from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
@@ -32,11 +33,6 @@ from pyspark.sql.functions import udf
 from sparkdl.graph_builder import GraphBuilderSession
 from .tests import SparkDLTestCase
 from .transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
-
-def get_image_paths_df(sqlCtx):
-    df = getSampleImagePathsDF(sqlCtx, "fpath")
-    df.createOrReplaceTempView("_test_image_paths_df")
-    return df
 
 
 class GraphBuilderTest(SparkDLTestCase):
@@ -58,7 +54,7 @@ class GraphBuilderTest(SparkDLTestCase):
             z_tgt = builder.sess.run(z, {x: x_val})
             gfn = builder.asGraphFunction([x], [z])
 
-        assert z_ref == z_tgt
+        self.assertEqual(z_ref, z_tgt)
 
         # Version texts are not essential part of the graph, ignore them
         gdef_ref.ClearField("versions")
@@ -66,7 +62,7 @@ class GraphBuilderTest(SparkDLTestCase):
 
         # The GraphDef contained in the GraphFunction object
         # should be the same as that in the one exported directly from TensorFlow session
-        assert str(gfn.graph_def) == str(gdef_ref)
+        self.assertEqual(str(gfn.graph_def), str(gdef_ref))
 
 
     def test_get_graph_elemets(self):
@@ -111,15 +107,13 @@ class GraphBuilderTest(SparkDLTestCase):
 
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
-        def keras_load_img(fpath):
-            from keras.preprocessing.image import load_img, img_to_array
-            import numpy as np
+        def keras_load_and_preproc(fpath):            
             img = load_img(fpath, target_size=(299, 299))
             img_arr = img_to_array(img)
             img_iv3_input = iv3.preprocess_input(img_arr)
             return np.expand_dims(img_iv3_input, axis=0)
 
-        imgs_iv3_input = np.vstack([keras_load_img(fp) for fp in img_fpaths])
+        imgs_iv3_input = np.vstack([keras_load_and_preproc(fp) for fp in img_fpaths])
 
         model_ref = InceptionV3(weights="imagenet")
         preds_ref = model_ref.predict(imgs_iv3_input)
@@ -135,4 +129,3 @@ class GraphBuilderTest(SparkDLTestCase):
             preds_tgt = builder.sess.run(fetches[0], {feeds[0]: imgs_iv3_input})
 
         self.assertTrue(np.all(preds_tgt == preds_ref))
-
