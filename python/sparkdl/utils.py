@@ -49,8 +49,6 @@ class JVMAPI(object):
         """
         Loads the PythonInterface object (lazily, because the spark context needs to be initialized
         first).
-
-        WARNING: this works by setting a hidden variable called SQLContext._active_sql_context
         """
         # (tjh) suspect the SQL context is doing crazy things at import, because I was
         # experiencing some issues here.
@@ -69,15 +67,11 @@ class JVMAPI(object):
         return cls._curr_jvm().PythonUtils
 
 def list_to_vector_udf(col):
-    """
-    Convert a list to vector from JVM's side
-    """
     return Column(JVMAPI.default().listToVectorFunction(col._jc))  # pylint: disable=W0212
 
 def pipelined_udf(name, ordered_udf_names):
-    """
-    Given a sequence of @ordered_udf_names f1, f2, ..., fn
-    Create a pipelined UDF as fn(...f2(f1()))
+    """ Given a sequence of @ordered_udf_names f1, f2, ..., fn
+        Create a pipelined UDF as fn(...f2(f1()))
     """
     assert len(ordered_udf_names) > 1, \
         "must provide more than one ordered udf names"

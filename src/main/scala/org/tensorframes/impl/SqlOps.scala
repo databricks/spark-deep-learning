@@ -60,6 +60,7 @@ object SqlOps extends Logging {
   private[this] val lock = new Object()
 
   // The maximum number of sessions that can be opened concurrently.
+  // TODO: make this parameter configurable
   val maxSessions: Int = 10
 
   /**
@@ -251,7 +252,7 @@ object SqlOps extends Logging {
         assert(res.hasNext)
         val r = res.next()
         assert(!res.hasNext)
-        //      logDebug(s"performUDF: r=$r")
+        //      logger.debug(s"performUDF: r=$r")
         r
       }
     }
