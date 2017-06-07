@@ -1,3 +1,4 @@
+#
 # Copyright 2017 Databricks, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,38 +21,60 @@ This should not get exposed outside.
 """
 import logging
 
-from pyspark import SparkContext
+from pyspark import SparkContext, SQLContext
 from pyspark.sql.column import Column
-
-ENTRYPOINT_CLASSNAME = "com.databricks.sparkdl.python.PythonInterface"
 
 logger = logging.getLogger('sparkdl')
 
-def _java_api_sql(javaClassName, sqlCtx = None):
-    """
-    Loads the PythonInterface object (lazily, because the spark context needs to be initialized
-    first).
+class JVMAPI(object):
+    # pylint: disable=W0212
+    ENTRYPOINT_CLASSNAME = "com.databricks.sparkdl.python.PythonInterface"
 
-    WARNING: this works by setting a hidden variable called SQLContext._active_sql_context
-    """
-    # I suspect the SQL context is doing crazy things at import, because I was
-    # experiencing some issues here.
-    from pyspark.sql import SQLContext
-    _sc = SparkContext._active_spark_context
-    logger.info("Spark context = " + str(_sc))
-    if sqlCtx is None:
-        _sql = SQLContext._instantiatedContext
-    else:
-        _sql = sqlCtx
-    _jvm = _sc._jvm
-    # You cannot simply call the creation of the the class on the _jvm due to classloader issues
-    # with Py4J.
-    return _jvm.Thread.currentThread().getContextClassLoader().loadClass(javaClassName) \
-        .newInstance().sqlContext(_sql._ssql_ctx)
+    @classmethod
+    def _curr_sql_ctx(cls, sqlCtx=None):
+        _sql_ctx = sqlCtx if sqlCtx is not None else SQLContext._instantiatedContext
+        logger.info("Spark SQL Context = " + str(_sql_ctx))
+        return _sql_ctx
+    
+    @classmethod
+    def _curr_sc(cls):
+        return SparkContext._active_spark_context
 
-def _api():
-    return _java_api_sql(ENTRYPOINT_CLASSNAME)
+    @classmethod
+    def _curr_jvm(cls):
+        return cls._curr_sc()._jvm
+
+    @classmethod
+    def for_class(cls, javaClassName, sqlCtx=None):
+        """
+        Loads the PythonInterface object (lazily, because the spark context needs to be initialized
+        first).
+
+        WARNING: this works by setting a hidden variable called SQLContext._active_sql_context
+        """
+        # (tjh) suspect the SQL context is doing crazy things at import, because I was
+        # experiencing some issues here.        
+        # You cannot simply call the creation of the the class on the _jvm 
+        # due to classloader issues with Py4J.
+        jvm_thread = cls._curr_jvm().Thread.currentThread() 
+        jvm_class = jvm_thread.getContextClassLoader().loadClass(javaClassName)
+        return jvm_class.newInstance().sqlContext(cls._curr_sql_ctx(sqlCtx)._ssql_ctx)
+
+    @classmethod
+    def default(cls):
+        return cls.for_class(javaClassName=cls.ENTRYPOINT_CLASSNAME)
+
+    @classmethod
+    def pyutils(cls):
+        return cls._curr_jvm().PythonUtils
 
 def list_to_vector_udf(col):
-    jc = _api().listToVectorFunction(col._jc)
-    return Column(jc)
+    return Column(JVMAPI.default().listToVectorFunction(col._jc))  # pylint: disable=W0212
+
+def pipelined_udf(name, ordered_udf_names):
+    """ Given a sequence of @ordered_udf_names f1, f2, ..., fn
+        Create a pipelined UDF as fn(...f2(f1()))
+    """
+    assert len(ordered_udf_names) > 1, \
+        "must provide more than one ordered udf names"
+    JVMAPI.default().pipeline(name, JVMAPI.pyutils().toSeq(ordered_udf_names))
