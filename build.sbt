@@ -20,7 +20,7 @@ sparkVersion := sparkVer
 
 scalaVersion := scalaVer
 
-spName := "spark-deep-learning/spark-deep-learning"
+spName := "databricks/spark-deep-learning"
 
 // Don't forget to set the version
 version := s"0.1.0-spark$sparkBranch"
