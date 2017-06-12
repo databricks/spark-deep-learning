@@ -65,8 +65,8 @@ class GraphBuilderTest(SparkDLTestCase):
         self.assertEqual(str(gfn.graph_def), str(gdef_ref))
 
 
-    def test_get_graph_elemets(self):
-        """ Fetching graph elemetns by names and other graph element objects """
+    def test_get_graph_elements(self):
+        """ Fetching graph elements by names and other graph elements """
 
         with GraphBuilderSession() as builder:
             x = tf.placeholder(tf.double, shape=[], name="x")
@@ -107,7 +107,7 @@ class GraphBuilderTest(SparkDLTestCase):
 
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
-        def keras_load_and_preproc(fpath):            
+        def keras_load_and_preproc(fpath):
             img = load_img(fpath, target_size=(299, 299))
             img_arr = img_to_array(img)
             img_iv3_input = iv3.preprocess_input(img_arr)
