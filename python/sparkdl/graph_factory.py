@@ -29,13 +29,16 @@ from .image.imageIO import SparkMode
 logger = logging.getLogger('sparkdl')
 
 class GraphFunctionFactory(object):
-    """ 
+    """
     Build various pieces of the function
+
+    TODO: We might want to cache some of the big models in their GraphFunction format
+          Deserializing ProtocolBuffer bytes is in general faster than directly loading Keras models.
     """
 
     @classmethod
     def build_spimage_converter(cls, img_dtype):
-        """ 
+        """
         Convert a imageIO byte encoded image into a image tensor suitable as input to ConvNets
         The name of the input must be a subset of those specified in `image.imageIO.imgSchema`.
 
@@ -51,7 +54,7 @@ class GraphFunctionFactory(object):
 
             # The image is packed into bytes with height as leading dimension
             # This is the default behavior of Python Image Library
-            shape = tf.reshape(tf.stack([height, width, num_channels], axis=0), 
+            shape = tf.reshape(tf.stack([height, width, num_channels], axis=0),
                                shape=(3,), name='shape')
             if SparkMode.RGB == img_dtype:
                 image_uint8 = tf.decode_raw(image_buffer, tf.uint8, name="decode_raw")
@@ -84,7 +87,7 @@ class GraphFunctionFactory(object):
             gfn = builder.asGraphFunction([mat_input], [mat_output])
 
         return gfn
-    
+
     @classmethod
     def import_bare_keras(cls, model_or_file_path):
         """ Build an UDF from a Keras model
@@ -116,7 +119,7 @@ class GraphFunctionFactory(object):
 
     @classmethod
     def pipeline(cls, functions):
-        """ 
+        """
         Takes multiple graph functions and merges them into a single graph function.
         It is assumed that there is only one input and one output in the intermediary layers
 
@@ -141,7 +144,7 @@ class GraphFunctionFactory(object):
                 first_input_info.append((tnsr.dtype, tnsr.shape, name))
 
         # Build a linear chain of all the provide functions
-        with GraphBuilderSession() as builder: 
+        with GraphBuilderSession() as builder:
             first_inputs = [tf.placeholder(dtype, shape, name)
                             for (dtype, shape, name) in first_input_info]
             prev_outputs = first_inputs
@@ -149,7 +152,7 @@ class GraphFunctionFactory(object):
             for idx, (scope, gfn) in enumerate(functions):
                 # Give a scope to each function to avoid name conflict
                 if scope is None or len(scope.strip()) == 0:
-                    scope = 'GFN-BLK-{}'.format(idx)                
+                    scope = 'GFN-BLK-{}'.format(idx)
                 _msg = 'merge: stage {}, scope {}'.format(idx, scope)
                 logger.info(_msg)
                 input_map = dict(zip(gfn.input_names, prev_outputs))
