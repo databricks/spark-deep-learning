@@ -30,9 +30,11 @@ from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
-from sparkdl.graph_builder import GraphBuilderSession
-from .tests import SparkDLTestCase
-from .transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
+from sparkdl.graph.graph_builder import IsolatedSession
+from sparkdl.utils import graph_utils as tfx
+
+from ..tests import SparkDLTestCase
+from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
 
 
 class GraphBuilderTest(SparkDLTestCase):
@@ -48,11 +50,11 @@ class GraphBuilderTest(SparkDLTestCase):
             gdef_ref = g.as_graph_def(add_shapes=True)
             z_ref = sess.run(z, {x: x_val})
 
-        with GraphBuilderSession() as builder:
+        with IsolatedSession() as issn:
             x = tf.placeholder(tf.double, shape=[], name="x")
             z = tf.add(x, 3, name='z')
-            z_tgt = builder.sess.run(z, {x: x_val})
-            gfn = builder.asGraphFunction([x], [z])
+            gfn = issn.asGraphFunction([x], [z])
+            z_tgt = issn.run(z, {x: x_val})
 
         self.assertEqual(z_ref, z_tgt)
 
@@ -68,34 +70,34 @@ class GraphBuilderTest(SparkDLTestCase):
     def test_get_graph_elements(self):
         """ Fetching graph elements by names and other graph elements """
 
-        with GraphBuilderSession() as builder:
+        with IsolatedSession() as issn:
             x = tf.placeholder(tf.double, shape=[], name="x")
             z = tf.add(x, 3, name='z')
 
-            g = builder.graph
-            self.assertEqual(builder.get_tensor(z), z)
-            self.assertEqual(builder.get_tensor(x), x)
-            self.assertEqual(g.get_tensor_by_name("x:0"), builder.get_tensor(x))
-            self.assertEqual("x:0", builder.tensor_name(x))
-            self.assertEqual(g.get_operation_by_name("x"), builder.get_op(x))
-            self.assertEqual("x", builder.op_name(x))
-            self.assertEqual("x", builder.op_name(x))
-            self.assertEqual("z", builder.op_name(z))
-            self.assertEqual(builder.get_tensor(z), z)
-            self.assertEqual(builder.get_tensor(x), x)
+            g = issn.graph
+            self.assertEqual(tfx.get_tensor(g, z), z)
+            self.assertEqual(tfx.get_tensor(g, x), x)
+            self.assertEqual(g.get_tensor_by_name("x:0"), tfx.get_tensor(g, x))
+            self.assertEqual("x:0", tfx.tensor_name(g, x))
+            self.assertEqual(g.get_operation_by_name("x"), tfx.get_op(g, x))
+            self.assertEqual("x", tfx.op_name(g, x))
+            self.assertEqual("x", tfx.op_name(g, x))
+            self.assertEqual("z", tfx.op_name(g, z))
+            self.assertEqual(tfx.get_tensor(g, z), z)
+            self.assertEqual(tfx.get_tensor(g, x), x)
 
 
     def test_import_export_graph_function(self):
         """ Function import and export must be consistent """
 
-        with GraphBuilderSession() as builder:
+        with IsolatedSession() as issn:
             x = tf.placeholder(tf.double, shape=[], name="x")
             z = tf.add(x, 3, name='z')
-            gfn_ref = builder.asGraphFunction([x], [z])
+            gfn_ref = issn.asGraphFunction([x], [z])
 
-        with GraphBuilderSession() as builder:
-            feeds, fetches = builder.import_graph_function(gfn_ref, name="")
-            gfn_tgt = builder.asGraphFunction(feeds, fetches)
+        with IsolatedSession() as issn:
+            feeds, fetches = issn.import_graph_function(gfn_ref, name="")
+            gfn_tgt = issn.asGraphFunction(feeds, fetches)
 
         self.assertEqual(gfn_tgt.input_names, gfn_ref.input_names)
         self.assertEqual(gfn_tgt.output_names, gfn_ref.output_names)
@@ -118,14 +120,14 @@ class GraphBuilderTest(SparkDLTestCase):
         model_ref = InceptionV3(weights="imagenet")
         preds_ref = model_ref.predict(imgs_iv3_input)
 
-        with GraphBuilderSession(wrap_keras=True) as builder:
+        with IsolatedSession(keras=True) as issn:
             K.set_learning_phase(0)
             model = InceptionV3(weights="imagenet")
-            gfn = builder.asGraphFunction(model.inputs, model.outputs)
+            gfn = issn.asGraphFunction(model.inputs, model.outputs)
 
-        with GraphBuilderSession(wrap_keras=True) as builder:
+        with IsolatedSession(keras=True) as issn:
             K.set_learning_phase(0)
-            feeds, fetches = builder.import_graph_function(gfn, name="InceptionV3")
-            preds_tgt = builder.sess.run(fetches[0], {feeds[0]: imgs_iv3_input})
+            feeds, fetches = issn.import_graph_function(gfn, name="InceptionV3")
+            preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_iv3_input})
 
         self.assertTrue(np.all(preds_tgt == preds_ref))

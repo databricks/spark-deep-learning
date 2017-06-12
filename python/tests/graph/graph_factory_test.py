@@ -18,6 +18,7 @@ from __future__ import print_function
 
 from glob import glob
 import os
+from tempfile import NamedTemporaryFile
 
 import numpy as np
 import numpy.random as prng
@@ -35,11 +36,13 @@ from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
-from sparkdl.image.imageIO import imageToStruct, SparkMode
-from sparkdl.graph_builder import GraphBuilderSession
-from sparkdl.graph_factory import GraphFunctionFactory as factory
-from .tests import SparkDLTestCase
-from .transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
+from sparkdl.image.imageIO import imageArrayToStruct, SparkMode
+from sparkdl.graph.graph_builder import IsolatedSession, GraphFunction
+from sparkdl.graph import graph_factory as gfac
+from sparkdl.utils import graph_utils as tfx
+
+from ..tests import SparkDLTestCase
+from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
 
 
 class GraphFactoryTest(SparkDLTestCase):
@@ -50,15 +53,15 @@ class GraphFactoryTest(SparkDLTestCase):
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
         def exec_gfn_spimg_decode(spimg_dict, img_dtype):
-            gfn = factory.build_spimage_converter(img_dtype)
-            with GraphBuilderSession() as builder:
-                feeds, fetches = builder.import_graph_function(gfn, name="")
-                feed_dict = dict((tnsr, spimg_dict[builder.op_name(tnsr)]) for tnsr in feeds)
-                img_out = builder.sess.run(fetches[0], feed_dict=feed_dict)
+            gfn = gfac.build_spimage_converter(img_dtype)
+            with IsolatedSession() as issn:
+                feeds, fetches = issn.import_graph_function(gfn, name="")
+                feed_dict = dict((tnsr, spimg_dict[tfx.op_name(issn.graph, tnsr)]) for tnsr in feeds)
+                img_out = issn.run(fetches[0], feed_dict=feed_dict)
             return img_out
 
         def check_image_round_trip(img_arr):
-            spimg_dict = imageToStruct(img_arr).asDict()
+            spimg_dict = imageArrayToStruct(img_arr).asDict()
             spimg_dict['data'] = bytes(spimg_dict['data'])
             img_arr_out = exec_gfn_spimg_decode(spimg_dict, spimg_dict['mode'])
             self.assertTrue(np.all(img_arr_out == img_arr))
@@ -78,26 +81,26 @@ class GraphFactoryTest(SparkDLTestCase):
     def test_identity_module(self):
         """ identity module should preserve input """
 
-        gfn = factory.build_identity()
+        gfn = gfac.build_identity()
         for _ in range(10):
             m, n = prng.randint(10, 1000, size=2)
             mat = prng.randn(m, n).astype(np.float32)
-            with GraphBuilderSession() as builder:
-                feeds, fetches = builder.import_graph_function(gfn)
-                mat_out = builder.sess.run(fetches[0], {feeds[0]: mat})
+            with IsolatedSession() as issn:
+                feeds, fetches = issn.import_graph_function(gfn)
+                mat_out = issn.run(fetches[0], {feeds[0]: mat})
 
             self.assertTrue(np.all(mat_out == mat))
 
     def test_flattener_module(self):
         """ flattener module should preserve input data """
 
-        gfn = factory.build_flattener()
+        gfn = gfac.build_flattener()
         for _ in range(10):
             m, n = prng.randint(10, 1000, size=2)
             mat = prng.randn(m, n).astype(np.float32)
-            with GraphBuilderSession() as builder:
-                feeds, fetches = builder.import_graph_function(gfn)
-                vec_out = builder.sess.run(fetches[0], {feeds[0]: mat})
+            with IsolatedSession() as issn:
+                feeds, fetches = issn.import_graph_function(gfn)
+                vec_out = issn.run(fetches[0], {feeds[0]: mat})
 
             self.assertTrue(np.all(vec_out == mat.flatten()))
 
@@ -111,22 +114,24 @@ class GraphFactoryTest(SparkDLTestCase):
 
             keras_model = model_gen(weights="imagenet")
             target_size = tuple(keras_model.input.shape.as_list()[1:-1])
-            def keras_load_and_preproc(fpath):
+
+            _preproc_img_list = []
+            for fpath in img_fpaths:
                 img = load_img(fpath, target_size=target_size)
                 # WARNING: must apply expand dimensions first, or ResNet50 preprocessor fails
                 img_arr = np.expand_dims(img_to_array(img), axis=0)
-                return preproc_fn(img_arr)
+                _preproc_img_list.append(preproc_fn(img_arr))
 
-            imgs_input = np.vstack([keras_load_and_preproc(fp) for fp in img_fpaths])
+            imgs_input = np.vstack(_preproc_img_list)
 
             preds_ref = keras_model.predict(imgs_input)
 
-            gfn_bare_keras = factory.import_bare_keras(keras_model)
+            gfn_bare_keras = GraphFunction.from_keras(keras_model)
 
-            with GraphBuilderSession(wrap_keras=True) as builder:
+            with IsolatedSession(keras=True) as issn:
                 K.set_learning_phase(0)
-                feeds, fetches = builder.import_graph_function(gfn_bare_keras)
-                preds_tgt = builder.sess.run(fetches[0], {feeds[0]: imgs_input})
+                feeds, fetches = issn.import_graph_function(gfn_bare_keras)
+                preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_input})
 
             self.assertTrue(np.all(preds_tgt == preds_ref))
 
@@ -135,9 +140,9 @@ class GraphFactoryTest(SparkDLTestCase):
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
         xcpt_model = Xception(weights="imagenet")
-        stages = [('spimage', factory.build_spimage_converter(SparkMode.RGB_FLOAT32)),
-                  ('xception', factory.import_bare_keras(xcpt_model))]
-        piped_model = factory.pipeline(stages)
+        stages = [('spimage', gfac.build_spimage_converter(SparkMode.RGB_FLOAT32)),
+                  ('xception', GraphFunction.from_keras(xcpt_model))]
+        piped_model = GraphFunction.from_list(stages)
 
         for fpath in img_fpaths:
             target_size = tuple(xcpt_model.input.shape.as_list()[1:-1])
@@ -146,14 +151,15 @@ class GraphFactoryTest(SparkDLTestCase):
             img_input = xcpt.preprocess_input(img_arr)
             preds_ref = xcpt_model.predict(img_input)
 
-            spimg_input_dict = imageToStruct(img_input).asDict()
+            spimg_input_dict = imageArrayToStruct(img_input).asDict()
             spimg_input_dict['data'] = bytes(spimg_input_dict['data'])
-            with GraphBuilderSession() as builder:
+            with IsolatedSession() as issn:
                 # Need blank import scope name so that spimg fields match the input names
-                feeds, fetches = builder.import_graph_function(piped_model, name="")
-                feed_dict = dict((tnsr, spimg_input_dict[builder.op_name(tnsr)]) for tnsr in feeds)
-                preds_tgt = builder.sess.run(fetches[0], feed_dict=feed_dict)
-                # If in REPL, uncomment the line below to see the graph
-                # html_code = builder.show_tf_graph()
+                feeds, fetches = issn.import_graph_function(piped_model, name="")
+                feed_dict = dict((tnsr, spimg_input_dict[tfx.op_name(issn.graph, tnsr)]) for tnsr in feeds)
+                preds_tgt = issn.run(fetches[0], feed_dict=feed_dict)
+                # Uncomment the line below to see the graph
+                # tfx.write_visualization_html(issn.graph,
+                #                              NamedTemporaryFile(prefix="gdef", suffix=".html").name)
 
             self.assertTrue(np.all(preds_tgt == preds_ref))
