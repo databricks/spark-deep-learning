@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 
-import random
-
 from keras.applications import inception_v3
 import numpy as np
 import tensorflow as tf
@@ -40,6 +38,10 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
 
         We run the sparkDL test with and without resizing beforehand
         """
+
+    @classmethod
+    def setUpClass(cls):
+        super(NamedImageTransformerImagenetTest, cls).setUpClass()
         imgFiles, images = getSampleImageList()
         imageArray = np.empty((len(images), 299, 299, 3), 'uint8')
         for i, img in enumerate(images):
@@ -51,10 +53,16 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         prepedImaged = inception_v3.preprocess_input(imageArray.astype('float32'))
         model = inception_v3.InceptionV3()
         kerasPredict = model.predict(prepedImaged)
+        cls.imageArray = imageArray
+        cls.kerasPredict = kerasPredict
 
-        # test: _buildTfGraphForName
-        # Run the graph produced by _buildTfGraphForName and compare the result to above keras
-        # result.
+    def test_buildtfgraphforname(self):
+        """"
+        Run the graph produced by _buildtfgraphforname and compare the result to above keras
+        result.
+        """
+        imageArray = self.imageArray
+        kerasPredict = self.kerasPredict
         modelGraphInfo = _buildTFGraphForName("InceptionV3", False)
         graph = modelGraphInfo["graph"]
         sess = tf.Session(graph=graph)
@@ -66,11 +74,12 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         self.assertEqual(kerasPredict.shape, tfPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, tfPredict)
 
-        imageType = imageIO.pilModeLookup["RGB"]
-
+    def test_DeepImagePredictorNoReshape(self):
+        imageArray = self.imageArray
+        kerasPredict = self.kerasPredict
         def rowWithImage(img):
             # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
-            row = imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)
+            row = imageIO.imageArrayToStruct(img.astype('uint8'), imageIO.SparkMode.RGB)
             # re-order row to avoid pyspark bug
             return [[getattr(row, field.name) for field in imageIO.imageSchema]]
 
@@ -89,9 +98,14 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         self.assertEqual(kerasPredict.shape, dfPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, dfPredict)
 
-        # test: predictor vs keras on raw images
-        # Run sparkDL inceptionV3 transformer on raw (original size) images and compare result to
-        # above keras (using keras resizing) result.
+    def test_DeepImagePredictor(self):
+        """
+        Run sparkDL inceptionV3 transformer on raw (original size) images and compare result to
+        above keras (using keras resizing) result.
+        """
+        kerasPredict = self.kerasPredict
+        transformer = DeepImagePredictor(inputCol='image', modelName="InceptionV3",
+                                         outputCol="prediction",)
         origImgDf = getSampleImageDF()
         fullPredict = transformer.transform(origImgDf).collect()
         fullPredict = np.array([i.prediction for i in fullPredict])
