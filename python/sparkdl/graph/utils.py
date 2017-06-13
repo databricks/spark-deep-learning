@@ -17,6 +17,7 @@
 import logging
 import six
 import webbrowser
+from tempfile import NamedTemporaryFile
 
 import tensorflow as tf
 
@@ -107,7 +108,7 @@ def strip_and_freeze_until(fetches, graph, sess=None):
 
     return gdef_frozen
 
-def write_visualization_html(graph, html_file_path="graph_def.html", max_const_size=32, show_in_browser=True):
+def write_visualization_html(graph, html_file_path=None, max_const_size=32, show_in_browser=True):
     """
     Visualize TensorFlow graph as a static TensorBoard page.
     Notice that in order to view it directly, the user must have
@@ -150,6 +151,9 @@ def write_visualization_html(graph, html_file_path="graph_def.html", max_const_s
     """.format(data=repr(str(strip_def)),
                id='gfn-sess-graph',
                tfb=_tfb_url)
+
+    if not html_file_path:
+        html_file_path = NamedTemporaryFile(prefix="tf_graph_def", suffix=".html").name
 
     # Construct the graph def board and open it
     with open(str(html_file_path), 'wb') as fout:

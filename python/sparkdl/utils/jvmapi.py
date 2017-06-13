@@ -34,9 +34,9 @@ def _curr_sc():
 def _curr_jvm():
     return _curr_sc()._jvm
 
-def for_class(javaClassName, sqlCtx=None):
+def forClass(javaClassName, sqlCtx=None):
     """
-    Loads the PythonInterface object (lazily, because the spark context needs to be initialized
+    Loads the JVM API object (lazily, because the spark context needs to be initialized
     first).
     """
     # (tjh) suspect the SQL context is doing crazy things at import, because I was
@@ -47,5 +47,13 @@ def for_class(javaClassName, sqlCtx=None):
     jvm_class = jvm_thread.getContextClassLoader().loadClass(javaClassName)
     return jvm_class.newInstance().sqlContext(_curr_sql_ctx(sqlCtx)._ssql_ctx)
 
+def pyUtils():
+    """
+    Exposing Spark PythonUtils
+    spark/core/src/main/scala/org/apache/spark/api/python/PythonUtils.scala
+    """
+    return _curr_jvm().PythonUtils
+
 def default():
-    return for_class(javaClassName=PYTHON_INTERFACE_CLASSNAME)
+    """ Default JVM Python Interface class """
+    return forClass(javaClassName=PYTHON_INTERFACE_CLASSNAME)

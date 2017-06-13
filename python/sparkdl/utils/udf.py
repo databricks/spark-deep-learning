@@ -13,30 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-"""
-Internal utilities module.
-
-This should not get exposed outside.
-"""
 import logging
 
-from pyspark import SparkContext, SQLContext
 from pyspark.sql.column import Column
-from . import jvmapi as JVMAPI
+
+import sparkdl.utils.jvmapi as JVMAPI
 
 logger = logging.getLogger('sparkdl')
 
-def list_to_vector_udf(col):
+def list_to_vector(col):
+    """ Map struct column from list to MLlib vector """
     return Column(JVMAPI.default().listToVectorFunction(col._jc))  # pylint: disable=W0212
 
-def pipelined_udf(name, ordered_udf_names):
-    """ Given a sequence of @ordered_udf_names f1, f2, ..., fn
-        Create a pipelined UDF as fn(...f2(f1()))
+def pipelined(name, ordered_udf_names):
+    """ 
+    Given a sequence of @ordered_udf_names f1, f2, ..., fn
+    Create a pipelined UDF as fn(...f2(f1()))
     """
     assert len(ordered_udf_names) > 1, \
         "must provide more than one ordered udf names"
-    JVMAPI.default().pipeline(name, JVMAPI.pyutils().toSeq(ordered_udf_names))
-
-def pyutils():
-    return JVMAPI._curr_jvm().PythonUtils
+    return JVMAPI.default().pipeline(name, JVMAPI.pyUtils().toSeq(ordered_udf_names))

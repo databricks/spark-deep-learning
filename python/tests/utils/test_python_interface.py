@@ -29,5 +29,5 @@ class PythonAPITest(SparkDLTestCase):
             traceback.print_exc(file=sys.stdout)
             self.fail("failed to load certain classes")
 
-        kls_name = str(JVMAPI.for_class(javaClassName=JVMAPI.PYTHON_INTERFACE_CLASSNAME))
+        kls_name = str(JVMAPI.forClass(javaClassName=JVMAPI.PYTHON_INTERFACE_CLASSNAME))
         self.assertEqual(kls_name.split('@')[0], JVMAPI.PYTHON_INTERFACE_CLASSNAME)

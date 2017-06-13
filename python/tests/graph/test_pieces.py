@@ -37,9 +37,9 @@ from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
 from sparkdl.image.imageIO import imageArrayToStruct, SparkMode
-from sparkdl.graph.graph_builder import IsolatedSession, GraphFunction
-from sparkdl.graph import graph_factory as gfac
-from sparkdl.utils import graph_utils as tfx
+from sparkdl.graph.builder import IsolatedSession, GraphFunction
+import sparkdl.graph.pieces as gfac
+import sparkdl.graph.utils as tfx
 
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
@@ -53,9 +53,9 @@ class GraphFactoryTest(SparkDLTestCase):
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
         def exec_gfn_spimg_decode(spimg_dict, img_dtype):
-            gfn = gfac.build_spimage_converter(img_dtype)
+            gfn = gfac.buildSpImageConverter(img_dtype)
             with IsolatedSession() as issn:
-                feeds, fetches = issn.import_graph_function(gfn, name="")
+                feeds, fetches = issn.importGraphFunction(gfn, name="")
                 feed_dict = dict((tnsr, spimg_dict[tfx.op_name(issn.graph, tnsr)]) for tnsr in feeds)
                 img_out = issn.run(fetches[0], feed_dict=feed_dict)
             return img_out
@@ -81,12 +81,12 @@ class GraphFactoryTest(SparkDLTestCase):
     def test_identity_module(self):
         """ identity module should preserve input """
 
-        gfn = gfac.build_identity()
+        gfn = gfac.buildIdentity()
         for _ in range(10):
             m, n = prng.randint(10, 1000, size=2)
             mat = prng.randn(m, n).astype(np.float32)
             with IsolatedSession() as issn:
-                feeds, fetches = issn.import_graph_function(gfn)
+                feeds, fetches = issn.importGraphFunction(gfn)
                 mat_out = issn.run(fetches[0], {feeds[0]: mat})
 
             self.assertTrue(np.all(mat_out == mat))
@@ -94,12 +94,12 @@ class GraphFactoryTest(SparkDLTestCase):
     def test_flattener_module(self):
         """ flattener module should preserve input data """
 
-        gfn = gfac.build_flattener()
+        gfn = gfac.buildFlattener()
         for _ in range(10):
             m, n = prng.randint(10, 1000, size=2)
             mat = prng.randn(m, n).astype(np.float32)
             with IsolatedSession() as issn:
-                feeds, fetches = issn.import_graph_function(gfn)
+                feeds, fetches = issn.importGraphFunction(gfn)
                 vec_out = issn.run(fetches[0], {feeds[0]: mat})
 
             self.assertTrue(np.all(vec_out == mat.flatten()))
@@ -126,11 +126,11 @@ class GraphFactoryTest(SparkDLTestCase):
 
             preds_ref = keras_model.predict(imgs_input)
 
-            gfn_bare_keras = GraphFunction.from_keras(keras_model)
+            gfn_bare_keras = GraphFunction.fromKeras(keras_model)
 
             with IsolatedSession(keras=True) as issn:
                 K.set_learning_phase(0)
-                feeds, fetches = issn.import_graph_function(gfn_bare_keras)
+                feeds, fetches = issn.importGraphFunction(gfn_bare_keras)
                 preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_input})
 
             self.assertTrue(np.all(preds_tgt == preds_ref))
@@ -140,9 +140,9 @@ class GraphFactoryTest(SparkDLTestCase):
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
         xcpt_model = Xception(weights="imagenet")
-        stages = [('spimage', gfac.build_spimage_converter(SparkMode.RGB_FLOAT32)),
-                  ('xception', GraphFunction.from_keras(xcpt_model))]
-        piped_model = GraphFunction.from_list(stages)
+        stages = [('spimage', gfac.buildSpImageConverter(SparkMode.RGB_FLOAT32)),
+                  ('xception', GraphFunction.fromKeras(xcpt_model))]
+        piped_model = GraphFunction.fromList(stages)
 
         for fpath in img_fpaths:
             target_size = tuple(xcpt_model.input.shape.as_list()[1:-1])
@@ -155,7 +155,7 @@ class GraphFactoryTest(SparkDLTestCase):
             spimg_input_dict['data'] = bytes(spimg_input_dict['data'])
             with IsolatedSession() as issn:
                 # Need blank import scope name so that spimg fields match the input names
-                feeds, fetches = issn.import_graph_function(piped_model, name="")
+                feeds, fetches = issn.importGraphFunction(piped_model, name="")
                 feed_dict = dict((tnsr, spimg_input_dict[tfx.op_name(issn.graph, tnsr)]) for tnsr in feeds)
                 preds_tgt = issn.run(fetches[0], feed_dict=feed_dict)
                 # Uncomment the line below to see the graph

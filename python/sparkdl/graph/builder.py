@@ -24,10 +24,8 @@ from tempfile import mkdtemp
 import keras.backend as K
 from keras.models import Model as KerasModel, load_model
 import tensorflow as tf
-import tensorframes.core as tfrm
 
-from ..utils import jvmapi as JVMAPI
-from ..utils import graph_utils as tfx
+import sparkdl.graph.utils as tfx
 
 logger = logging.getLogger('sparkdl')
 
@@ -83,7 +81,7 @@ class IsolatedSession(object):
                              input_names=[tfx.validated_input(self.graph, elem) for elem in inputs],
                              output_names=[tfx.validated_output(self.graph, elem) for elem in outputs])
 
-    def import_graph_function(self, gfn, input_map=None, name="GFN-IMPORT", **gdef_kargs):
+    def importGraphFunction(self, gfn, input_map=None, name="GFN-IMPORT", **gdef_kargs):
         """
         Import a GraphFunction object into the current session
 
@@ -155,7 +153,7 @@ class GraphFunction(object):
         jl.dump(_st, fpath)
 
     @classmethod
-    def from_file(cls, fpath):
+    def fromFile(cls, fpath):
         """
         Load an existing GraphFunction from file.
         This implementation uses `joblib` to provide good I/O performance
@@ -171,7 +169,7 @@ class GraphFunction(object):
 
 
     @classmethod
-    def from_keras(cls, model_or_file_path):
+    def fromKeras(cls, model_or_file_path):
         """ Build a GraphFunction from a Keras model
         """
         if isinstance(model_or_file_path, KerasModel):
@@ -199,7 +197,7 @@ class GraphFunction(object):
         return gfn
 
     @classmethod
-    def from_list(cls, functions):
+    def fromList(cls, functions):
         """
         Takes multiple graph functions and merges them into a single graph function.
         It is assumed that there is only one input and one output in the intermediary layers
@@ -218,7 +216,7 @@ class GraphFunction(object):
         # Acquire initial placeholders' properties
         with IsolatedSession() as issn:
             _, first_gfn = functions[0]
-            feeds, _ = issn.import_graph_function(first_gfn, name='')
+            feeds, _ = issn.importGraphFunction(first_gfn, name='')
             first_input_info = []
             for tnsr in feeds:
                 name = tfx.op_name(issn.graph, tnsr)
@@ -237,7 +235,7 @@ class GraphFunction(object):
                 _msg = 'merge: stage {}, scope {}'.format(idx, scope)
                 logger.info(_msg)
                 input_map = dict(zip(gfn.input_names, prev_outputs))
-                _, fetches = issn.import_graph_function(
+                _, fetches = issn.importGraphFunction(
                     gfn, name=scope, input_map=input_map)
                 prev_outputs = fetches
 
