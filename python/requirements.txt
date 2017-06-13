@@ -6,3 +6,5 @@ numpy==1.11.2
 pillow==4.1.1
 tensorflow==1.1.0
 pygments==2.2.0
+joblib==0.1.1
+six=1.10.0

@@ -25,7 +25,7 @@ from sparkdl.image.imageIO import imageSchema, sparkModeLookup, SparkMode
 from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 import sparkdl.transformers.utils as utils
-from sparkdl.utils import list_to_vector_udf
+import sparkdl.utils.udf
 
 OUTPUT_MODES = ["vector", "image"]
 
@@ -236,6 +236,6 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol):
         Converts the output python list to MLlib Vector.
         """
         return (
-            df.withColumn(self.getOutputCol(), list_to_vector_udf(df[tfs_output_col]))
+            df.withColumn(self.getOutputCol(), udf.list_to_vector(df[tfs_output_col]))
               .drop(tfs_output_col)
         )

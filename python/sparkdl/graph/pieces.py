@@ -14,16 +14,11 @@
 # limitations under the License.
 #
 import logging
-from pathlib import Path
-import shutil
-import six
-from tempfile import mkdtemp
 
 import tensorflow as tf
 
-from .graph_builder import IsolatedSession
-from ..utils import graph_utils as tfx
-from ..image.imageIO import SparkMode
+from sparkdl.graph.builder import IsolatedSession
+from sparkdl.image.imageIO import SparkMode
 
 logger = logging.getLogger('sparkdl')
 
@@ -34,7 +29,7 @@ TODO: We might want to cache some of the big models in their GraphFunction forma
       Deserializing ProtocolBuffer bytes is in general faster than directly loading Keras models.
 """
 
-def build_spimage_converter(img_dtype):
+def buildSpImageConverter(img_dtype):
     """
     Convert a imageIO byte encoded image into a image tensor suitable as input to ConvNets
     The name of the input must be a subset of those specified in `image.imageIO.imageSchema`.
@@ -67,7 +62,7 @@ def build_spimage_converter(img_dtype):
 
     return gfn
 
-def build_identity():
+def buildIdentity():
     with IsolatedSession() as issn:
         pred_input = tf.placeholder(tf.float32, [None, None])
         final_output = tf.identity(pred_input, name='output')
@@ -75,7 +70,7 @@ def build_identity():
 
     return gfn
 
-def build_flattener():
+def buildFlattener():
     with IsolatedSession() as issn:
         mat_input = tf.placeholder(tf.float32, [None, None])
         mat_output = tf.identity(tf.reshape(mat_input, shape=[-1]), name='output')

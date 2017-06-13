@@ -30,8 +30,8 @@ from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
-from sparkdl.graph.graph_builder import IsolatedSession
-from sparkdl.utils import graph_utils as tfx
+from sparkdl.graph.builder import IsolatedSession
+import sparkdl.graph.utils as tfx
 
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
@@ -96,7 +96,7 @@ class GraphBuilderTest(SparkDLTestCase):
             gfn_ref = issn.asGraphFunction([x], [z])
 
         with IsolatedSession() as issn:
-            feeds, fetches = issn.import_graph_function(gfn_ref, name="")
+            feeds, fetches = issn.importGraphFunction(gfn_ref, name="")
             gfn_tgt = issn.asGraphFunction(feeds, fetches)
 
         self.assertEqual(gfn_tgt.input_names, gfn_ref.input_names)
@@ -127,7 +127,7 @@ class GraphBuilderTest(SparkDLTestCase):
 
         with IsolatedSession(keras=True) as issn:
             K.set_learning_phase(0)
-            feeds, fetches = issn.import_graph_function(gfn, name="InceptionV3")
+            feeds, fetches = issn.importGraphFunction(gfn, name="InceptionV3")
             preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_iv3_input})
 
         self.assertTrue(np.all(preds_tgt == preds_ref))
