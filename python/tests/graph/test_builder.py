@@ -110,6 +110,7 @@ class GraphBuilderTest(SparkDLTestCase):
             self.assertEqual(tfx.tensor_name(g, z), "z:0")
             self.assertEqual(tfx.tensor_name(g, x), "x:0")
 
+
     def test_import_export_graph_function(self):
         """ Function import and export must be consistent """
 

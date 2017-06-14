@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
 import logging
-from pathlib import Path
-import pickle
+import os
 import shutil
 import six
 from tempfile import mkdtemp
@@ -143,14 +143,18 @@ class GraphFunction(object):
 
         :param fpath: str or path, path to the serialized GraphFunction
         """
-        serialized = {"graph_def_bytes": self.graph_def.SerializeToString(),
+        assert isinstance(fpath, six.string_types)
+
+        gdef_bytes_fpath = "{}.gdef.bytes".format(fpath)
+        with open(gdef_bytes_fpath, 'wb') as fout:
+            gdef_bytes = self.graph_def.SerializeToString()
+            fout.write(gdef_bytes)
+
+        serialized = {"graph_def_file": gdef_bytes_fpath,
                       "inputs": self.input_names,
                       "outputs": self.output_names}
-        assert isinstance(fpath, six.string_types)
-        if not fpath.endswith("gfn"):
-            fpath += ".gfn"
-        with open(fpath, 'wb') as fout:
-            pickle.dump(serialized, fout)
+        with open(fpath, 'w') as fout:
+            json.dump(serialized, fout)
 
     @classmethod
     def fromSerialized(cls, fpath):
@@ -159,14 +163,22 @@ class GraphFunction(object):
 
         :param fpath: str or path, path to the serialized GraphFunction
         """
-        with open(fpath, 'rb') as fin:
-            serialized = pickle.load(fin)
-        assert set(['inputs', 'graph_def_bytes', 'outputs']) <= set(serialized.keys())
-        gdef = tf.GraphDef.FromString(serialized["graph_def_bytes"])  # pylint: disable=E1101
+        with open(str(fpath)) as fin:
+            serialized = json.load(fin)
+        assert set(['inputs', 'graph_def_file', 'outputs']) <= set(serialized.keys())
+
+        gdef_bytes_fpath = serialized["graph_def_file"]
+        assert os.path.exists(gdef_bytes_fpath), \
+            "TensorFlow GraphDef binary file must be found"
+
+        with open(gdef_bytes_fpath, 'rb') as fin:
+            gdef_bytes = fin.read()
+            gdef = tf.GraphDef.FromString(gdef_bytes)  # pylint: disable=E1101
+
         gfn = cls(graph_def=gdef,
                   input_names=serialized["inputs"],
                   output_names=serialized["outputs"])
-        del serialized
+
         return gfn
 
     @classmethod
@@ -181,16 +193,16 @@ class GraphFunction(object):
                 K.set_learning_phase(0) # Testing phase
                 model = load_model(file_path)
                 gfn = issn.asGraphFunction(model.inputs, model.outputs)
-            
+
             return gfn
 
         if isinstance(model_or_file_path, KerasModel):
             model = model_or_file_path
-            model_path = Path(mkdtemp(prefix='kera-')) / "model.h5"
+            model_path = os.path.join(mkdtemp(prefix='kera-'), "model.h5")
             # Save to tempdir and restore in a new session
             model.save(str(model_path), overwrite=True)
             gfn = load_model_file(str(model_path))
-            shutil.rmtree(str(Path(model_path).parent), ignore_errors=True)            
+            shutil.rmtree(os.path.dirname(model_path), ignore_errors=True)
             return gfn
         elif isinstance(model_or_file_path, six.string_types):
             return load_model_file(model_or_file_path)

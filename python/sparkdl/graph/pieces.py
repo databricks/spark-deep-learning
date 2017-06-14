@@ -62,14 +62,6 @@ def buildSpImageConverter(img_dtype):
 
     return gfn
 
-def buildIdentity():
-    with IsolatedSession() as issn:
-        pred_input = tf.placeholder(tf.float32, [None, None])
-        final_output = tf.identity(pred_input, name='output')
-        gfn = issn.asGraphFunction([pred_input], [final_output])
-
-    return gfn
-
 def buildFlattener():
     with IsolatedSession() as issn:
         mat_input = tf.placeholder(tf.float32, [None, None])

@@ -16,6 +16,7 @@
 import logging
 
 from pyspark import SparkContext, SQLContext
+from pyspark.sql.column import Column
 
 # pylint: disable=W0212
 PYTHON_INTERFACE_CLASSNAME = "com.databricks.sparkdl.python.PythonInterface"
@@ -57,3 +58,16 @@ def pyUtils():
 def default():
     """ Default JVM Python Interface class """
     return forClass(javaClassName=PYTHON_INTERFACE_CLASSNAME)
+
+def list_to_vector(col):
+    """ Map struct column from list to MLlib vector """
+    return Column(default().listToVectorFunction(col._jc))  # pylint: disable=W0212
+
+def pipelined(name, ordered_udf_names):
+    """ 
+    Given a sequence of @ordered_udf_names f1, f2, ..., fn
+    Create a pipelined UDF as fn(...f2(f1()))
+    """
+    assert len(ordered_udf_names) > 1, \
+        "must provide more than one ordered udf names"
+    return default().pipeline(name, pyUtils().toSeq(ordered_udf_names))
