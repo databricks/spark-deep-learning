@@ -60,6 +60,12 @@ object SqlOps extends Logging {
   private[this] val lock = new Object()
 
   // The maximum number of sessions that can be opened concurrently.
+  // TODO: investigate TensorFlow's parallel execution
+  // TensorFlow's session run can be executed concurrently: 
+  //   The Session API allows multiple concurrent steps (i.e. calls to tf.Session.run) in parallel. 
+  //   This enables the runtime to get higher throughput, 
+  //   if a single step does not use all of the resources in your computer.
+  // (from https://www.tensorflow.org/programmers_guide/faq)
   // TODO: make this parameter configurable
   val maxSessions: Int = 10
 

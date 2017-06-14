@@ -18,9 +18,10 @@ package com.databricks.sparkdl.python
 import java.nio.file.{Files, Paths}
 import java.util
 
+import scala.collection.JavaConverters._
+
 import org.apache.log4j.PropertyConfigurator
 
-import scala.collection.JavaConverters._
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.sparkdl_stubs.UDFUtils
 import org.apache.spark.sql.expressions.UserDefinedFunction
@@ -34,7 +35,7 @@ import com.databricks.sparkdl.Logging
  * Taking over TensorFlow graphs handed from Python
  * validate the graph 
  */
-// TODO: merge with the python factory eventually, this is essentially copy/paste
+// TODO: merge TensorFlow graphs into TensorFrames eventually
 class GraphModelFactory() extends Logging {
   private var _shapeHints: ShapeDescription = ShapeDescription.empty
   // TODO: this object may leak because of Py4J -> do not hold to large objects here.
@@ -42,7 +43,7 @@ class GraphModelFactory() extends Logging {
   private var _graphPath: Option[String] = None
   private var _sqlCtx: SQLContext = null
 
-  def initialize_logging(): Unit = initialize_logging("org/tensorframes/log4j.properties")
+  def initializeLogging(): Unit = initializeLogging("org/tensorframes/log4j.properties")
 
   /**
    * Performs some logging initialization before spark has the time to do it.
@@ -50,7 +51,7 @@ class GraphModelFactory() extends Logging {
    * Because of the the current implementation of PySpark, Spark thinks it runs as an interactive
    * console and makes some mistake when setting up log4j.
    */
-  private def initialize_logging(file: String): Unit = {
+  private def initializeLogging(file: String): Unit = {
     Option(this.getClass.getClassLoader.getResource(file)) match {
       case Some(url) =>
         PropertyConfigurator.configure(url)
@@ -96,12 +97,20 @@ class GraphModelFactory() extends Logging {
     this
   }
 
-  /** Attach graph definition file */
+  /** 
+   * Attach graph definition file 
+   * @param filename path to the serialized graph
+   */
   def graphFromFile(filename: String): this.type = {
     _graphPath = Option(filename)
     this
   }
 
+  /**
+   * Specify struct field names and corresponding tf.placeholder paths in the Graph
+   * @param placeholderPaths tf.placeholder paths in the Graph
+   * @param fieldNames struct field names
+   */
   def inputs(
     placeholderPaths: util.ArrayList[String],
     fieldNames: util.ArrayList[String]): this.type = {
@@ -116,6 +125,9 @@ class GraphModelFactory() extends Logging {
 
   /**
    * Builds a java UDF based on the following input.
+   * @param udfName the name of the udf
+   * @param applyBlocks whether the function should be applied per row or a block of rows
+   * @return UDF
    */
   def makeUDF(udfName: String, applyBlocks: Boolean): UserDefinedFunction = {
     SqlOps.makeUDF(udfName, buildGraphDef(), _shapeHints,
@@ -124,6 +136,10 @@ class GraphModelFactory() extends Logging {
 
   /**
    * Builds a java UDF based on the following input.
+   * @param udfName the name of the udf
+   * @param applyBlocks whether the function should be applied per row or a block of rows
+   * @param flattenstruct whether the returned tensor struct should be flattened to vector
+   * @return UDF
    */
   def makeUDF(udfName: String, applyBlocks: Boolean, flattenStruct: Boolean): UserDefinedFunction = {
     SqlOps.makeUDF(udfName, buildGraphDef(), _shapeHints,
@@ -134,7 +150,7 @@ class GraphModelFactory() extends Logging {
    * Registers a TF UDF under the given name in Spark.
    * @param udfName the name of the UDF
    * @param blocked indicates that the UDF should be applied block-wise.
-   * @return
+   * @return UDF
    */
   def registerUDF(udfName: String, blocked: java.lang.Boolean): UserDefinedFunction = {
     assert(_sqlCtx != null)
@@ -143,6 +159,10 @@ class GraphModelFactory() extends Logging {
     UDFUtils.registerUDF(_sqlCtx.sparkSession, udfName, udf)
   }
 
+  /**
+   * Create a TensorFlow GraphDef object from the input graph 
+   * Or load the serialized graph bytes from file
+   */
   private def buildGraphDef(): GraphDef = {
     _graphPath match {
       case Some(p) =>
