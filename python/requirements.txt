@@ -6,4 +6,8 @@ nose==1.3.7  # for testing
 numpy==1.11.2
 pillow==4.1.1
 pygments==2.2.0
+<<<<<<< HEAD
 tensorflow==1.1.0
+=======
+six=1.10.0
+>>>>>>> PR comments:
