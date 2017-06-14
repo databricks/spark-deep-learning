@@ -31,8 +31,9 @@ import org.tensorframes.impl.{SerializedGraph, SqlOps, TensorFlowOps}
 import com.databricks.sparkdl.Logging
 
 /**
-  *
-  */
+ * Taking over TensorFlow graphs handed from Python
+ * validate the graph 
+ */
 // TODO: merge with the python factory eventually, this is essentially copy/paste
 class GraphModelFactory() extends Logging {
   private var _shapeHints: ShapeDescription = ShapeDescription.empty
@@ -58,54 +59,72 @@ class GraphModelFactory() extends Logging {
     }
   }
 
-  def shape(
-      shapeHintsNames: util.ArrayList[String],
-      shapeHintShapes: util.ArrayList[util.ArrayList[Int]]): this.type = {
-    val s = shapeHintShapes.asScala.map(_.asScala.toSeq).map(x => Shape(x: _*))
-    _shapeHints = _shapeHints.copy(out = shapeHintsNames.asScala.zip(s).toMap)
-    this
-  }
-
-  def fetches(fetchNames: util.ArrayList[String]): this.type = {
-    _shapeHints = _shapeHints.copy(requestedFetches = fetchNames.asScala)
-    this
-  }
-
-  def graph(bytes: Array[Byte]): this.type = {
-    _graph = SerializedGraph.create(bytes)
-    this
-  }
-
-  def graphFromFile(filename: String): this.type = {
-    _graphPath = Option(filename)
-    this
-  }
-
+  /** Setup SQLContext for UDF registeration */
   def sqlContext(ctx: SQLContext): this.type = {
     _sqlCtx = ctx
     this
   }
 
-  def inputs(
-      placeholderPaths: util.ArrayList[String],
-      fieldNames: util.ArrayList[String]): this.type = {
-    require(placeholderPaths.size() == fieldNames.size(), (placeholderPaths.asScala, fieldNames.asScala))
-    val map = placeholderPaths.asScala.zip(fieldNames.asScala).toMap
-    _shapeHints = _shapeHints.copy(inputs = map)
+  /**
+   * Append shape information to the graph
+   * @param shapeHintsNames names of graph elements
+   * @param shapeHintsShapes the corresponding shape of the named graph elements
+   */
+  def shape(
+    shapeHintsNames: util.ArrayList[String],
+    shapeHintShapes: util.ArrayList[util.ArrayList[Int]]): this.type = {
+    val s = shapeHintShapes.asScala.map(_.asScala.toSeq).map(x => Shape(x: _*))
+    _shapeHints = _shapeHints.copy(out = shapeHintsNames.asScala.zip(s).toMap)
     this
   }
 
   /**
-    * Builds a java UDF based on the following input.
-    */
+   * Fetches (i.e. graph elements intended as output) of the graph
+   * @param fetchNames a list of graph element names indicating the fetches
+   */
+  def fetches(fetchNames: util.ArrayList[String]): this.type = {
+    _shapeHints = _shapeHints.copy(requestedFetches = fetchNames.asScala)
+    this
+  }
+
+  /**
+   * Create TensorFlow graph from serialzied GraphDef
+   * @param bytes the serialzied GraphDef
+   */
+  def graph(bytes: Array[Byte]): this.type = {
+    _graph = SerializedGraph.create(bytes)
+    this
+  }
+
+  /** Attach graph definition file */
+  def graphFromFile(filename: String): this.type = {
+    _graphPath = Option(filename)
+    this
+  }
+
+  def inputs(
+    placeholderPaths: util.ArrayList[String],
+    fieldNames: util.ArrayList[String]): this.type = {
+    val feedPaths = placeholderPaths.asScala
+    val fields = fieldNames.asScala
+    require(feedPaths.size == fields.size,
+      s"placeholder paths and field names must match ${(feedPaths, fields)}")
+    val feedMap = feedPaths.zip(fields).toMap
+    _shapeHints = _shapeHints.copy(inputs = feedMap)
+    this
+  }
+
+  /**
+   * Builds a java UDF based on the following input.
+   */
   def makeUDF(udfName: String, applyBlocks: Boolean): UserDefinedFunction = {
     SqlOps.makeUDF(udfName, buildGraphDef(), _shapeHints,
       applyBlocks = applyBlocks, flattenStruct = true)
   }
 
   /**
-    * Builds a java UDF based on the following input.
-    */
+   * Builds a java UDF based on the following input.
+   */
   def makeUDF(udfName: String, applyBlocks: Boolean, flattenStruct: Boolean): UserDefinedFunction = {
     SqlOps.makeUDF(udfName, buildGraphDef(), _shapeHints,
       applyBlocks = applyBlocks, flattenStruct = flattenStruct)

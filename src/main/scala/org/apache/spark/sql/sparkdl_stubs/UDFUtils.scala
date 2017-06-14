@@ -25,6 +25,13 @@ import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.types.DataType
 
 object UDFUtils extends Logging {
+  /**
+   * Register a UDF to the given SparkSession, so as to expose it in Spark SQL
+   * @param spark the SparkSession to which we want to register the UDF
+   * @param name registered to the provided SparkSession
+   * @param udf the actual body of the UDF
+   * @return the registered UDF
+   */
   def registerUDF(spark: SparkSession, name: String, udf: UserDefinedFunction): UserDefinedFunction = {
     def builder(children: Seq[Expression]) = udf.apply(children.map(cx => new Column(cx)) : _*).expr
     spark.sessionState.functionRegistry.registerFunction(name, builder)
@@ -32,12 +39,12 @@ object UDFUtils extends Logging {
   }
 
   /**
-    * Composite a set of UDFs as a single UDF
-    * @param ctx an active SQLContext
-    * @param name the name of the UDF
-    * @param judfs a seuqnce of UDFs (in Java's ArrayList)
-    * @return the registered UDF
-    */
+   * Composite a set of UDFs as a single UDF
+   * @param ctx an active SQLContext
+   * @param name the name of the UDF
+   * @param judfs a seuqnce of UDFs (in Java's ArrayList)
+   * @return the registered UDF
+   */
   def registerCompositeUDF(
     ctx: SQLContext,
     name: String,
@@ -50,12 +57,12 @@ object UDFUtils extends Logging {
   }
 
   /**
-    * Register a UserDefinedfunction (UDF) as a composition of several UDFs.
-    * The UDFs must have already been registered
-    * @param ctx an active SQLContext
-    * @param name the name of the UDF
-    * @param orderedUdfNames a sequence of UDF names in the composition order
-    */
+   * Register a UserDefinedfunction (UDF) as a composition of several UDFs.
+   * The UDFs must have already been registered
+   * @param ctx an active SQLContext
+   * @param name the name of the UDF
+   * @param orderedUdfNames a sequence of UDF names in the composition order
+   */
   def pipeline(ctx: SQLContext, name: String, orderedUdfNames: Seq[String]) = {
     val registry = ctx.sessionState.functionRegistry
     val builders = orderedUdfNames.flatMap { fname => registry.lookupFunctionBuilder(fname) }
@@ -70,8 +77,8 @@ object UDFUtils extends Logging {
 
 
 /**
-  * Registering a set of UserDefinedFunctions (UDF)
-  */
+ * Registering a set of UserDefinedFunctions (UDF)
+ */
 class PipelinedUDF(
   opName: String,
   udfs: Seq[UserDefinedFunction],
@@ -97,13 +104,14 @@ object PipelinedUDF {
   }
 }
 
+
 class RowUDF(
   opName: String,
   fun: Column => (Any => Row),
   returnType: DataType) extends UserDefinedFunction(null, returnType, None) {
 
   override def apply(exprs: Column*): Column = {
-    require(exprs.size == 1, exprs)
+    require(exprs.size == 1, "only support one function")
     val f = fun(exprs.head)
     val inner = exprs.toSeq.map(_.toString()).mkString(", ")
     val name = s"$opName($inner)"

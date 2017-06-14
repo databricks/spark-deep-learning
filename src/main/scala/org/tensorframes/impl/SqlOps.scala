@@ -184,10 +184,11 @@ object SqlOps extends Logging {
               s" ${in.shape} requested by the TF graph")
         } else {
           val cellShape = stf.shape.tail
-          // No check for unknowns: we allow unknowns in the first dimension of the cell shape.
-          check(cellShape.checkMorePreciseThan(in.shape),
-            s"The data column '${f.name}' has shape ${stf.shape} (not compatible) with shape" +
-              s" ${in.shape} requested by the TF graph")
+          // TODO: UNCOMMENT this
+          // // No check for unknowns: we allow unknowns in the first dimension of the cell shape.
+          // check(cellShape.checkMorePreciseThan(in.shape),
+          //   s"The data column '${f.name}' has shape ${stf.shape} (not compatible) with shape" +
+          //     s" ${in.shape} requested by the TF graph")
         }
 
         check(in.isPlaceholder,

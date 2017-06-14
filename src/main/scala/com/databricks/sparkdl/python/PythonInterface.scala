@@ -25,9 +25,9 @@ import org.apache.spark.sql.sparkdl_stubs.{PipelinedUDF, UDFUtils}
 import org.apache.spark.sql.types.{ArrayType, DoubleType, FloatType}
 
 /**
-  * This file contains some interfaces with the JVM runtime: theses functions create UDFs and
-  * transform UDFs using java code.
-  */
+ * This file contains some interfaces with the JVM runtime: theses functions create UDFs and
+ * transform UDFs using java code.
+ */
 // TODO: this pattern is repeated over and over again, it should be standard somewhere.
 class PythonInterface {
   private var _sqlCtx: SQLContext = null
@@ -38,16 +38,16 @@ class PythonInterface {
   }
 
   /**
-    * Takes a column, which may contain either arrays of floats or doubles, and returns the
-    * content, cast as MLlib's vectors.
-    */
+   * Takes a column, which may contain either arrays of floats or doubles, and returns the
+   * content, cast as MLlib's vectors.
+   */
   def listToVectorFunction(col: Column): Column = {
     Conversions.convertToVector(col)
   }
 
   /**
-    * Create an UDF as the result of chainning multiple UDFs
-    */
+   * Create an UDF as the result of chainning multiple UDFs
+   */
   def pipeline(name: String, udfNames: Seq[String]) = {
     require(_sqlCtx != null)
     require(udfNames.nonEmpty)
