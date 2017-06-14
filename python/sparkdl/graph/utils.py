@@ -47,10 +47,10 @@ def get_op(graph, tfobj_or_name):
         name = tfobj_or_name.name
     if not isinstance(name, six.string_types):
         raise TypeError('invalid op request for {} of {}'.format(name, type(name)))
-    name = name.split(":")[0]
-    op = graph.get_operation_by_name(name)
+    _op_name = as_op_name(name)
+    op = graph.get_operation_by_name(_op_name)
     assert op is not None, \
-        'cannot locate op {} in current graph'.format(name)
+        'cannot locate op {} in current graph'.format(_op_name)
     return op
 
 def get_tensor(graph, tfobj_or_name):
@@ -61,13 +61,25 @@ def get_tensor(graph, tfobj_or_name):
         name = tfobj_or_name.name
     if not isinstance(name, six.string_types):
         raise TypeError('invalid tensor request for {} of {}'.format(name, type(name)))
+    _tensor_name = as_tensor_name(name)
+    tnsr = graph.get_tensor_by_name(_tensor_name)
+    assert tnsr is not None, \
+        'cannot locate tensor {} in current graph'.format(_tensor_name)
+    return tnsr
+
+def as_tensor_name(name):
+    assert isinstance(name, six.string_types)
     name_parts = name.split(":")
+    assert len(name_parts) <= 2
     if len(name_parts) < 2:
         name += ":0"
-    tnsr = graph.get_tensor_by_name(name)
-    assert tnsr is not None, \
-        'cannot locate tensor {} in current graph'.format(name)
-    return tnsr
+    return name
+
+def as_op_name(name):
+    assert isinstance(name, six.string_types)
+    name_parts = name.split(":")
+    assert len(name_parts) <= 2
+    return name_parts[0]
 
 def op_name(graph, tfobj_or_name):
     return get_op(graph, tfobj_or_name).name
