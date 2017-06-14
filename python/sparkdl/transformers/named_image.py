@@ -30,7 +30,7 @@ from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.transformers.tf_image import TFImageTransformer
 from sparkdl.transformers.utils import (
-    imageInputPlaceholder, stripAndFreezeGraph, InceptionV3Constants)
+    imageInputPlaceholder, InceptionV3Constants)
 
 
 SUPPORTED_MODELS = ["InceptionV3"]
