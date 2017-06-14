@@ -13,10 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import joblib as jl
 import logging
 from pathlib import Path
+import pickle
 import shutil
 import six
 from tempfile import mkdtemp
@@ -144,57 +143,59 @@ class GraphFunction(object):
 
         :param fpath: str or path, path to the serialized GraphFunction
         """
-        _st = {"graph_def_bytes": self.graph_def.SerializeToString(),
-               "inputs": self.input_names,
-               "outputs": self.output_names}
+        serialized = {"graph_def_bytes": self.graph_def.SerializeToString(),
+                      "inputs": self.input_names,
+                      "outputs": self.output_names}
         assert isinstance(fpath, six.string_types)
-        if not fpath.endswith("jl"):
-            fpath += ".jl"
-        jl.dump(_st, fpath)
+        if not fpath.endswith("gfn"):
+            fpath += ".gfn"
+        with open(fpath, 'wb') as fout:
+            pickle.dump(serialized, fout)
 
     @classmethod
-    def fromFile(cls, fpath):
+    def fromSerialized(cls, fpath):
         """
         Load an existing GraphFunction from file.
-        This implementation uses `joblib` to provide good I/O performance
 
         :param fpath: str or path, path to the serialized GraphFunction
         """
-        _st = jl.load(fpath)
-        assert set(['inputs', 'graph_def_bytes', 'outputs']) <= set(_st.keys())
-        gdef = tf.GraphDef.FromString(_st["graph_def_bytes"])  # pylint: disable=E1101
-        return cls(graph_def=gdef,
-                   input_names=_st["inputs"],
-                   output_names=_st["outputs"])
-
+        with open(fpath, 'rb') as fin:
+            serialized = pickle.load(fin)
+        assert set(['inputs', 'graph_def_bytes', 'outputs']) <= set(serialized.keys())
+        gdef = tf.GraphDef.FromString(serialized["graph_def_bytes"])  # pylint: disable=E1101
+        gfn = cls(graph_def=gdef,
+                  input_names=serialized["inputs"],
+                  output_names=serialized["outputs"])
+        del serialized
+        return gfn
 
     @classmethod
     def fromKeras(cls, model_or_file_path):
         """ Build a GraphFunction from a Keras model
         """
+        def load_model_file(file_path):
+            assert file_path.endswith('.h5'), \
+                'Keras model must be specified as HDF5 file'
+
+            with IsolatedSession(keras=True) as issn:
+                K.set_learning_phase(0) # Testing phase
+                model = load_model(file_path)
+                gfn = issn.asGraphFunction(model.inputs, model.outputs)
+            
+            return gfn
+
         if isinstance(model_or_file_path, KerasModel):
             model = model_or_file_path
             model_path = Path(mkdtemp(prefix='kera-')) / "model.h5"
             # Save to tempdir and restore in a new session
             model.save(str(model_path), overwrite=True)
-            is_temp_model = True
+            gfn = load_model_file(str(model_path))
+            shutil.rmtree(str(Path(model_path).parent), ignore_errors=True)            
+            return gfn
+        elif isinstance(model_or_file_path, six.string_types):
+            return load_model_file(model_or_file_path)
         else:
-            model_path = model_or_file_path
-            is_temp_model = False
-
-        # Keras load function requires path string
-        if not isinstance(model_path, six.string_types):
-            model_path = str(model_path)
-
-        with IsolatedSession(keras=True) as issn:
-            K.set_learning_phase(0) # Testing phase
-            model = load_model(model_path)
-            gfn = issn.asGraphFunction(model.inputs, model.outputs)
-
-        if is_temp_model:
-            shutil.rmtree(str(Path(model_path).parent), ignore_errors=True)
-
-        return gfn
+            raise TypeError("input must be a Keras model of a file path")
 
     @classmethod
     def fromList(cls, functions):

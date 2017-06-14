@@ -30,7 +30,7 @@ from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
-from sparkdl.graph.builder import IsolatedSession
+from sparkdl.graph.builder import IsolatedSession, GraphFunction
 import sparkdl.graph.utils as tfx
 
 from ..tests import SparkDLTestCase
@@ -66,6 +66,31 @@ class GraphBuilderTest(SparkDLTestCase):
         # should be the same as that in the one exported directly from TensorFlow session
         self.assertEqual(str(gfn.graph_def), str(gdef_ref))
 
+    def test_serialization(self):
+        """ Must be able to serialize and deserialize """
+
+        with IsolatedSession() as issn:
+            x = tf.placeholder(tf.double, shape=[], name="x")
+            z = tf.add(x, 3, name='z')
+            gfn = issn.asGraphFunction([x], [z])
+        
+        gfn.dump("/tmp/test.gfn")
+        gfn_reloaded = GraphFunction.fromSerialized("/tmp/test.gfn")
+
+        self.assertEqual(str(gfn.graph_def), str(gfn_reloaded.graph_def))
+        self.assertEqual(gfn.input_names, gfn_reloaded.input_names)
+        self.assertEqual(gfn.output_names, gfn_reloaded.output_names)
+
+    def test_large_serialization(self):
+        """ Must be able to serialize and deserialize large graphs """
+
+        gfn = GraphFunction.fromKeras(InceptionV3(weights="imagenet"))
+        gfn.dump("/tmp/test_large.gfn")
+        gfn_reloaded = GraphFunction.fromSerialized("/tmp/test_large.gfn")
+
+        self.assertEqual(str(gfn.graph_def), str(gfn_reloaded.graph_def))
+        self.assertEqual(gfn.input_names, gfn_reloaded.input_names)
+        self.assertEqual(gfn.output_names, gfn_reloaded.output_names)
 
     def test_get_graph_elements(self):
         """ Fetching graph elements by names and other graph elements """
@@ -81,11 +106,9 @@ class GraphBuilderTest(SparkDLTestCase):
             self.assertEqual("x:0", tfx.tensor_name(g, x))
             self.assertEqual(g.get_operation_by_name("x"), tfx.get_op(g, x))
             self.assertEqual("x", tfx.op_name(g, x))
-            self.assertEqual("x", tfx.op_name(g, x))
             self.assertEqual("z", tfx.op_name(g, z))
-            self.assertEqual(tfx.get_tensor(g, z), z)
-            self.assertEqual(tfx.get_tensor(g, x), x)
-
+            self.assertEqual(tfx.tensor_name(g, z), "z:0")
+            self.assertEqual(tfx.tensor_name(g, x), "x:0")
 
     def test_import_export_graph_function(self):
         """ Function import and export must be consistent """
