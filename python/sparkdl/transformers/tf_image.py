@@ -26,6 +26,7 @@ from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 import sparkdl.transformers.utils as utils
 import sparkdl.utils.jvmapi as JVMAPI
+import sparkdl.graph.utils as tfx
 
 OUTPUT_MODES = ["vector", "image"]
 
@@ -144,7 +145,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol):
                       "__sdl_image_data")
             )
 
-            tfs_output_name = utils.op_name(output_tensor)
+            tfs_output_name = tfx.op_name(final_graph, output_tensor)
             original_output_name = self._getOriginalOutputTensorName()
             output_shape = final_graph.get_tensor_by_name(original_output_name).shape
             output_mode = self.getOrDefault(self.outputMode)
@@ -188,23 +189,25 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol):
             image_reshaped_expanded = tf.expand_dims(image_reshaped, 0, name="expanded")
 
             # Add on the original graph
-            z, = tf.import_graph_def(gdef, input_map={input_tensor_name: image_reshaped_expanded},
-                                     return_elements=[self.getOutputTensor().name],
-                                     name=self.USER_GRAPH_NAMESPACE)
+            tf.import_graph_def(gdef, input_map={input_tensor_name: image_reshaped_expanded},
+                                return_elements=[self.getOutputTensor().name],
+                                name=self.USER_GRAPH_NAMESPACE)
 
             # Flatten the output for tensorframes
             output_node = g.get_tensor_by_name(self._getOriginalOutputTensorName())
             _ = tf.reshape(output_node[0],  # batch-size = 1,
-                           shape=[-1], name=self._getFinalOutputOpName())
+                           shape=[-1], name=self._getFinalOutputOpName(g))
         return g
 
     # Sometimes the tf graph contains a bunch of stuff that doesn't lead to the
     # output. TensorFrames does not like that, so we strip out the parts that
     # are not necessary for the computation at hand.
     def _stripGraph(self, tf_graph):
-        input_graph_def = tf_graph.as_graph_def(add_shapes=True)
-        sess = tf.Session(graph=tf_graph)
-        return utils.stripAndFreezeGraph(input_graph_def, sess, [self._getFinalOutputOpName()])
+        gdef = tfx.strip_and_freeze_until([self._getFinalOutputOpName(tf_graph)], tf_graph)
+        g = tf.Graph()
+        with g.as_default():
+            tf.import_graph_def(gdef, name='')
+        return g
 
     def _getOriginalOutputTensorName(self):
         return self.USER_GRAPH_NAMESPACE + '/' + self.getOutputTensor().name
@@ -212,8 +215,8 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol):
     def _getFinalOutputTensorName(self):
         return self.NEW_OUTPUT_PREFIX + '_' + self.getOutputTensor().name
 
-    def _getFinalOutputOpName(self):
-        return utils.op_name(self._getFinalOutputTensorName())
+    def _getFinalOutputOpName(self, tf_graph):
+        return tfx.op_name(tf_graph, self._getFinalOutputTensorName())
 
     def _convertOutputToImage(self, df, tfs_output_col, output_shape):
         assert len(output_shape) == 4, str(output_shape) + " does not have 4 dimensions"

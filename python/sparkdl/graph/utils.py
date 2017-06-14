@@ -85,7 +85,7 @@ def validated_input(graph, tfobj_or_name):
         ('input must be Placeholder, but get', op.type)
     return name
 
-def strip_and_freeze_until(fetches, graph, sess=None):
+def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
     """
     Converting all variables into constants
 
@@ -106,7 +106,13 @@ def strip_and_freeze_until(fetches, graph, sess=None):
     if should_close_session:
         sess.close()
 
-    return gdef_frozen
+    if return_graph:
+        g = tf.Graph()
+        with g.as_default():
+            tf.import_graph_def(gdef_frozen, name='')
+        return g
+    else:
+        return gdef_frozen
 
 def write_visualization_html(graph, html_file_path=None, max_const_size=32, show_in_browser=True):
     """

@@ -18,6 +18,7 @@ import tensorflow as tf
 from pyspark.ml.param import TypeConverters
 
 from sparkdl.image.imageIO import imageType
+import sparkdl.graph.utils as tfx
 
 
 # image stuff
@@ -59,13 +60,13 @@ def stripAndFreezeGraph(tf_graph_def, sess, output_tensors):
         tf.import_graph_def(output_graph_def, name='')
     return g2
 
-def op_name(tensor):
-    """
-    :param tensor: tensorflow.Tensor or a string
-    """
-    return _tensor_name(tensor).split(":")[0]
+# def op_name(tensor):
+#     """
+#     :param tensor: tensorflow.Tensor or a string
+#     """
+#     return _tensor_name(tensor).split(":")[0]
 
-def _tensor_name(tensor):
-    if isinstance(tensor, tf.Tensor):
-        return _tensor_name(tensor.name)
-    return TypeConverters.toString(tensor)
+# def _tensor_name(tensor):
+#     if isinstance(tensor, tf.Tensor):
+#         return _tensor_name(tensor.name)
+#     return TypeConverters.toString(tensor)
