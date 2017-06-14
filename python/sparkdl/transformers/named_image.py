@@ -24,6 +24,7 @@ from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql.functions import udf
 from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
 
+import sparkdl.graph.utils as tfx
 from sparkdl.image.imageIO import resizeImage
 from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
@@ -232,7 +233,7 @@ def _buildTFGraphForName(name, featurize):
 
     sess = modelData["session"]
     outputTensorName = modelData["outputTensorName"]
-    graph = stripAndFreezeGraph(sess.graph.as_graph_def(add_shapes=True), sess, [outputTensorName])
+    graph = tfx.strip_and_freeze_until([outputTensorName], sess.graph, sess, return_graph=True)
 
     modelData["graph"] = graph
     return modelData

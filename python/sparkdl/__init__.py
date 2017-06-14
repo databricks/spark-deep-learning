@@ -17,11 +17,11 @@ from .image.imageIO import imageSchema, imageType, readImages
 from .transformers.keras_image import KerasImageFileTransformer
 from .transformers.named_image import DeepImagePredictor, DeepImageFeaturizer
 from .transformers.tf_image import TFImageTransformer
-from .transformers.utils import imageInputPlaceholder, stripAndFreezeGraph
+from .transformers.utils import imageInputPlaceholder
 
 __all__ = [
     'imageSchema', 'imageType', 'readImages',
     'TFImageTransformer',
     'DeepImagePredictor', 'DeepImageFeaturizer',
     'KerasImageFileTransformer',
-    'imageInputPlaceholder', 'stripAndFreezeGraph']
+    'imageInputPlaceholder']
