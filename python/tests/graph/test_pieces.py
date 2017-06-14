@@ -81,7 +81,11 @@ class GraphFactoryTest(SparkDLTestCase):
     def test_identity_module(self):
         """ identity module should preserve input """
 
-        gfn = gfac.buildIdentity()
+        with IsolatedSession() as issn:
+            pred_input = tf.placeholder(tf.float32, [None, None])
+            final_output = tf.identity(pred_input, name='output')
+            gfn = issn.asGraphFunction([pred_input], [final_output])
+
         for _ in range(10):
             m, n = prng.randint(10, 1000, size=2)
             mat = prng.randn(m, n).astype(np.float32)
