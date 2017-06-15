@@ -198,11 +198,12 @@ class GraphFunction(object):
 
         if isinstance(model_or_file_path, KerasModel):
             model = model_or_file_path
-            model_path = os.path.join(mkdtemp(prefix='kera-'), "model.h5")
-            # Save to tempdir and restore in a new session
-            model.save(str(model_path), overwrite=True)
-            gfn = load_model_file(str(model_path))
-            shutil.rmtree(os.path.dirname(model_path), ignore_errors=True)
+            try:  # Save to tempdir and restore in a new session
+                model_path = os.path.join(mkdtemp(prefix='kera-'), "model.h5")
+                model.save(model_path, overwrite=True)
+                gfn = load_model_file(str(model_path))
+            finally:
+                shutil.rmtree(os.path.dirname(model_path), ignore_errors=True)
             return gfn
         elif isinstance(model_or_file_path, six.string_types):
             return load_model_file(model_or_file_path)
