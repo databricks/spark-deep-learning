@@ -48,17 +48,10 @@ def forClass(javaClassName, sqlCtx=None):
     jvm_class = jvm_thread.getContextClassLoader().loadClass(javaClassName)
     return jvm_class.newInstance().sqlContext(_curr_sql_ctx(sqlCtx)._ssql_ctx)
 
-def pyUtils():
-    """
-    Exposing Spark PythonUtils
-    spark/core/src/main/scala/org/apache/spark/api/python/PythonUtils.scala
-    """
-    return _curr_jvm().PythonUtils
-
 def default():
     """ Default JVM Python Interface class """
     return forClass(javaClassName=PYTHON_INTERFACE_CLASSNAME)
 
-def list_to_vector_udf(col):
+def listToMLlibVectorUDF(col):
     """ Map struct column from list to MLlib vector """
-    return Column(default().listToVectorFunction(col._jc))  # pylint: disable=W0212
+    return Column(default().listToMLlibVectorUDF(col._jc))  # pylint: disable=W0212
