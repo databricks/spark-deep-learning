@@ -239,6 +239,6 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol):
         Converts the output python list to MLlib Vector.
         """
         return (
-            df.withColumn(self.getOutputCol(), JVMAPI.list_to_vector(df[tfs_output_col]))
+            df.withColumn(self.getOutputCol(), JVMAPI.list_to_vector_udf(df[tfs_output_col]))
               .drop(tfs_output_col)
         )
