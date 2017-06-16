@@ -183,7 +183,10 @@ class GraphFunction(object):
 
     @classmethod
     def fromKeras(cls, model_or_file_path):
-        """ Build a GraphFunction from a Keras model
+        """
+        Build a GraphFunction from a Keras model
+
+        :param model_or_file_path: KerasModel or str, either a Keras model or the file path name to one
         """
         def load_model_file(file_path):
             assert file_path.endswith('.h5'), \
