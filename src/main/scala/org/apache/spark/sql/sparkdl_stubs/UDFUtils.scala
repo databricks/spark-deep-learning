@@ -19,7 +19,7 @@ import java.util.ArrayList
 import scala.collection.JavaConverters._
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{Column, Row, SparkSession, SQLContext}
+import org.apache.spark.sql.{Column, Row, SparkSession}
 import org.apache.spark.sql.catalyst.expressions.{Expression, ScalaUDF}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.types.DataType
@@ -39,35 +39,17 @@ object UDFUtils extends Logging {
   }
 
   /**
-   * Composite a set of UDFs as a single UDF
-   * @param ctx an active SQLContext
-   * @param name the name of the UDF
-   * @param judfs a seuqnce of UDFs (in Java's ArrayList)
-   * @return the registered UDF
-   */
-  def registerCompositeUDF(
-    ctx: SQLContext,
-    name: String,
-    judfs: ArrayList[UserDefinedFunction]): UserDefinedFunction = {
-
-    val udfs = judfs.asScala
-    val udf = PipelinedUDF(name, udfs.head, udfs.tail: _*)
-    logWarning(s"Registering composite udf $name -> $udf to session ${ctx.sparkSession}")
-    registerUDF(ctx.sparkSession, name, udf)
-  }
-
-  /**
    * Register a UserDefinedfunction (UDF) as a composition of several UDFs.
    * The UDFs must have already been registered
-   * @param ctx an active SQLContext
-   * @param name the name of the UDF
+   * @param spark the SparkSession to which we want to register the UDF
+   * @param name registered to the provided SparkSession
    * @param orderedUdfNames a sequence of UDF names in the composition order
    */
-  def pipeline(ctx: SQLContext, name: String, orderedUdfNames: Seq[String]) = {
-    val registry = ctx.sessionState.functionRegistry
+  def registerPipeline(spark: SparkSession, name: String, orderedUdfNames: Seq[String]) = {
+    val registry = spark.sqlContext.sessionState.functionRegistry
     val builders = orderedUdfNames.flatMap { fname => registry.lookupFunctionBuilder(fname) }
     require(builders.size == orderedUdfNames.size,
-      s"all UDFs must have been registered to the SQLContext: $ctx")
+      s"all UDFs must have been registered to the spark session: $spark")
     def composedBuilder(children: Seq[Expression]): Expression = {
       builders.foldLeft(children) { case (exprs, fb) => Seq(fb(exprs)) }.head
     }

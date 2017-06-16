@@ -18,7 +18,7 @@ package com.databricks.sparkdl.python
 import scala.collection.mutable
 
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
-import org.apache.spark.sql.{Column, SQLContext, SparkSession}
+import org.apache.spark.sql.{Column, SparkSession}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.sparkdl_stubs.{PipelinedUDF, UDFUtils}
@@ -30,10 +30,10 @@ import org.apache.spark.sql.types.{ArrayType, DoubleType, FloatType}
  */
 // TODO: this pattern is repeated over and over again, it should be standard somewhere.
 class PythonInterface {
-  private var _sqlCtx: SQLContext = null
+  private var _spark: SparkSession = null
 
-  def sqlContext(ctx: SQLContext): this.type = {
-    _sqlCtx = ctx
+  def sparkSession(spark: SparkSession): this.type = {
+    _spark = spark
     this
   }
 
@@ -48,10 +48,10 @@ class PythonInterface {
   /**
    * Create an UDF as the result of chainning multiple UDFs
    */
-  def pipeline(name: String, udfNames: Seq[String]) = {
-    require(_sqlCtx != null)
+  def registerPipeline(name: String, udfNames: Seq[String]) = {
+    require(_spark != null, "spark session must be provided")
     require(udfNames.nonEmpty)
-    UDFUtils.pipeline(_sqlCtx, name, udfNames)
+    UDFUtils.registerPipeline(_spark, name, udfNames)
   }
 }
 
@@ -96,4 +96,5 @@ object Conversions {
         throw new Exception(s"convertToVector: cannot deal with type $dt")
     }
   }
+
 }

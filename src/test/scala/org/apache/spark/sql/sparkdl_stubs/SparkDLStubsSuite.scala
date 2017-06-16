@@ -26,7 +26,6 @@ import com.databricks.sparkdl.TestSparkContext
  * Testing UDF registration
  */
 class SparkDLStubSuite extends FunSuite with TestSparkContext {
-  lazy val sqlCtx = sqlContext
 
   test("Registered UDF must be found") {
     val udfName = "sparkdl-test-udf"
@@ -45,7 +44,7 @@ class SparkDLStubSuite extends FunSuite with TestSparkContext {
     UDFUtils.registerUDF(spark, s"${udfName}_2",
       udf({ (w: Int) => w * w + 3}))
     
-    UDFUtils.pipeline(sqlCtx, udfName,
+    UDFUtils.registerPipeline(spark, udfName,
       (0 to 2).map { idx => s"${udfName}_$idx" })
 
     assert(spark.catalog.functionExists(udfName))
@@ -59,7 +58,7 @@ class SparkDLStubSuite extends FunSuite with TestSparkContext {
     UDFUtils.registerUDF(spark, s"${udfName}_mul",
       udf({ (z: Int) => z * 2}))
     
-    UDFUtils.pipeline(sqlCtx, udfName, Seq(s"${udfName}_add", s"${udfName}_mul"))
+    UDFUtils.registerPipeline(spark, udfName, Seq(s"${udfName}_add", s"${udfName}_mul"))
 
     import spark.implicits._
     val df = Seq(1 -> 1, 2 -> 2).toDF("x", "y")
