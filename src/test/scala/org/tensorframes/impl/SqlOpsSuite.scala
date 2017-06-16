@@ -55,7 +55,7 @@ class SqlOpsSpec extends FunSuite with TestSparkContext with GraphScoping with L
 
     val udfName = "tfs-test-simple-add"
     val udf = SqlOps.makeUDF(udfName, g, shapeHints, false, false)
-    UDFUtils.registerUDF(spark, udfName, udf) // generic UDF registeration
+    UDFUtils.registerUDF(spark.sqlContext, udfName, udf) // generic UDF registeration
     assert(spark.catalog.functionExists(udfName))
   }
 
@@ -76,7 +76,7 @@ class SqlOpsSpec extends FunSuite with TestSparkContext with GraphScoping with L
     // Build the UDF and register
     val udfName = "tfs_test_simple_add"
     val udf = SqlOps.makeUDF(udfName, g, shapeHints, false, false)    
-    UDFUtils.registerUDF(spark, udfName, udf) // generic UDF registeration
+    UDFUtils.registerUDF(spark.sqlContext, udfName, udf) // generic UDF registeration
 
     // Create a DataFrame
     val inputs = (1 to 100).map(_.toDouble)

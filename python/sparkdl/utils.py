@@ -75,4 +75,4 @@ def pipelined_udf(name, ordered_udf_names):
     """
     assert len(ordered_udf_names) > 1, \
         "must provide more than one ordered udf names"
-    JVMAPI.default().pipeline(name, JVMAPI.pyutils().toSeq(ordered_udf_names))
+    JVMAPI.default().registerPipeline(name, ordered_udf_names)

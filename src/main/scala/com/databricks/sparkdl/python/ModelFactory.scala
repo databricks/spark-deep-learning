@@ -22,6 +22,7 @@ import scala.collection.JavaConverters._
 
 import org.apache.log4j.PropertyConfigurator
 
+import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.sparkdl_stubs.UDFUtils
 import org.apache.spark.sql.expressions.UserDefinedFunction
@@ -36,12 +37,14 @@ import com.databricks.sparkdl.Logging
  * validate the graph 
  */
 // TODO: merge TensorFlow graphs into TensorFrames eventually
+@DeveloperApi
 class GraphModelFactory() extends Logging {
+  private var _sqlCtx: SQLContext = null
+
   private var _shapeHints: ShapeDescription = ShapeDescription.empty
-  // TODO: this object may leak because of Py4J -> do not hold to large objects here.
+  // WARNING: this object may leak because of Py4J -> do not hold to large objects here.
   private var _graph: SerializedGraph = null
   private var _graphPath: Option[String] = None
-  private var _sqlCtx: SQLContext = null
 
   def initializeLogging(): Unit = initializeLogging("org/tensorframes/log4j.properties")
 
@@ -156,7 +159,7 @@ class GraphModelFactory() extends Logging {
     assert(_sqlCtx != null)
     val udf = makeUDF(udfName, blocked)
     logger.warn(s"Registering udf $udfName -> $udf to session ${_sqlCtx.sparkSession}")
-    UDFUtils.registerUDF(_sqlCtx.sparkSession, udfName, udf)
+    UDFUtils.registerUDF(_sqlCtx, udfName, udf)
   }
 
   /**

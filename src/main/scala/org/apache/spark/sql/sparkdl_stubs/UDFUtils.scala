@@ -19,7 +19,7 @@ import java.util.ArrayList
 import scala.collection.JavaConverters._
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{Column, Row, SparkSession}
+import org.apache.spark.sql.{Column, Row, SQLContext}
 import org.apache.spark.sql.catalyst.expressions.{Expression, ScalaUDF}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.types.DataType
@@ -32,9 +32,10 @@ object UDFUtils extends Logging {
    * @param udf the actual body of the UDF
    * @return the registered UDF
    */
-  def registerUDF(spark: SparkSession, name: String, udf: UserDefinedFunction): UserDefinedFunction = {
+  def registerUDF(sqlCtx: SQLContext, name: String, udf: UserDefinedFunction): UserDefinedFunction = {
     def builder(children: Seq[Expression]) = udf.apply(children.map(cx => new Column(cx)) : _*).expr
-    spark.sessionState.functionRegistry.registerFunction(name, builder)
+    val registry = sqlCtx.sessionState.functionRegistry
+    registry.registerFunction(name, builder)
     udf
   }
 
@@ -45,11 +46,11 @@ object UDFUtils extends Logging {
    * @param name registered to the provided SparkSession
    * @param orderedUdfNames a sequence of UDF names in the composition order
    */
-  def registerPipeline(spark: SparkSession, name: String, orderedUdfNames: Seq[String]) = {
-    val registry = spark.sqlContext.sessionState.functionRegistry
+  def registerPipeline(sqlCtx: SQLContext, name: String, orderedUdfNames: Seq[String]) = {
+    val registry = sqlCtx.sessionState.functionRegistry
     val builders = orderedUdfNames.flatMap { fname => registry.lookupFunctionBuilder(fname) }
     require(builders.size == orderedUdfNames.size,
-      s"all UDFs must have been registered to the spark session: $spark")
+      s"all UDFs must have been registered to the SQL context: $sqlCtx")
     def composedBuilder(children: Seq[Expression]): Expression = {
       builders.foldLeft(children) { case (exprs, fb) => Seq(fb(exprs)) }.head
     }

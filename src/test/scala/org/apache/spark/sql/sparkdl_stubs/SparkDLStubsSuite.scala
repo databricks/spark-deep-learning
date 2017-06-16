@@ -30,21 +30,21 @@ class SparkDLStubSuite extends FunSuite with TestSparkContext {
   test("Registered UDF must be found") {
     val udfName = "sparkdl-test-udf"
     val udfImpl = { (x: Int, y: Int) => x + y }
-    UDFUtils.registerUDF(spark, udfName, udf(udfImpl))
+    UDFUtils.registerUDF(spark.sqlContext, udfName, udf(udfImpl))
     assert(spark.catalog.functionExists(udfName))
   }
 
   test("Registered piped UDF must be found") {
     val udfName = "sparkdl_test_piped_udf"
 
-    UDFUtils.registerUDF(spark, s"${udfName}_0",
+    UDFUtils.registerUDF(spark.sqlContext, s"${udfName}_0",
       udf({ (x: Int, y: Int) => x + y}))
-    UDFUtils.registerUDF(spark, s"${udfName}_1",
+    UDFUtils.registerUDF(spark.sqlContext, s"${udfName}_1",
       udf({ (z: Int) => z * 2}))
-    UDFUtils.registerUDF(spark, s"${udfName}_2",
+    UDFUtils.registerUDF(spark.sqlContext, s"${udfName}_2",
       udf({ (w: Int) => w * w + 3}))
     
-    UDFUtils.registerPipeline(spark, udfName,
+    UDFUtils.registerPipeline(spark.sqlContext, udfName,
       (0 to 2).map { idx => s"${udfName}_$idx" })
 
     assert(spark.catalog.functionExists(udfName))
@@ -53,12 +53,12 @@ class SparkDLStubSuite extends FunSuite with TestSparkContext {
   test("Using piped UDF in SQL") {
     val udfName = "sparkdl_test_piped_udf"
 
-    UDFUtils.registerUDF(spark, s"${udfName}_add",
+    UDFUtils.registerUDF(spark.sqlContext, s"${udfName}_add",
       udf({ (x: Int, y: Int) => x + y}))
-    UDFUtils.registerUDF(spark, s"${udfName}_mul",
+    UDFUtils.registerUDF(spark.sqlContext, s"${udfName}_mul",
       udf({ (z: Int) => z * 2}))
     
-    UDFUtils.registerPipeline(spark, udfName, Seq(s"${udfName}_add", s"${udfName}_mul"))
+    UDFUtils.registerPipeline(spark.sqlContext, udfName, Seq(s"${udfName}_add", s"${udfName}_mul"))
 
     import spark.implicits._
     val df = Seq(1 -> 1, 2 -> 2).toDF("x", "y")
