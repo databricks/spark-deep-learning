@@ -13,14 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.databricks.sparkdl.python
 
+import java.util.ArrayList
+
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-import org.apache.spark.sql.{Column, SQLContext}
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.ml.linalg.{DenseVector, Vector}
+import org.apache.spark.sql.{Column, SQLContext}
+import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.sparkdl_stubs.{PipelinedUDF, UDFUtils}
 import org.apache.spark.sql.types.{ArrayType, DoubleType, FloatType}
 
 /**
@@ -28,8 +33,9 @@ import org.apache.spark.sql.types.{ArrayType, DoubleType, FloatType}
  * transform UDFs using java code.
  */
 // TODO: this pattern is repeated over and over again, it should be standard somewhere.
+@DeveloperApi
 class PythonInterface {
-private var _sqlCtx: SQLContext = null
+  private var _sqlCtx: SQLContext = null
 
   def sqlContext(ctx: SQLContext): this.type = {
     _sqlCtx = ctx
@@ -40,11 +46,22 @@ private var _sqlCtx: SQLContext = null
    * Takes a column, which may contain either arrays of floats or doubles, and returns the
    * content, cast as MLlib's vectors.
    */
-  def listToVectorFunction(col: Column): Column = {
+  def listToMLlibVectorUDF(col: Column): Column = {
     Conversions.convertToVector(col)
+  }
+
+  /**
+   * Create an UDF as the result of chainning multiple UDFs
+   */
+  def registerPipeline(name: String, udfNames: ArrayList[String]) = {
+    require(_sqlCtx != null, "spark session must be provided")
+    require(udfNames.size > 0)
+    UDFUtils.registerPipeline(_sqlCtx, name, udfNames.asScala)
   }
 }
 
+
+@DeveloperApi
 object Conversions {
   private def floatArrayToVector(x: Array[Float]): Vector = {
     new DenseVector(fromFloatArray(x))
@@ -85,4 +102,5 @@ object Conversions {
         throw new Exception(s"convertToVector: cannot deal with type $dt")
     }
   }
+
 }

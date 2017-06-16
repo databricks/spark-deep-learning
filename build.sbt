@@ -11,10 +11,6 @@ val defaultScalaVer = sparkBranch match {
 }
 val scalaVer = sys.props.getOrElse("scala.version", defaultScalaVer)
 val scalaMajorVersion = scalaVer.substring(0, scalaVer.indexOf(".", scalaVer.indexOf(".") + 1))
-val defaultScalaTestVer = scalaVer match {
-  case s if s.startsWith("2.10") => "2.0"
-  case s if s.startsWith("2.11") => "2.2.6" // scalatest_2.11 does not have 2.0 published
-}
 
 sparkVersion := sparkVer
 
@@ -40,13 +36,18 @@ sparkComponents ++= Seq("mllib-local", "mllib", "sql")
 // e.g. spDependencies += "databricks/spark-avro:0.1"
 spDependencies += s"databricks/tensorframes:0.2.8-s_${scalaMajorVersion}"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % defaultScalaTestVer % "test"
 
 // These versions are ancient, but they cross-compile around scala 2.10 and 2.11.
 // Update them when dropping support for scala 2.10
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging-api" % "2.1.2"
-
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2"
+libraryDependencies ++= Seq(
+  // These versions are ancient, but they cross-compile around scala 2.10 and 2.11.
+  // Update them when dropping support for scala 2.10
+  "com.typesafe.scala-logging" %% "scala-logging-api" % "2.1.2",
+  "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
+  // Matching scalatest versions from TensorFrames
+  "org.scalactic" %% "scalactic" % "3.0.0",
+  "org.scalatest" %% "scalatest" % "3.0.0" % "test"
+)
 
 assemblyMergeStrategy in assembly := {
   case "requirements.txt" => MergeStrategy.concat
