@@ -24,7 +24,10 @@ import keras.backend as K
 from keras.models import Model as KerasModel, load_model
 import tensorflow as tf
 
+import tensorframes.core as tfrm
+
 import sparkdl.graph.utils as tfx
+from sparkdl.utils import jvmapi as JVMAPI
 
 logger = logging.getLogger('sparkdl')
 
@@ -64,6 +67,48 @@ class IsolatedSession(object):
     def run(self, *args, **kargs):
         return self.sess.run(*args, **kargs)
 
+    def asUDF(self, udf_name, fetches, feed_dict=None, blocked=False, register=True):
+        """ 
+        Make the TensorFlow graph as a SQL UDF 
+
+        :param udf_name: str, name of the SQL UDF 
+        :param fetches: list, output tensors of the graph
+        :param feed_dict: dict, a dictionary that maps graph elements to input values
+        :param blocked: bool, whether the TensorFrame execution should be blocked based or row based
+        :param register: bool, whether this UDF should be registered
+        :return: JVM function handle object
+        """ 
+        # pylint: disable=W0212
+        # TODO: work with registered expansions
+        jvm_builder = JVMAPI.forClass(JVMAPI.MODEL_FACTORY_CLASSNAME)
+        tfrm._add_graph(self.graph, jvm_builder)
+
+        fetch_names = [tfx.tensor_name(self.graph, tnsr) for tnsr in fetches]
+        fetch_shapes = [tfx.get_shape(self.graph, tnsr) for tnsr in fetches]
+        placeholder_names = []
+        placeholder_shapes = []
+
+        for node in self.graph.as_graph_def(add_shapes=True).node:
+            if len(node.input) == 0 and str(node.op) == 'Placeholder':
+                tnsr_name = tfx.tensor_name(self.graph, node.name)
+                tnsr = self.graph.get_tensor_by_name(tnsr_name)
+                try:
+                    tnsr_shape = tfx.get_shape(self.graph, tnsr)
+                    placeholder_names.append(tnsr_name)
+                    placeholder_shapes.append(tnsr_shape)
+                except ValueError:
+                    pass
+
+        jvm_builder.shape(fetch_names + placeholder_names, fetch_shapes + placeholder_shapes)
+        jvm_builder.fetches(fetch_names)
+        placeholder_op_names = [tfx.op_name(self.graph, tnsr_name) for tnsr_name in placeholder_names]
+        tfrm._add_inputs(jvm_builder, feed_dict, placeholder_op_names)
+
+        if register:
+            return jvm_builder.registerUDF(udf_name, blocked)
+        else:
+            return jvm_builder.makeUDF(udf_name, blocked)
+                
     def asGraphFunction(self, inputs, outputs, strip_and_freeze=True):
         """
         Export the graph in this session as a GraphFunction object
@@ -183,10 +228,7 @@ class GraphFunction(object):
 
     @classmethod
     def fromKeras(cls, model_or_file_path):
-        """
-        Build a GraphFunction from a Keras model
-
-        :param model_or_file_path: KerasModel or str, either a Keras model or the file path name to one
+        """ Build a GraphFunction from a Keras model
         """
         def load_model_file(file_path):
             assert file_path.endswith('.h5'), \
