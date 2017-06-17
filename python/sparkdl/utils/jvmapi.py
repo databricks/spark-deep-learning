@@ -48,6 +48,13 @@ def forClass(javaClassName, sqlCtx=None):
     jvm_class = jvm_thread.getContextClassLoader().loadClass(javaClassName)
     return jvm_class.newInstance().sqlContext(_curr_sql_ctx(sqlCtx)._ssql_ctx)
 
+def pyUtils():
+    """
+    Exposing Spark PythonUtils
+    spark/core/src/main/scala/org/apache/spark/api/python/PythonUtils.scala
+    """
+    return _curr_jvm().PythonUtils
+
 def default():
     """ Default JVM Python Interface class """
     return forClass(javaClassName=PYTHON_INTERFACE_CLASSNAME)
@@ -55,3 +62,19 @@ def default():
 def listToMLlibVectorUDF(col):
     """ Map struct column from list to MLlib vector """
     return Column(default().listToMLlibVectorUDF(col._jc))  # pylint: disable=W0212
+
+def registerPipeline(name, ordered_udf_names):
+    """ 
+    Given a sequence of @ordered_udf_names f1, f2, ..., fn
+    Create a pipelined UDF as fn(...f2(f1()))
+    """
+    assert len(ordered_udf_names) > 1, \
+        "must provide more than one ordered udf names"
+    return default().registerPipeline(name, ordered_udf_names)
+
+def registerUDF(name, function_body, schema):
+    """ 
+    Given a sequence of @ordered_udf_names f1, f2, ..., fn
+    Create a pipelined UDF as fn(...f2(f1()))
+    """
+    return _curr_sql_ctx().registerFunction(name, function_body, schema)

@@ -20,12 +20,12 @@ from keras.preprocessing.image import img_to_array, load_img
 import numpy as np
 import tensorflow as tf
 
+import sparkdl.graph.utils as tfx
 from sparkdl.image.imageIO import imageStructToArray
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.tf_image import TFImageTransformer
 import sparkdl.transformers.utils as utils
-import sparkdl.graph.utils as tfx
-from sparkdl.transformers.utils import InceptionV3Constants
+from sparkdl.transformers.utils import ImageNetConstants, InceptionV3Constants
 from ..tests import SparkDLTestCase
 from .image_utils import ImageNetOutputComparisonTestCase
 import image_utils
