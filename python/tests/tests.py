@@ -33,7 +33,7 @@ class SparkDLTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.sc = SparkContext('local[*]', cls.__name__)
+        cls.sc = SparkContext('local[4]', cls.__name__)
         cls.sql = SQLContext(cls.sc)
         cls.session = SparkSession.builder.getOrCreate()
 
