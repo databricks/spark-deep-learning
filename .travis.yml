@@ -1,9 +1,9 @@
-jdk:
-  - oraclejdk8 # openJDK crashes sometimes; tensorframes is compiled w.r.t JDK8
-
 sudo: required
 
 dist: trusty
+
+jdk:
+  - oraclejdk8 # openJDK crashes sometimes; tensorframes is compiled w.r.t JDK8
 
 cache:
   directories:
@@ -13,14 +13,18 @@ cache:
 
 env:
   matrix:
-    - SCALA_VERSION=2.11.8 SPARK_VERSION=2.1.1 SPARK_BUILD="spark-2.1.1-bin-hadoop2.7" SPARK_BUILD_URL="http://d3kbcqa49mib13.cloudfront.net/spark-2.1.1-bin-hadoop2.7.tgz"
+    - PYSPARK_PYTHON=python2 SCALA_VERSION=2.11.8 SPARK_VERSION=2.1.1 SPARK_BUILD="spark-2.1.1-bin-hadoop2.7" SPARK_BUILD_URL="http://d3kbcqa49mib13.cloudfront.net/spark-2.1.1-bin-hadoop2.7.tgz"
 
 before_install:
  - ./bin/download_travis_dependencies.sh
 
+install:
+ - pip install --user -r ./python/requirements.txt
+
 script:
   - ./build/sbt -Dspark.version=$SPARK_VERSION -Dscala.version=$SCALA_VERSION "set test in assembly := {}" assembly
   - ./build/sbt -Dspark.version=$SPARK_VERSION -Dscala.version=$SCALA_VERSION coverage test coverageReport
+  - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD ./python/run-tests.sh
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

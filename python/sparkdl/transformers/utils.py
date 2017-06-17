@@ -18,6 +18,7 @@ import tensorflow as tf
 from pyspark.ml.param import TypeConverters
 
 from sparkdl.image.imageIO import imageType
+import sparkdl.graph.utils as tfx
 
 
 # image stuff
@@ -35,37 +36,3 @@ class ImageNetConstants:
 class InceptionV3Constants:
     INPUT_SHAPE = (299, 299)
     NUM_OUTPUT_FEATURES = 131072
-
-
-# general transformer stuff
-
-# 1. Sometimes the tf graph contains a bunch of stuff that doesn't lead to the
-# output. TensorFrames does not like that, so we strip out the parts that
-# are not necessary for the computation at hand.
-# 2. We need to freeze the variables whose values are stored in the current
-# session into constants to pass the graph around.
-def stripAndFreezeGraph(tf_graph_def, sess, output_tensors):
-    """
-    A typical usage would look like:
-      tf_graph_def = tf_graph.as_graph_def(add_shapes=True)
-      sess = tf.Session(graph=tf_graph)
-    """
-    output_graph_def = tf.graph_util.convert_variables_to_constants(sess,
-                                                                    tf_graph_def,
-                                                                    [op_name(t) for t in output_tensors],
-                                                                    variable_names_blacklist=[])
-    g2 = tf.Graph()
-    with g2.as_default():
-        tf.import_graph_def(output_graph_def, name='')
-    return g2
-
-def op_name(tensor):
-    """
-    :param tensor: tensorflow.Tensor or a string
-    """
-    return _tensor_name(tensor).split(":")[0]
-
-def _tensor_name(tensor):
-    if isinstance(tensor, tf.Tensor):
-        return _tensor_name(tensor.name)
-    return TypeConverters.toString(tensor)
