@@ -66,32 +66,6 @@ class GraphBuilderTest(SparkDLTestCase):
         # should be the same as that in the one exported directly from TensorFlow session
         self.assertEqual(str(gfn.graph_def), str(gdef_ref))
 
-    def test_serialization(self):
-        """ Must be able to serialize and deserialize """
-
-        with IsolatedSession() as issn:
-            x = tf.placeholder(tf.double, shape=[], name="x")
-            z = tf.add(x, 3, name='z')
-            gfn = issn.asGraphFunction([x], [z])
-        
-        gfn.dump("/tmp/test.gfn")
-        gfn_reloaded = GraphFunction.fromSerialized("/tmp/test.gfn")
-
-        self.assertEqual(str(gfn.graph_def), str(gfn_reloaded.graph_def))
-        self.assertEqual(gfn.input_names, gfn_reloaded.input_names)
-        self.assertEqual(gfn.output_names, gfn_reloaded.output_names)
-
-    def test_large_serialization(self):
-        """ Must be able to serialize and deserialize large graphs """
-
-        gfn = GraphFunction.fromKeras(InceptionV3(weights="imagenet"))
-        gfn.dump("/tmp/test_large.gfn")
-        gfn_reloaded = GraphFunction.fromSerialized("/tmp/test_large.gfn")
-
-        self.assertEqual(str(gfn.graph_def), str(gfn_reloaded.graph_def))
-        self.assertEqual(gfn.input_names, gfn_reloaded.input_names)
-        self.assertEqual(gfn.output_names, gfn_reloaded.output_names)
-
     def test_get_graph_elements(self):
         """ Fetching graph elements by names and other graph elements """
 
@@ -110,7 +84,6 @@ class GraphBuilderTest(SparkDLTestCase):
             self.assertEqual(tfx.tensor_name(g, z), "z:0")
             self.assertEqual(tfx.tensor_name(g, x), "x:0")
 
-
     def test_import_export_graph_function(self):
         """ Function import and export must be consistent """
 
@@ -120,7 +93,7 @@ class GraphBuilderTest(SparkDLTestCase):
             gfn_ref = issn.asGraphFunction([x], [z])
 
         with IsolatedSession() as issn:
-            feeds, fetches = issn.importGraphFunction(gfn_ref, name="")
+            feeds, fetches = issn.importGraphFunction(gfn_ref, prefix="")
             gfn_tgt = issn.asGraphFunction(feeds, fetches)
 
         self.assertEqual(gfn_tgt.input_names, gfn_ref.input_names)
@@ -144,14 +117,14 @@ class GraphBuilderTest(SparkDLTestCase):
         model_ref = InceptionV3(weights="imagenet")
         preds_ref = model_ref.predict(imgs_iv3_input)
 
-        with IsolatedSession(keras=True) as issn:
+        with IsolatedSession(keras_use_tf=True) as issn:
             K.set_learning_phase(0)
             model = InceptionV3(weights="imagenet")
             gfn = issn.asGraphFunction(model.inputs, model.outputs)
 
-        with IsolatedSession(keras=True) as issn:
+        with IsolatedSession(keras_use_tf=True) as issn:
             K.set_learning_phase(0)
-            feeds, fetches = issn.importGraphFunction(gfn, name="InceptionV3")
+            feeds, fetches = issn.importGraphFunction(gfn, prefix="InceptionV3")
             preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_iv3_input})
 
         self.assertTrue(np.all(preds_tgt == preds_ref))

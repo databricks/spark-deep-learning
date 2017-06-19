@@ -74,7 +74,7 @@ export PYTHONPATH=$PYTHONPATH:$assembly   # same $assembly used for the JAR_PATH
 export PYTHONPATH=$PYTHONPATH:$SPARK_HOME/python:$LIBS:.
 
 # This will be used when starting pyspark.
-export PYSPARK_SUBMIT_ARGS="--verbose --driver-memory 4g --executor-memory 4g --jars $JAR_PATH pyspark-shell"
+export PYSPARK_SUBMIT_ARGS="--driver-memory 4g --executor-memory 4g --jars $JAR_PATH pyspark-shell"
 
 
 # Run test suites

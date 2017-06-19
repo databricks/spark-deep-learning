@@ -28,23 +28,43 @@ import sparkdl.graph.utils as tfx
 
 logger = logging.getLogger('sparkdl')
 
+def _load_keras_model_file(file_path):
+    """
+    Load a Keras model from a file path into a `GraphFunction`.
+
+    :param file_path: the (HDF5) file path
+    :return: GraphFunction
+    """
+    assert file_path.endswith('.h5'), \
+        'Keras model must be specified as HDF5 file'
+
+    with IsolatedSession(keras_use_tf=True) as issn:
+        K.set_learning_phase(0) # Testing phase
+        model = load_model(file_path)
+        gfn = issn.asGraphFunction(model.inputs, model.outputs)
+
+    return gfn
+
 class IsolatedSession(object):
     """
-    Building TensorFlow graph and export as either UDF or GraphFunction
+    Provide an isolated session to work with mixed Keras and TensorFlow
+    graph segments. 
 
-    It provides a GraphBuilder object which provides
-    - importing existing GraphFunction object as a subgraph
-    - exporting current graph as an GraphFunction object
+    It provides utility functions to
+    - importing existing `GraphFunction` object as a subgraph
+    - exporting current graph as an `GraphFunction` object
 
     This is a thin layer on top of `tf.Session`.
 
-    :param g: Graph, use the provided TensorFlow graph as default graph
-    :param keras: bool, whether to also let Keras TensorFlow backend use this session
+    :param graph: `tf.Graph`, use the provided TensorFlow graph as default graph
+    :param keras_use_tf: bool, when set to True, attach Keras TensorFlow backend to this session.
+                         In this case, all Keras models loaded in this session will be accessible
+                         as a subgraph of of `graph`
     """
-    def __init__(self, graph=None, keras=False):
+    def __init__(self, graph=None, keras_use_tf=False):
         self.graph = graph or tf.Graph()
         self.sess = tf.Session(graph=self.graph)
-        if keras:
+        if keras_use_tf:
             self.keras_prev_sess = K.get_session()
         else:
             self.keras_prev_sess = None
@@ -62,6 +82,14 @@ class IsolatedSession(object):
         self.sess.__exit__(*args)
 
     def run(self, *args, **kargs):
+        """
+        This method delegate the TensorFlow graph execution
+        to the underlying tf.Session object to perform 
+        one step of graph computation.
+
+        All the parameters are defined according to `tf.Session.run`
+        Reference: https://www.tensorflow.org/api_docs/python/tf/Session#run        
+        """
         return self.sess.run(*args, **kargs)
 
     def asGraphFunction(self, inputs, outputs, strip_and_freeze=True):
@@ -80,13 +108,16 @@ class IsolatedSession(object):
                              input_names=[tfx.validated_input(self.graph, elem) for elem in inputs],
                              output_names=[tfx.validated_output(self.graph, elem) for elem in outputs])
 
-    def importGraphFunction(self, gfn, input_map=None, name="GFN-IMPORT", **gdef_kargs):
+    def importGraphFunction(self, gfn, input_map=None, prefix="GFN-IMPORT", **gdef_kargs):
         """
-        Import a GraphFunction object into the current session
+        Import a GraphFunction object into the current session.
+        The API is similar to `tf.import_graph_def`
+        https://www.tensorflow.org/api_docs/python/tf/import_graph_def
 
         :param gfn: GraphFunction, an object representing a TensorFlow graph and its inputs and outputs
         :param input_map: dict, mapping from input names to existing graph elements
-        :param name: str, the scope for all the variables in the GraphFunction's elements
+        :param prefix: str, the scope for all the variables in the GraphFunction's elements
+                       (https://www.tensorflow.org/programmers_guide/variable_scope)
         :param gdef_kargs: other keyword elements for TensorFlow's `import_graph_def`
         """
         try:
@@ -99,19 +130,20 @@ class IsolatedSession(object):
 
         input_names = gfn.input_names
         output_names = gfn.output_names
-        if name is not None:
-            name = name.strip()
-            if len(name) > 0:
+        scope_name = prefix
+        if prefix is not None:
+            scope_name = prefix.strip()
+            if len(scope_name) > 0:
                 output_names = [
-                    name + '/' + op_name for op_name in gfn.output_names]
+                    scope_name + '/' + op_name for op_name in gfn.output_names]
                 input_names = [
-                    name + '/' + op_name for op_name in gfn.input_names]
+                    scope_name + '/' + op_name for op_name in gfn.input_names]
 
         # When importing, provide the original output op names
         tf.import_graph_def(gfn.graph_def,
                             input_map=input_map,
                             return_elements=gfn.output_names,
-                            name=name,
+                            name=scope_name,
                             **gdef_kargs)
         feeds = [tfx.get_tensor(self.graph, name) for name in input_names]
         fetches = [tfx.get_tensor(self.graph, name) for name in output_names]
@@ -157,67 +189,40 @@ class GraphFunction(object):
             json.dump(serialized, fout)
 
     @classmethod
-    def fromSerialized(cls, fpath):
-        """
-        Load an existing GraphFunction from file.
-
-        :param fpath: str or path, path to the serialized GraphFunction
-        """
-        with open(str(fpath)) as fin:
-            serialized = json.load(fin)
-        assert set(['inputs', 'graph_def_file', 'outputs']) <= set(serialized.keys())
-
-        gdef_bytes_fpath = serialized["graph_def_file"]
-        assert os.path.exists(gdef_bytes_fpath), \
-            "TensorFlow GraphDef binary file must be found"
-
-        with open(gdef_bytes_fpath, 'rb') as fin:
-            gdef_bytes = fin.read()
-            gdef = tf.GraphDef.FromString(gdef_bytes)  # pylint: disable=E1101
-
-        gfn = cls(graph_def=gdef,
-                  input_names=serialized["inputs"],
-                  output_names=serialized["outputs"])
-
-        return gfn
-
-    @classmethod
     def fromKeras(cls, model_or_file_path):
         """
         Build a GraphFunction from a Keras model
 
         :param model_or_file_path: KerasModel or str, either a Keras model or the file path name to one
         """
-        def load_model_file(file_path):
-            assert file_path.endswith('.h5'), \
-                'Keras model must be specified as HDF5 file'
-
-            with IsolatedSession(keras=True) as issn:
-                K.set_learning_phase(0) # Testing phase
-                model = load_model(file_path)
-                gfn = issn.asGraphFunction(model.inputs, model.outputs)
-
-            return gfn
-
         if isinstance(model_or_file_path, KerasModel):
             model = model_or_file_path
             _tmpdir = mkdtemp(prefix='kera-')
             try:  # Save to tempdir and restore in a new session
                 model_path = os.path.join(_tmpdir, "model.h5")
                 model.save(model_path, overwrite=True)
-                gfn = load_model_file(str(model_path))
+                gfn = _load_keras_model_file(str(model_path))
             finally:
                 shutil.rmtree(_tmpdir, ignore_errors=True)
             return gfn
         elif isinstance(model_or_file_path, six.string_types):
-            return load_model_file(model_or_file_path)
+            return _load_keras_model_file(model_or_file_path)
         else:
             raise TypeError("input must be a Keras model of a file path")
 
     @classmethod
     def fromList(cls, functions):
         """
-        Takes multiple graph functions and merges them into a single graph function.
+        Construct a single GraphFunction from a list of graph functions. 
+        Each function in the list corresponds to a stage.
+
+        Each function is also scoped by a scope name, in order to avoid
+        variable name conflict and also to make the graph cleaner for visualization.
+        If a scope name is not provided, we generate one as `GFN-BLK-<stage_index>`.
+
+        The inputs and outputs are picked out of the scopes, so that users
+        will still be able to call the function with the expected inputs/outputs names.
+
         It is assumed that there is only one input and one output in the intermediary layers
 
         :param functions: a list of tuples (scope name, GraphFunction object).
@@ -225,20 +230,32 @@ class GraphFunction(object):
         assert len(functions) >= 1, ("must provide at least one function", functions)
         if 1 == len(functions):
             return functions[0]
+        # Check against each intermediary layer input output function pairs
         for (scope_in, gfn_in), (scope_out, gfn_out) in zip(functions[:-1], functions[1:]):
+            # For stage F => G, the composition G(F(.)) must work, which means
+            # the number of outputs for F is equal to the number of inputs for G
             assert len(gfn_in.output_names) == len(gfn_out.input_names), \
                 "graph function link {} -> {} require compatible layers".format(scope_in, scope_out)
+            # We currently only support single input/output for intermediary stages
+            # The functions could still take multi-dimensional tensor, but only one
             if len(gfn_out.input_names) != 1:
                 raise NotImplementedError("Only support single input/output for intermediary layers")
 
         # Acquire initial placeholders' properties
+        # We want the input names of the merged function are not under scoped
+        # In this way users of the merged function could still use the input names 
+        # of the first function to get the correct input tensors.
+        first_input_info = []
         with IsolatedSession() as issn:
             _, first_gfn = functions[0]
-            feeds, _ = issn.importGraphFunction(first_gfn, name='')
-            first_input_info = []
+            feeds, _ = issn.importGraphFunction(first_gfn, prefix='')            
             for tnsr in feeds:
                 name = tfx.op_name(issn.graph, tnsr)
                 first_input_info.append((tnsr.dtype, tnsr.shape, name))
+            # TODO: make sure that this graph is not reused to prevent name conflict
+            # Report error if the graph is not manipulated by anyone else
+            # https://www.tensorflow.org/api_docs/python/tf/Graph#finalize
+            issn.graph.finalize()
 
         # Build a linear chain of all the provide functions
         with IsolatedSession() as issn:
@@ -254,10 +271,12 @@ class GraphFunction(object):
                 logger.info(_msg)
                 input_map = dict(zip(gfn.input_names, prev_outputs))
                 _, fetches = issn.importGraphFunction(
-                    gfn, name=scope, input_map=input_map)
+                    gfn, prefix=scope, input_map=input_map)
                 prev_outputs = fetches
 
             # Add a non-scoped output name as the output node
+            # So that users can still use the output name of the last function's output 
+            # to fetch the correct output tensors
             last_output_names = functions[-1][1].output_names
             last_outputs = []
             for tnsr, name in zip(prev_outputs, last_output_names):

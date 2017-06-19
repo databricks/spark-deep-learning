@@ -97,7 +97,8 @@ def get_tensor(graph, tfobj_or_name):
 
 def as_tensor_name(name):
     """
-    Derive tf.Tensor name from an op/tensor name
+    Derive tf.Tensor name from an op/tensor name.
+    We do not check if the tensor exist (as no graph parameter is passed in).
 
     :param name: op name or tensor name
     """
@@ -111,6 +112,7 @@ def as_tensor_name(name):
 def as_op_name(name):
     """
     Derive tf.Operation name from an op/tensor name
+    We do not check if the operation exist (as no graph parameter is passed in).
 
     :param name: op name or tensor name
     """
@@ -165,7 +167,9 @@ def validated_input(graph, tfobj_or_name):
 
 def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
     """
-    Converting all variables into constants
+    Create a static view of the graph by
+    1. Converting all variables into constants
+    2. Removing graph elements not reachacble to `fetches`
 
     :param graph: tf.Graph, the graph to be frozen
     :param fetches: list, graph elements representing the outputs of the graph
@@ -193,63 +197,3 @@ def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
         return g
     else:
         return gdef_frozen
-
-def write_visualization_html(graph, html_file_path=None, max_const_size=32, show_in_browser=True):
-    """
-    Visualize TensorFlow graph as a static TensorBoard page.
-    Notice that in order to view it directly, the user must have
-    a working Chrome browser.
-
-    The page directly embed GraphDef prototxt so that the page (and an active Internet connection)
-    is only needed to view the content. There is NO need to fire up a web server in the backend.
-
-    :param graph: tf.Graph, a TensorFlow Graph object
-    :param html_file_path: str, path to the HTML output file
-    :param max_const_size: int, if a constant is way too long, clip it in the plot
-    :param show_in_browser: bool, indicate if we want to launch a browser to show the generated HTML page.
-    """
-    graph = validated_graph(graph)
-    _tfb_url_prefix = "https://tensorboard.appspot.com"
-    _tfb_url = "{}/tf-graph-basic.build.html".format(_tfb_url_prefix)
-
-    def strip_consts(gdef, max_const_size=32):
-        """Strip large constant values from graph_def."""
-        strip_def = tf.GraphDef()
-        for n0 in gdef.node:
-            n = strip_def.node.add()  # pylint: disable=E1101
-            n.MergeFrom(n0)
-            if n.op == 'Const':
-                tensor = n.attr['value'].tensor
-                nbytes = len(tensor.tensor_content)
-                if nbytes > max_const_size:
-                    tensor.tensor_content = str.encode("<stripped {} bytes>".format(nbytes))
-        return strip_def
-
-    strip_def = strip_consts(graph.as_graph_def(), max_const_size)
-    html_code = """
-        <script>
-          function load() {{
-            document.getElementById("{id}").pbtxt = {data};
-          }}
-        </script>
-        <link rel="import" href="{tfb}" onload=load()>
-        <div style="height:600px">
-          <tf-graph-basic id="{id}"></tf-graph-basic>
-        </div>
-    """.format(data=repr(str(strip_def)),
-               id='gfn-sess-graph',
-               tfb=_tfb_url)
-
-    if not html_file_path:
-        html_file_path = NamedTemporaryFile(prefix="tf_graph_def", suffix=".html").name
-
-    # Construct the graph def board and open it
-    with open(str(html_file_path), 'wb') as fout:
-        try:
-            fout.write(html_code)
-        except TypeError:
-            fout.write(html_code.encode('utf8'))
-
-    logger.info("html output file @ " + str(html_file_path))
-    if show_in_browser:
-        webbrowser.get("chrome").open("file://{}".format(str(html_file_path)))

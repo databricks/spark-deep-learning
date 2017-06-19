@@ -55,7 +55,7 @@ class GraphFactoryTest(SparkDLTestCase):
         def exec_gfn_spimg_decode(spimg_dict, img_dtype):
             gfn = gfac.buildSpImageConverter(img_dtype)
             with IsolatedSession() as issn:
-                feeds, fetches = issn.importGraphFunction(gfn, name="")
+                feeds, fetches = issn.importGraphFunction(gfn, prefix="")
                 feed_dict = dict((tnsr, spimg_dict[tfx.op_name(issn.graph, tnsr)]) for tnsr in feeds)
                 img_out = issn.run(fetches[0], feed_dict=feed_dict)
             return img_out
@@ -132,7 +132,7 @@ class GraphFactoryTest(SparkDLTestCase):
 
             gfn_bare_keras = GraphFunction.fromKeras(keras_model)
 
-            with IsolatedSession(keras=True) as issn:
+            with IsolatedSession(keras_use_tf=True) as issn:
                 K.set_learning_phase(0)
                 feeds, fetches = issn.importGraphFunction(gfn_bare_keras)
                 preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_input})
@@ -159,7 +159,7 @@ class GraphFactoryTest(SparkDLTestCase):
             spimg_input_dict['data'] = bytes(spimg_input_dict['data'])
             with IsolatedSession() as issn:
                 # Need blank import scope name so that spimg fields match the input names
-                feeds, fetches = issn.importGraphFunction(piped_model, name="")
+                feeds, fetches = issn.importGraphFunction(piped_model, prefix="")
                 feed_dict = dict((tnsr, spimg_input_dict[tfx.op_name(issn.graph, tnsr)]) for tnsr in feeds)
                 preds_tgt = issn.run(fetches[0], feed_dict=feed_dict)
                 # Uncomment the line below to see the graph
