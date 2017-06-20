@@ -18,7 +18,7 @@ from sparkdl.transformers.keras_image import KerasImageFileTransformer
 from sparkdl.transformers.utils import InceptionV3Constants
 from ..tests import SparkDLTestCase
 from .image_utils import ImageNetOutputComparisonTestCase
-import image_utils
+from . import image_utils
 
 
 class KerasImageFileTransformerTest(SparkDLTestCase):

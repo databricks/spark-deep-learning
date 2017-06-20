@@ -67,7 +67,7 @@ class JVMAPI(object):
         return cls._curr_jvm().PythonUtils
 
 def list_to_vector_udf(col):
-    return Column(JVMAPI.default().listToVectorFunction(col._jc))  # pylint: disable=W0212
+    return Column(JVMAPI.default().listToMLlibVectorUDF(col._jc))  # pylint: disable=W0212
 
 def pipelined_udf(name, ordered_udf_names):
     """ Given a sequence of @ordered_udf_names f1, f2, ..., fn
