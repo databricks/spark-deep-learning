@@ -28,23 +28,6 @@ import sparkdl.graph.utils as tfx
 
 logger = logging.getLogger('sparkdl')
 
-def _load_keras_model_file(file_path):
-    """
-    Load a Keras model from a file path into a `GraphFunction`.
-
-    :param file_path: the (HDF5) file path
-    :return: GraphFunction
-    """
-    assert file_path.endswith('.h5'), \
-        'Keras model must be specified as HDF5 file'
-
-    with IsolatedSession(keras_use_tf=True) as issn:
-        K.set_learning_phase(0) # Testing phase
-        model = load_model(file_path)
-        gfn = issn.asGraphFunction(model.inputs, model.outputs)
-
-    return gfn
-
 class IsolatedSession(object):
     """
     Provide an isolated session to work with mixed Keras and TensorFlow
@@ -57,14 +40,14 @@ class IsolatedSession(object):
     This is a thin layer on top of `tf.Session`.
 
     :param graph: `tf.Graph`, use the provided TensorFlow graph as default graph
-    :param keras_use_tf: bool, when set to True, attach Keras TensorFlow backend to this session.
-                         In this case, all Keras models loaded in this session will be accessible
-                         as a subgraph of of `graph`
+    :param using_keras: bool, when set to True, attach Keras TensorFlow backend to this session.
+                        In this case, all Keras models loaded in this session will be accessible
+                        as a subgraph of of `graph`
     """
-    def __init__(self, graph=None, keras_use_tf=False):
+    def __init__(self, graph=None, using_keras=False):
         self.graph = graph or tf.Graph()
         self.sess = tf.Session(graph=self.graph)
-        if keras_use_tf:
+        if using_keras:
             self.keras_prev_sess = K.get_session()
         else:
             self.keras_prev_sess = None
@@ -189,6 +172,23 @@ class GraphFunction(object):
             json.dump(serialized, fout)
 
     @classmethod
+    def _fromKerasModelFile(cls, file_path):
+        """
+        Load a Keras model from a file path into a `GraphFunction`.
+
+        :param file_path: the (HDF5) file path
+        """
+        assert file_path.endswith('.h5'), \
+            'Keras model must be specified as HDF5 file'
+
+        with IsolatedSession(using_keras=True) as issn:
+            K.set_learning_phase(0) # Testing phase
+            model = load_model(file_path)
+            gfn = issn.asGraphFunction(model.inputs, model.outputs)
+
+        return gfn
+
+    @classmethod
     def fromKeras(cls, model_or_file_path):
         """
         Build a GraphFunction from a Keras model
@@ -201,12 +201,12 @@ class GraphFunction(object):
             try:  # Save to tempdir and restore in a new session
                 model_path = os.path.join(_tmpdir, "model.h5")
                 model.save(model_path, overwrite=True)
-                gfn = _load_keras_model_file(str(model_path))
+                gfn = cls._fromKerasModelFile(str(model_path))
             finally:
                 shutil.rmtree(_tmpdir, ignore_errors=True)
             return gfn
         elif isinstance(model_or_file_path, six.string_types):
-            return _load_keras_model_file(model_or_file_path)
+            return cls._fromKerasModelFile(model_or_file_path)
         else:
             raise TypeError("input must be a Keras model of a file path")
 

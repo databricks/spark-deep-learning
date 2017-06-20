@@ -18,8 +18,6 @@ import tensorflow as tf
 from pyspark.ml.param import TypeConverters
 
 from sparkdl.image.imageIO import imageType
-import sparkdl.graph.utils as tfx
-
 
 # image stuff
 

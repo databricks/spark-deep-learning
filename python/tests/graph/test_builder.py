@@ -37,7 +37,7 @@ from ..tests import SparkDLTestCase
 from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
 
 
-class GraphBuilderTest(SparkDLTestCase):
+class GraphFunctionWithIsolatedSessionTest(SparkDLTestCase):
 
     def test_tf_consistency(self):
         """ Should get the same graph as running pure tf """
@@ -117,12 +117,12 @@ class GraphBuilderTest(SparkDLTestCase):
         model_ref = InceptionV3(weights="imagenet")
         preds_ref = model_ref.predict(imgs_iv3_input)
 
-        with IsolatedSession(keras_use_tf=True) as issn:
+        with IsolatedSession(using_keras=True) as issn:
             K.set_learning_phase(0)
             model = InceptionV3(weights="imagenet")
             gfn = issn.asGraphFunction(model.inputs, model.outputs)
 
-        with IsolatedSession(keras_use_tf=True) as issn:
+        with IsolatedSession(using_keras=True) as issn:
             K.set_learning_phase(0)
             feeds, fetches = issn.importGraphFunction(gfn, prefix="InceptionV3")
             preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_iv3_input})

@@ -132,7 +132,7 @@ class GraphFactoryTest(SparkDLTestCase):
 
             gfn_bare_keras = GraphFunction.fromKeras(keras_model)
 
-            with IsolatedSession(keras_use_tf=True) as issn:
+            with IsolatedSession(using_keras=True) as issn:
                 K.set_learning_phase(0)
                 feeds, fetches = issn.importGraphFunction(gfn_bare_keras)
                 preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_input})
