@@ -20,6 +20,8 @@ import numpy as np
 import tensorflow as tf
 from keras.applications import InceptionV3
 from keras.applications import inception_v3 as iv3
+from keras.layers import Activation, Dense, Flatten, Input
+from keras.models import Sequential
 
 from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
@@ -39,14 +41,32 @@ def get_image_paths_df(sqlCtx):
 
 class SqlUserDefinedFunctionTest(SparkDLTestCase):
 
-    def test_single_keras_udf(self):
-        """ Must be able to register and find KerasImageUDF """
-        # Register an InceptionV3 model
-        fh_name = "single_keras_iv3_img_pred"
-        registerKerasImageUDF(fh_name,
-                              InceptionV3(weights="imagenet"))
+    def _assert_function_exists(self, fh_name):
         spark_fh_name_set = set([fh.name for fh in self.session.catalog.listFunctions()])
         self.assertTrue(fh_name in spark_fh_name_set)
+
+    def test_simple_keras_udf(self):
+        """ Simple Keras sequential model """
+        with IsolatedSession(using_keras=True):
+            model = Sequential()
+            model.add(Flatten(input_shape=(640,480,3)))
+            model.add(Dense(units=64))
+            model.add(Activation('relu'))
+            model.add(Dense(units=10))
+            model.add(Activation('softmax'))
+
+            fh_name = "test_keras_simple_sequential_model"
+            registerKerasImageUDF(fh_name, model)                              
+            
+        self._assert_function_exists(fh_name)
+
+    def test_pretrained_keras_udf(self):
+        """ Must be able to register a pretrained image model as UDF """
+        # Register an InceptionV3 model
+        fh_name = "test_keras_pretrained_iv3_model"
+        registerKerasImageUDF(fh_name,
+                              InceptionV3(weights="imagenet"))
+        self._assert_function_exists(fh_name)
 
     def test_composite_udf(self):
         """ Composite Keras Image UDF registration """
@@ -78,26 +98,26 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
                               InceptionV3(weights="imagenet"),
                               keras_load_img)
 
-        SQL = self.session.sql
+        run_sql = self.session.sql
 
         # Choice 1: manually chain the functions in SQL
-        df1 = SQL("select iv3_img_pred(keras_load_spimg(fpath)) as preds from _test_image_paths_df")
+        df1 = run_sql("select iv3_img_pred(keras_load_spimg(fpath)) as preds from _test_image_paths_df")
         preds1 = np.array(df1.select("preds").rdd.collect())
 
         # Choice 2: build a pipelined UDF and directly use it in SQL
         JVMAPI.registerPipeline("load_img_then_iv3_pred", ["keras_load_spimg", "iv3_img_pred"])
-        df2 = SQL("select load_img_then_iv3_pred(fpath) as preds from _test_image_paths_df")
+        df2 = run_sql("select load_img_then_iv3_pred(fpath) as preds from _test_image_paths_df")
         preds2 = np.array(df2.select("preds").rdd.collect())
 
         # Choice 3: create the image tensor input table first and apply the Keras model
-        df_images = SQL("select pil_load_spimg(fpath) as image from _test_image_paths_df")
+        df_images = run_sql("select pil_load_spimg(fpath) as image from _test_image_paths_df")
         df_images.createOrReplaceTempView("_test_images_df")
-        df3 = SQL("select iv3_img_pred(image) as preds from _test_images_df")
+        df3 = run_sql("select iv3_img_pred(image) as preds from _test_images_df")
         preds3 = np.array(df3.select("preds").rdd.collect())
                                   
-        assert len(preds1) == len(preds2)
-        assert np.min(np.abs(preds1 - preds2)) < 1e-7
-        assert np.min(np.abs(preds2 - preds3)) < 1e-7
+        self.assertTrue(len(preds1) == len(preds2))
+        np.testing.assert_allclose(preds1, preds2)
+        np.testing.assert_allclose(preds2, preds3)
 
     def test_map_rows_sql_1(self):
         data = [Row(x=float(x)) for x in range(5)]
