@@ -21,12 +21,7 @@ from ..graph.pieces import buildSpImageConverter, buildFlattener
 from ..image.imageIO import imageSchema
 from ..utils import jvmapi as JVMAPI
 
-# We need this to be a simple `namedtuple` for serialization purposes
-# This way it will not also unpickle the extra structures
-
 logger = logging.getLogger('sparkdl')
-
-ENTRYPOINT_CLASSNAME = "com.databricks.sparkdl.python.GraphModelFactory"
 
 def _serialize_and_reload_with(preprocessor):
     """
@@ -82,7 +77,7 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
     gfn = GraphFunction.fromList(stages)
 
     with IsolatedSession() as issn:
-        _, fetches = issn.importGraphFunction(gfn, name='')
+        _, fetches = issn.importGraphFunction(gfn, prefix='')
         issn.asUDF(keras_udf_name, fetches)
         ordered_udf_names.append(keras_udf_name)
 

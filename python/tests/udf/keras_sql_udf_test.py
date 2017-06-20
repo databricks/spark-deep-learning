@@ -37,10 +37,19 @@ def get_image_paths_df(sqlCtx):
     df.createOrReplaceTempView("_test_image_paths_df")
     return df
 
-
 class SqlUserDefinedFunctionTest(SparkDLTestCase):
 
+    def test_single_keras_udf(self):
+        """ Must be able to register and find KerasImageUDF """
+        # Register an InceptionV3 model
+        fh_name = "single_keras_iv3_img_pred"
+        registerKerasImageUDF(fh_name,
+                              InceptionV3(weights="imagenet"))
+        spark_fh_name_set = set([fh.name for fh in self.session.catalog.listFunctions()])
+        self.assertTrue(fh_name in spark_fh_name_set)
+
     def test_composite_udf(self):
+        """ Composite Keras Image UDF registration """
         df = get_image_paths_df(self.sql)
         df.show()
 
@@ -80,7 +89,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         df2 = SQL("select load_img_then_iv3_pred(fpath) as preds from _test_image_paths_df")
         preds2 = np.array(df2.select("preds").rdd.collect())
 
-        # Choice 3: directly apply the full pipeline
+        # Choice 3: create the image tensor input table first and apply the Keras model
         df_images = SQL("select pil_load_spimg(fpath) as image from _test_image_paths_df")
         df_images.createOrReplaceTempView("_test_images_df")
         df3 = SQL("select iv3_img_pred(image) as preds from _test_images_df")

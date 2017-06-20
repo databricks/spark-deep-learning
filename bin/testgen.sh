@@ -75,8 +75,12 @@ _PY_TEST_EOF_
 cat << '_PY_TEST_EOF_' | tee -a "${_test_script}"
 _bsd_="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+function quit_with { >&2 echo "ERROR: $@"; exit 1; }
+
 assembly_path="${_bsd_}/target/scala-${scala_major_ver}"
-assembly_jar="$(find ${assembly_path} -name "*-assembly*-SNAPSHOT-*.jar" -type f | uniq | head)"
+assembly_jar="$(find ${assembly_path} -name "*-assembly*.jar" -type f | uniq | head)"
+
+[[ -n "${assembly_jar}" ]] || quit_with "cannot find assembly jar"
 
 # Translate the ~ to absolute paths
 function tr_classpath { perl -pe "s@~@$HOME@g" "${sbt_path_root}/$@"; }
