@@ -59,6 +59,22 @@ def default():
     """ Default JVM Python Interface class """
     return forClass(javaClassName=PYTHON_INTERFACE_CLASSNAME)
 
-def list_to_vector_udf(col):
+def listToMLlibVectorUDF(col):
     """ Map struct column from list to MLlib vector """
     return Column(default().listToMLlibVectorUDF(col._jc))  # pylint: disable=W0212
+
+def registerPipeline(name, ordered_udf_names):
+    """ 
+    Given a sequence of @ordered_udf_names f1, f2, ..., fn
+    Create a pipelined UDF as fn(...f2(f1()))
+    """
+    assert len(ordered_udf_names) > 1, \
+        "must provide more than one ordered udf names"
+    return default().registerPipeline(name, ordered_udf_names)
+
+def registerUDF(name, function_body, schema):
+    """ 
+    Given a sequence of @ordered_udf_names f1, f2, ..., fn
+    Create a pipelined UDF as fn(...f2(f1()))
+    """
+    return _curr_sql_ctx().registerFunction(name, function_body, schema)
