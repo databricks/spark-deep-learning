@@ -45,8 +45,7 @@ from ..tests import SparkDLTestCase
 from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
 
 
-class GraphFactoryTest(SparkDLTestCase):
-
+class GraphPiecesTest(SparkDLTestCase):
 
     def test_spimage_converter_module(self):
         """ spimage converter module must preserve original image """
