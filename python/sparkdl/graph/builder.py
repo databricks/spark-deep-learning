@@ -152,25 +152,6 @@ class GraphFunction(object):
         self.input_names = input_names
         self.output_names = output_names
 
-    def dump(self, fpath):
-        """
-        Store the GraphFunction to a file
-
-        :param fpath: str or path, path to the serialized GraphFunction
-        """
-        assert isinstance(fpath, six.string_types)
-
-        gdef_bytes_fpath = "{}.gdef.bytes".format(fpath)
-        with open(gdef_bytes_fpath, 'wb') as fout:
-            gdef_bytes = self.graph_def.SerializeToString()
-            fout.write(gdef_bytes)
-
-        serialized = {"graph_def_file": gdef_bytes_fpath,
-                      "inputs": self.input_names,
-                      "outputs": self.output_names}
-        with open(fpath, 'w') as fout:
-            json.dump(serialized, fout)
-
     @classmethod
     def _fromKerasModelFile(cls, file_path):
         """
