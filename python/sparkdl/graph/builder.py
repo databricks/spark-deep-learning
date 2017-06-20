@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import json
 import logging
 import os
 import shutil
@@ -24,7 +23,7 @@ import keras.backend as K
 from keras.models import Model as KerasModel, load_model
 import tensorflow as tf
 
-import tensorframes.core as tfrm
+import tensorframes as tfs
 
 import sparkdl.graph.utils as tfx
 from sparkdl.utils import jvmapi as JVMAPI
@@ -85,17 +84,17 @@ class IsolatedSession(object):
         :param udf_name: str, name of the SQL UDF 
         :param fetches: list, output tensors of the graph
         :param feed_dict: dict, a dictionary that maps graph elements to input values
-        :param blocked: bool, whether the TensorFrame execution should be blocked based or row based
-        :param register: bool, whether this UDF should be registered
+        :param blocked: bool, if set to True, the TensorFrames execution should be blocked based or row based
+        :param register: bool, if set to True,  UDF should be registered
         :return: JVM function handle object
         """ 
         # pylint: disable=W0212
         # TODO: work with registered expansions
-        jvm_builder = JVMAPI.forClass(JVMAPI.MODEL_FACTORY_CLASSNAME)
-        tfrm._add_graph(self.graph, jvm_builder)
+        jvm_builder = JVMAPI.createTensorFramesModelBuilder()
+        tfs.core._add_graph(self.graph, jvm_builder)
 
-        fetch_names = [tfx.tensor_name(self.graph, tnsr) for tnsr in fetches]
-        fetch_shapes = [tfx.get_shape(self.graph, tnsr) for tnsr in fetches]
+        fetch_names = [tfx.tensor_name(self.graph, fetch) for fetch in fetches]
+        fetch_shapes = [tfx.get_shape(self.graph, fetch) for fetch in fetches]
         placeholder_names = []
         placeholder_shapes = []
 
@@ -113,7 +112,7 @@ class IsolatedSession(object):
         jvm_builder.shape(fetch_names + placeholder_names, fetch_shapes + placeholder_shapes)
         jvm_builder.fetches(fetch_names)
         placeholder_op_names = [tfx.op_name(self.graph, tnsr_name) for tnsr_name in placeholder_names]
-        tfrm._add_inputs(jvm_builder, feed_dict, placeholder_op_names)
+        tfs.core._add_inputs(jvm_builder, feed_dict, placeholder_op_names)
 
         if register:
             return jvm_builder.registerUDF(udf_name, blocked)
