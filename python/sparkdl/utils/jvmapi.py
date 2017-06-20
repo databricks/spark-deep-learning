@@ -61,4 +61,4 @@ def default():
 
 def list_to_vector_udf(col):
     """ Map struct column from list to MLlib vector """
-    return Column(default().listToVectorFunction(col._jc))  # pylint: disable=W0212
+    return Column(default().listToMLlibVectorUDF(col._jc))  # pylint: disable=W0212
