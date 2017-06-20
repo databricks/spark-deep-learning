@@ -37,7 +37,7 @@ from ..tests import SparkDLTestCase
 from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
 
 
-class GraphBuilderTest(SparkDLTestCase):
+class GraphFunctionWithIsolatedSessionTest(SparkDLTestCase):
 
     def test_tf_consistency(self):
         """ Should get the same graph as running pure tf """
@@ -110,7 +110,6 @@ class GraphBuilderTest(SparkDLTestCase):
             self.assertEqual(tfx.tensor_name(g, z), "z:0")
             self.assertEqual(tfx.tensor_name(g, x), "x:0")
 
-
     def test_import_export_graph_function(self):
         """ Function import and export must be consistent """
 
@@ -120,7 +119,7 @@ class GraphBuilderTest(SparkDLTestCase):
             gfn_ref = issn.asGraphFunction([x], [z])
 
         with IsolatedSession() as issn:
-            feeds, fetches = issn.importGraphFunction(gfn_ref, name="")
+            feeds, fetches = issn.importGraphFunction(gfn_ref, prefix="")
             gfn_tgt = issn.asGraphFunction(feeds, fetches)
 
         self.assertEqual(gfn_tgt.input_names, gfn_ref.input_names)
@@ -144,14 +143,14 @@ class GraphBuilderTest(SparkDLTestCase):
         model_ref = InceptionV3(weights="imagenet")
         preds_ref = model_ref.predict(imgs_iv3_input)
 
-        with IsolatedSession(keras=True) as issn:
+        with IsolatedSession(using_keras=True) as issn:
             K.set_learning_phase(0)
             model = InceptionV3(weights="imagenet")
             gfn = issn.asGraphFunction(model.inputs, model.outputs)
 
-        with IsolatedSession(keras=True) as issn:
+        with IsolatedSession(using_keras=True) as issn:
             K.set_learning_phase(0)
-            feeds, fetches = issn.importGraphFunction(gfn, name="InceptionV3")
+            feeds, fetches = issn.importGraphFunction(gfn, prefix="InceptionV3")
             preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_iv3_input})
 
         self.assertTrue(np.all(preds_tgt == preds_ref))

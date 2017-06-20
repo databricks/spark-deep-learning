@@ -48,7 +48,7 @@ def buildSpImageConverter(img_dtype):
         # This is the default behavior of Python Image Library
         shape = tf.reshape(tf.stack([height, width, num_channels], axis=0),
                            shape=(3,), name='shape')
-        if SparkMode.RGB == img_dtype:
+        if img_dtype == SparkMode.RGB:
             image_uint8 = tf.decode_raw(image_buffer, tf.uint8, name="decode_raw")
             image_float = tf.to_float(image_uint8)
         else:
@@ -63,6 +63,10 @@ def buildSpImageConverter(img_dtype):
     return gfn
 
 def buildFlattener():
+    """ 
+    Build a flattening layer to remove the extra leading tensor dimension. 
+    e.g. a tensor of shape [1, W, H, C] will have a shape [W, H, C] after applying this.
+    """
     with IsolatedSession() as issn:
         mat_input = tf.placeholder(tf.float32, [None, None])
         mat_output = tf.identity(tf.reshape(mat_input, shape=[-1]), name='output')

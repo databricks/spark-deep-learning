@@ -97,7 +97,8 @@ def get_tensor(graph, tfobj_or_name):
 
 def as_tensor_name(name):
     """
-    Derive tf.Tensor name from an op/tensor name
+    Derive tf.Tensor name from an op/tensor name.
+    We do not check if the tensor exist (as no graph parameter is passed in).
 
     :param name: op name or tensor name
     """
@@ -111,6 +112,7 @@ def as_tensor_name(name):
 def as_op_name(name):
     """
     Derive tf.Operation name from an op/tensor name
+    We do not check if the operation exist (as no graph parameter is passed in).
 
     :param name: op name or tensor name
     """
@@ -165,7 +167,9 @@ def validated_input(graph, tfobj_or_name):
 
 def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
     """
-    Converting all variables into constants
+    Create a static view of the graph by
+    1. Converting all variables into constants
+    2. Removing graph elements not reachacble to `fetches`
 
     :param graph: tf.Graph, the graph to be frozen
     :param fetches: list, graph elements representing the outputs of the graph

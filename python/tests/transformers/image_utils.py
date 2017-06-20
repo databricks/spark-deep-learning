@@ -70,7 +70,7 @@ class ImageNetOutputComparisonTestCase(unittest.TestCase):
         """
         values1 & values2 are {key => numpy array}.
         """
-        for k, v1 in values1.iteritems():
+        for k, v1 in values1.items():
             v1f = v1.astype(np.float32)
             v2f = values2[k].astype(np.float32)
             np.testing.assert_array_equal(v1f, v2f)
@@ -79,14 +79,14 @@ class ImageNetOutputComparisonTestCase(unittest.TestCase):
         """
         preds1 & preds2 are {key => (class, description, probability)}.
         """
-        for k, v1 in preds1.iteritems():
+        for k, v1 in preds1.items():
             self.assertEqual([v[1] for v in v1], [v[1] for v in preds2[k]])
 
     def compareClassSets(self, preds1, preds2):
         """
         values1 & values2 are {key => numpy array}.
         """
-        for k, v1 in preds1.iteritems():
+        for k, v1 in preds1.items():
             self.assertEqual(set([v[1] for v in v1]), set([v[1] for v in preds2[k]]))
 
 

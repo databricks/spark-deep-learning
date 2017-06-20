@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 
-import random
-
 from keras.applications import inception_v3
 import numpy as np
 import tensorflow as tf
@@ -34,27 +32,32 @@ from .image_utils import getSampleImageDF, getSampleImageList
 
 class NamedImageTransformerImagenetTest(SparkDLTestCase):
 
-    def test_inceptionV3_prediction(self):
-        """
-        Test inceptionV3 using keras, tensorflow and sparkDL
+    @classmethod
+    def setUpClass(cls):
+        super(NamedImageTransformerImagenetTest, cls).setUpClass()
 
-        We run the sparkDL test with and without resizing beforehand
-        """
+        # Compute values used by multiple tests.
         imgFiles, images = getSampleImageList()
         imageArray = np.empty((len(images), 299, 299, 3), 'uint8')
         for i, img in enumerate(images):
             assert img is not None and img.mode == "RGB"
             imageArray[i] = np.array(img.resize((299, 299)))
 
-        # Basic keras flow
-        # We predict the class probabilities for the images in our test library using keras API.
+        # Predict the class probabilities for the images in our test library using keras API.
         prepedImaged = inception_v3.preprocess_input(imageArray.astype('float32'))
         model = inception_v3.InceptionV3()
         kerasPredict = model.predict(prepedImaged)
+        # These values are used by multiple tests so cache them on class setup.
+        cls.imageArray = imageArray
+        cls.kerasPredict = kerasPredict
 
-        # test: _buildTfGraphForName
-        # Run the graph produced by _buildTfGraphForName and compare the result to above keras
-        # result.
+    def test_buildtfgraphforname(self):
+        """"
+        Run the graph produced by _buildtfgraphforname and compare the result to above keras
+        result.
+        """
+        imageArray = self.imageArray
+        kerasPredict = self.kerasPredict
         modelGraphInfo = _buildTFGraphForName("InceptionV3", False)
         graph = modelGraphInfo["graph"]
         sess = tf.Session(graph=graph)
@@ -66,17 +69,20 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         self.assertEqual(kerasPredict.shape, tfPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, tfPredict)
 
-        imageType = imageIO.pilModeLookup["RGB"]
-
+    def test_DeepImagePredictorNoReshape(self):
+        """
+        Run sparkDL inceptionV3 transformer on resized images and compare result to cached keras
+        result.
+        """
+        imageArray = self.imageArray
+        kerasPredict = self.kerasPredict
         def rowWithImage(img):
             # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
-            row = imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)
+            row = imageIO.imageArrayToStruct(img.astype('uint8'), imageIO.SparkMode.RGB)
             # re-order row to avoid pyspark bug
             return [[getattr(row, field.name) for field in imageIO.imageSchema]]
 
         # test: predictor vs keras on resized images
-        # Run sparkDL inceptionV3 transformer on resized images and compare result to above keras
-        # result.
         rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
         dfType = StructType([StructField("image", imageIO.imageSchema)])
         imageDf = rdd.toDF(dfType)
@@ -89,9 +95,14 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         self.assertEqual(kerasPredict.shape, dfPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, dfPredict)
 
-        # test: predictor vs keras on raw images
-        # Run sparkDL inceptionV3 transformer on raw (original size) images and compare result to
-        # above keras (using keras resizing) result.
+    def test_DeepImagePredictor(self):
+        """
+        Run sparkDL inceptionV3 transformer on raw (original size) images and compare result to
+        above keras (using keras resizing) result.
+        """
+        kerasPredict = self.kerasPredict
+        transformer = DeepImagePredictor(inputCol='image', modelName="InceptionV3",
+                                         outputCol="prediction",)
         origImgDf = getSampleImageDF()
         fullPredict = transformer.transform(origImgDf).collect()
         fullPredict = np.array([i.prediction for i in fullPredict])
