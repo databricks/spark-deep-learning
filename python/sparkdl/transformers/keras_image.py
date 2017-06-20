@@ -20,6 +20,7 @@ from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql.functions import udf
 
+import sparkdl.graph.utils as tfx
 from sparkdl.image import imageIO
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.param import (
@@ -104,10 +105,10 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol):
             with g.as_default():
                 K.set_learning_phase(0)  # Testing phase
                 model = load_model(self.getModelFile())
-                out_op_name = utils.op_name(model.output)
+                out_op_name = tfx.op_name(g, model.output)
                 self._inputTensor = model.input.name
                 self._outputTensor = model.output.name
-                return utils.stripAndFreezeGraph(g.as_graph_def(add_shapes=True), sess, [out_op_name])
+                return tfx.strip_and_freeze_until([out_op_name], g, sess, return_graph=True)
 
     def _loadedImageCol(self):
         return "__sdl_img"

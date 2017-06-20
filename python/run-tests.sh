@@ -93,11 +93,20 @@ else
   noseOptionsArr="$(find "$targetDir" -type f | grep "\.py" | grep -v "\.pyc" | grep -v "\.py~" | grep -v "__init__.py")"
 fi
 
+# Limit TensorFlow error message
+# https://github.com/tensorflow/tensorflow/issues/1258
+export TF_CPP_MIN_LOG_LEVEL=3
+
 for noseOptions in $noseOptionsArr
 do
   echo "============= Running the tests in: $noseOptions ============="
   # The grep below is a horrible hack for spark 1.x: we manually remove some log lines to stay below the 4MB log limit on Travis.
-  $PYSPARK_DRIVER_PYTHON -m "nose" --with-coverage -v --exe "$noseOptions" 2>&1 | grep -vE "INFO (ParquetOutputFormat|SparkContext|ContextCleaner|ShuffleBlockFetcherIterator|MapOutputTrackerMaster|TaskSetManager|Executor|MemoryStore|CacheManager|BlockManager|DAGScheduler|PythonRDD|TaskSchedulerImpl|ZippedPartitionsRDD2)";
+  $PYSPARK_DRIVER_PYTHON \
+      -m "nose" \
+      --with-coverage \
+      --nologcapture \
+      -v --exe "$noseOptions" \
+      2>&1 | grep -vE "INFO (ParquetOutputFormat|SparkContext|ContextCleaner|ShuffleBlockFetcherIterator|MapOutputTrackerMaster|TaskSetManager|Executor|MemoryStore|CacheManager|BlockManager|DAGScheduler|PythonRDD|TaskSchedulerImpl|ZippedPartitionsRDD2)";
 
   # Exit immediately if the tests fail.
   # Since we pipe to remove the output, we need to use some horrible BASH features:

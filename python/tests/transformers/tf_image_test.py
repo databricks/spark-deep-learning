@@ -20,6 +20,7 @@ from keras.preprocessing.image import img_to_array, load_img
 import numpy as np
 import tensorflow as tf
 
+import sparkdl.graph.utils as tfx
 from sparkdl.image.imageIO import imageStructToArray
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.tf_image import TFImageTransformer
@@ -133,8 +134,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                                                         InceptionV3Constants.INPUT_SHAPE)
                 preprocessed = preprocess_input(resized_images)
                 model = InceptionV3(input_tensor=preprocessed, weights="imagenet")
-                graph = utils.stripAndFreezeGraph(g.as_graph_def(add_shapes=True), sess,
-                                                  [model.output])
+                graph = tfx.strip_and_freeze_until([model.output], g, sess, return_graph=True)
 
         transformer = TFImageTransformer(inputCol="image", outputCol=output_col, graph=graph,
                                          inputTensor=image_string, outputTensor=model.output,
