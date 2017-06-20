@@ -104,7 +104,7 @@ def as_tensor_name(name):
     """
     assert isinstance(name, six.string_types)
     name_parts = name.split(":")
-    assert len(name_parts) <= 2
+    assert len(name_parts) <= 2, name_parts
     if len(name_parts) < 2:
         name += ":0"
     return name
@@ -118,7 +118,7 @@ def as_op_name(name):
     """
     assert isinstance(name, six.string_types)
     name_parts = name.split(":")
-    assert len(name_parts) <= 2
+    assert len(name_parts) <= 2, name_parts
     return name_parts[0]
 
 def op_name(graph, tfobj_or_name):
