@@ -235,9 +235,10 @@ class GraphFunction(object):
             gdef_bytes = fin.read()
             gdef = tf.GraphDef.FromString(gdef_bytes)  # pylint: disable=E1101
 
-        gfn = cls(graph_def=gdef,
-                  input_names=serialized["inputs"],
-                  output_names=serialized["outputs"])
+        return cls(graph_def=gdef,
+                   input_names=serialized["inputs"],
+                   output_names=serialized["outputs"])
+
     @classmethod
     def _fromKerasModelFile(cls, file_path):
         """
