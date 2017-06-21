@@ -90,6 +90,7 @@ class IsolatedSession(object):
         """ 
         # pylint: disable=W0212
         # TODO: work with registered expansions
+        # TODO: 
         jvm_builder = JVMAPI.createTensorFramesModelBuilder()
         tfs.core._add_graph(self.graph, jvm_builder)
 

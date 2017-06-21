@@ -47,6 +47,9 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
 
     def test_simple_keras_udf(self):
         """ Simple Keras sequential model """
+        # Notice that the input layer for a image UDF model
+        # must be of shape (width, height, numChannels)
+        # The leading batch size is taken care of by Keras
         with IsolatedSession(using_keras=True):
             model = Sequential()
             model.add(Flatten(input_shape=(640,480,3)))
@@ -71,8 +74,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
     def test_composite_udf(self):
         """ Composite Keras Image UDF registration """
         df = get_image_paths_df(self.sql)
-        df.show()
-
+        
         def keras_load_img(fpath):
             from keras.preprocessing.image import load_img, img_to_array
             import numpy as np
@@ -123,7 +125,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         data = [Row(x=float(x)) for x in range(5)]
         df = self.sql.createDataFrame(data)
         with IsolatedSession() as issn:
-            # The placeholder that corresponds to column 'x'
+            # The placeholder that corresponds to column 'x' as a whole column
             x = tf.placeholder(tf.double, shape=[], name="x")
             # The output that adds 3 to x
             z = tf.add(x, 3, name='z')
@@ -141,7 +143,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         data = [Row(x=float(x)) for x in range(5)]
         df = self.sql.createDataFrame(data)
         with IsolatedSession() as issn:
-            # The placeholder that corresponds to column 'x'
+            # The placeholder that corresponds to column 'x' as a whole column
             x = tf.placeholder(tf.double, shape=[None], name="x")
             # The output that adds 3 to x
             z = tf.add(x, 3, name='z')

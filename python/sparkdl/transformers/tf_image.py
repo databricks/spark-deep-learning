@@ -35,17 +35,18 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol):
     Applies the Tensorflow graph to the image column in DataFrame.
 
     Restrictions of the current API:
+
     * Does not use minibatches, which is a major low-hanging fruit for performance.
     * Only one output node can be specified.
     * The output is expected to be an image or a 1-d vector.
     * All images in the dataframe are expected be of the same numerical data type
-      (i.e. the dtype of the values in the numpy array representation is the same).
+      (i.e. the dtype of the values in the numpy array representation is the same.)
 
     We assume all graphs have a "minibatch" dimension (i.e. an unknown leading
     dimension) in the tensor shapes.
 
-    Note: The input tensorflow graph should have appropriate weights constantified,
-    since a new session is created inside this transformer.
+    .. note:: The input tensorflow graph should have appropriate weights constantified,
+              since a new session is created inside this transformer.
     """
 
     USER_GRAPH_NAMESPACE = 'given'
