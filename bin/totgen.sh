@@ -25,8 +25,7 @@ function mk_classpath { local IFS=':'; echo "$*"; }
 
 # Spark packages are cached in local ivy cache
 (cd "${_bsd_}"
- #./sbt genClasspath assembly
- ./sbt genClasspath
+ ./sbt assembly genClasspath
  cd "${sbt_path_root}"
  rm -f SPARK_PACKAGE_PYREQ && touch $_
  for spkg in $(cat SBT_SPARK_PACKAGE_CLASSPATH | tr ':' '\n'); do 
