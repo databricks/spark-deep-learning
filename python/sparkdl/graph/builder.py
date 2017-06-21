@@ -33,7 +33,7 @@ logger = logging.getLogger('sparkdl')
 class IsolatedSession(object):
     """
     Provide an isolated session to work with mixed Keras and TensorFlow
-    graph segments. 
+    graph segments.
 
     It provides utility functions to
     - importing existing `GraphFunction` object as a subgraph
@@ -69,36 +69,74 @@ class IsolatedSession(object):
     def run(self, *args, **kargs):
         """
         This method delegate the TensorFlow graph execution
-        to the underlying tf.Session object to perform 
+        to the underlying tf.Session object to perform
         one step of graph computation.
 
         All the parameters are defined according to `tf.Session.run`
-        Reference: https://www.tensorflow.org/api_docs/python/tf/Session#run        
+        Reference: https://www.tensorflow.org/api_docs/python/tf/Session#run
         """
         return self.sess.run(*args, **kargs)
 
-    def asUDF(self, udf_name, fetches, feed_dict=None, blocked=False, register=True):
-        """ 
-        Make the TensorFlow graph as a SQL UDF 
+    def asUDF(self, udf_name, fetches, feeds_to_fields_map=None, blocked=False, register=True):
+        """
+        Register the graph in this session as a Spark SQL UserDefinedFunction.
 
-        :param udf_name: str, name of the SQL UDF 
+        The following example creates a UDF that takes the input
+        from a DataFrame column named 'image_col' and produce some random prediction.
+
+        .. code-block:: python
+
+            import sparkdl.graph.utils as tfx
+
+            with IsolatedSession(using_keras=True) as issn:
+                model = Sequential()
+                model.add(Flatten(input_shape=(640,480,3)))
+                model.add(Dense(units=64))
+                model.add(Activation('relu'))
+                model.add(Dense(units=10))
+                model.add(Activation('softmax'))
+                # Initialize the variables
+                init_op = tf.global_variables_initializer()
+                issn.run(init_op)
+                # Export the model as UDF
+                issn.asUDF('my_keras_model_udf',
+                           model.outputs,
+                           {tfx.op_name(issn.graph, model.inputs[0]): 'image_col'})
+
+        :param udf_name: str, name of the SQL UDF
         :param fetches: list, output tensors of the graph
-        :param feed_dict: dict, a dictionary that maps graph elements to input values
-        :param blocked: bool, if set to True, the TensorFrames execution should be blocked based or row based
-        :param register: bool, if set to True,  UDF should be registered
+        :param feeds_to_fields_map: a dict of str -> str,
+                                    The key is the name of a placeholder in the current
+                                    TensorFlow graph of computation.
+                                    The value is the name of a column in the dataframe.
+                                    For now, only the top-level fields in a dataframe are supported.
+
+                                    .. note:: For any placeholder that is
+                                              not specified in the feed dictionary,
+                                              the name of the input column is assumed to be
+                                              the same as that of the placeholder.
+
+        :param blocked: bool, if set to True, the TensorFrames will execute the function
+                        over blocks/batches of rows. This should provide better performance.
+                        Otherwise, the function is applied to individual rows
+        :param register: bool, if set to True, the SQL UDF will be registered.
+                         In this case, it will be accessible in SQL queries.
         :return: JVM function handle object
-        """ 
+        """
         # pylint: disable=W0212
-        # TODO: work with registered expansions
-        # TODO: 
+        # TODO: Work with TensorFlow's registered expansions
+        # https://github.com/tensorflow/tensorflow/blob/v1.1.0/tensorflow/python/client/session.py#L74
+        # TODO: Most part of this implementation might be better off moved to TensorFrames
         jvm_builder = JVMAPI.createTensorFramesModelBuilder()
         tfs.core._add_graph(self.graph, jvm_builder)
 
+        # Obtain the fetches and their shapes
         fetch_names = [tfx.tensor_name(self.graph, fetch) for fetch in fetches]
         fetch_shapes = [tfx.get_shape(self.graph, fetch) for fetch in fetches]
+
+        # Traverse the graph nodes and obtain all the placeholders and their shapes
         placeholder_names = []
         placeholder_shapes = []
-
         for node in self.graph.as_graph_def(add_shapes=True).node:
             if len(node.input) == 0 and str(node.op) == 'Placeholder':
                 tnsr_name = tfx.tensor_name(self.graph, node.name)
@@ -110,19 +148,22 @@ class IsolatedSession(object):
                 except ValueError:
                     pass
 
+        # Passing fetches and placeholders to TensorFrames
         jvm_builder.shape(fetch_names + placeholder_names, fetch_shapes + placeholder_shapes)
         jvm_builder.fetches(fetch_names)
-        placeholder_op_names = [tfx.op_name(self.graph, tnsr_name) for tnsr_name in placeholder_names]
-        tfs.core._add_inputs(jvm_builder, feed_dict, placeholder_op_names)
+        # Passing feeds to TensorFrames
+        placeholder_op_names = [tfx.op_name(self.graph, name) for name in placeholder_names]
+        # Passing the graph input to DataFrame column mapping and additional placeholder names
+        tfs.core._add_inputs(jvm_builder, feeds_to_fields_map, placeholder_op_names)
 
         if register:
             return jvm_builder.registerUDF(udf_name, blocked)
         else:
             return jvm_builder.makeUDF(udf_name, blocked)
-                
+
     def asGraphFunction(self, inputs, outputs, strip_and_freeze=True):
         """
-        Export the graph in this session as a GraphFunction object
+        Export the graph in this session as a :py:class:`GraphFunction` object
 
         :param inputs: list, graph elements representing the inputs
         :param outputs: list, graph elements representing the outputs
@@ -139,13 +180,16 @@ class IsolatedSession(object):
     def importGraphFunction(self, gfn, input_map=None, prefix="GFN-IMPORT", **gdef_kargs):
         """
         Import a GraphFunction object into the current session.
-        The API is similar to `tf.import_graph_def`
-        https://www.tensorflow.org/api_docs/python/tf/import_graph_def
+        The API is similar to :py:meth:`tf.import_graph_def`
+
+        .. _a link: https://www.tensorflow.org/api_docs/python/tf/import_graph_def
 
         :param gfn: GraphFunction, an object representing a TensorFlow graph and its inputs and outputs
         :param input_map: dict, mapping from input names to existing graph elements
-        :param prefix: str, the scope for all the variables in the GraphFunction's elements
-                       (https://www.tensorflow.org/programmers_guide/variable_scope)
+        :param prefix: str, the scope for all the variables in the :py:class:`GraphFunction` elements
+
+                       .. _a link: https://www.tensorflow.org/programmers_guide/variable_scope
+
         :param gdef_kargs: other keyword elements for TensorFlow's `import_graph_def`
         """
         try:
@@ -239,7 +283,7 @@ class GraphFunction(object):
     @classmethod
     def fromList(cls, functions):
         """
-        Construct a single GraphFunction from a list of graph functions. 
+        Construct a single GraphFunction from a list of graph functions.
         Each function in the list corresponds to a stage.
 
         Each function is also scoped by a scope name, in order to avoid
@@ -269,12 +313,12 @@ class GraphFunction(object):
 
         # Acquire initial placeholders' properties
         # We want the input names of the merged function are not under scoped
-        # In this way users of the merged function could still use the input names 
+        # In this way users of the merged function could still use the input names
         # of the first function to get the correct input tensors.
         first_input_info = []
         with IsolatedSession() as issn:
             _, first_gfn = functions[0]
-            feeds, _ = issn.importGraphFunction(first_gfn, prefix='')            
+            feeds, _ = issn.importGraphFunction(first_gfn, prefix='')
             for tnsr in feeds:
                 name = tfx.op_name(issn.graph, tnsr)
                 first_input_info.append((tnsr.dtype, tnsr.shape, name))
@@ -301,7 +345,7 @@ class GraphFunction(object):
                 prev_outputs = fetches
 
             # Add a non-scoped output name as the output node
-            # So that users can still use the output name of the last function's output 
+            # So that users can still use the output name of the last function's output
             # to fetch the correct output tensors
             last_output_names = functions[-1][1].output_names
             last_outputs = []

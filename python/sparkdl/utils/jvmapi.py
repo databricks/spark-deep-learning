@@ -77,7 +77,5 @@ def registerPipeline(name, ordered_udf_names):
     return default().registerPipeline(name, ordered_udf_names)
 
 def registerUDF(name, function_body, schema):
-    """ 
-    Given a single UDF
-    """
+    """ Register a single UDF """
     return _curr_sql_ctx().registerFunction(name, function_body, schema)

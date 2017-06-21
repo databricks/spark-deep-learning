@@ -59,11 +59,23 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
 
         registerKerasImageUDF("my_inception_udf", InceptionV3(weights="imagenet"), keras_load_img)
 
-    If the `preprocessor` is not provided, we assume the function will be applied to
-    a column encoded in 
+    To use a customized Keras model, we can save it and pass the file path as parameter.
+    
+    .. code-block:: python
+        model = Sequential()
+        model.add(Dense(32, input_dim=784))
+        model.save('path/to/my/model.h5')
+        
+        registerKerasImageUDF("my_custom_keras_model_udf", "path/to/my/model.h5")
 
-    :param udf_name: str, name of the UserDefinedFunction
-    :param keras_model_file_path: str, path to the HDF5 keras model file
+    If the `preprocessor` is not provided, we assume the function will be applied to
+    a (struct) column encoded in [sparkdl.image.imageIO.imageSchema]. 
+    The output will be a single (struct) column containing the resulting tensor data.
+
+    :param udf_name: str, name of the UserDefinedFunction. If the name exists, it will be overwritten.
+    :param keras_model_or_file_path: str or KerasModel, 
+                                     either a path to the HDF5 Keras model file
+                                     or an actual loaded Keras model
     :param preprocessor: function, optional, a function that 
                          converts image file path to image tensor/ndarray
                          in the correct shape to be served as input to the Keras model
@@ -102,9 +114,15 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
 
 def _serialize_and_reload_with(preprocessor):
     """
-    Load a preprocessor function (image_file_path => image_tensor)
+    Retruns a function that performs the following steps
+
+    * takes a [sparkdl.imageSchema] encoded image,
+    * serialize and reload it with provided proprocessor function 
+      * the preprocessor: (image_file_path => image_tensor)
+    * encode the output image tensor with [sparkdl.imageSchema]    
     
     :param preprocessor: function, mapping from image file path to an image tensor
+                         (image_file_path => image_tensor)
     :return: the UDF preprocessor implementation
     """
     def udf_impl(spimg):

@@ -20,6 +20,7 @@ import numpy as np
 import tensorflow as tf
 from keras.applications import InceptionV3
 from keras.applications import inception_v3 as iv3
+import keras.backend as K
 from keras.layers import Activation, Dense, Flatten, Input
 from keras.models import Sequential
 
@@ -28,6 +29,7 @@ from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
 from sparkdl.graph.builder import IsolatedSession
+import sparkdl.graph.utils as tfx
 from sparkdl.udf.keras_image_model import registerKerasImageUDF
 from sparkdl.utils import jvmapi as JVMAPI
 from sparkdl.image.imageIO import imageSchema, imageArrayToStruct
@@ -50,17 +52,25 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         # Notice that the input layer for a image UDF model
         # must be of shape (width, height, numChannels)
         # The leading batch size is taken care of by Keras
-        with IsolatedSession(using_keras=True):
+        with IsolatedSession(using_keras=True) as issn:
             model = Sequential()
             model.add(Flatten(input_shape=(640,480,3)))
             model.add(Dense(units=64))
             model.add(Activation('relu'))
             model.add(Dense(units=10))
             model.add(Activation('softmax'))
-
+            # Initialize the variables
+            init_op = tf.global_variables_initializer()
+            issn.run(init_op)
+            issn.asUDF('my_keras_model_udf',
+                       model.outputs,
+                       {tfx.op_name(issn.graph, model.inputs[0]): 'image_col'})
+            # Run the training procedure
+            # Export the graph in this IsolatedSession as a GraphFunction
+            # gfn = issn.asGraphFunction(model.inputs, model.outputs)
             fh_name = "test_keras_simple_sequential_model"
-            registerKerasImageUDF(fh_name, model)                              
-            
+            registerKerasImageUDF(fh_name, model)
+
         self._assert_function_exists(fh_name)
 
     def test_pretrained_keras_udf(self):
@@ -74,11 +84,11 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
     def test_composite_udf(self):
         """ Composite Keras Image UDF registration """
         df = get_image_paths_df(self.sql)
-        
+
         def keras_load_img(fpath):
             from keras.preprocessing.image import load_img, img_to_array
             import numpy as np
-            from pyspark.sql import Row            
+            from pyspark.sql import Row
             img = load_img(fpath, target_size=(299, 299))
             return img_to_array(img).astype(np.uint8)
 
@@ -90,7 +100,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
 
         def keras_load_spimg(fpath):
             return imageArrayToStruct(keras_load_img(fpath))
-    
+
         # Load image with Keras and store it in our image schema
         JVMAPI.registerUDF('keras_load_spimg', keras_load_spimg, imageSchema)
         JVMAPI.registerUDF('pil_load_spimg', pil_load_spimg, imageSchema)
@@ -116,7 +126,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         df_images.createOrReplaceTempView("_test_images_df")
         df3 = run_sql("select iv3_img_pred(image) as preds from _test_images_df")
         preds3 = np.array(df3.select("preds").rdd.collect())
-                                  
+
         self.assertTrue(len(preds1) == len(preds2))
         np.testing.assert_allclose(preds1, preds2)
         np.testing.assert_allclose(preds2, preds3)
@@ -131,7 +141,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             z = tf.add(x, 3, name='z')
             # Let's register these computations in SQL.
             issn.asUDF("map_rows_sql_1", [z])
-            
+
         # Here we go, for the SQL users, straight from PySpark.
         df2 = df.selectExpr("map_rows_sql_1(x) AS z")
         print("df2 = %s" % df2)
