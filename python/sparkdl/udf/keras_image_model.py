@@ -16,10 +16,11 @@
 
 import logging
 
-from ..graph.builder import GraphFunction, IsolatedSession
-from ..graph.pieces import buildSpImageConverter, buildFlattener
-from ..image.imageIO import imageSchema
-from ..utils import jvmapi as JVMAPI
+from sparkdl.graph.builder import GraphFunction, IsolatedSession
+from sparkdl.graph.pieces import buildSpImageConverter, buildFlattener
+from sparkdl.graph.spark_utils import makeGraphUDF
+from sparkdl.image.imageIO import imageSchema
+from sparkdl.utils import jvmapi as JVMAPI
 
 logger = logging.getLogger('sparkdl')
 
@@ -29,17 +30,24 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
     The function takes a column (formatted in :py:const:`sparkdl.image.imageIO.imageSchema`)
     and produce a prediction as a probability over of a set of known categories.
 
-    .. code-block:: python
-
-        registerKerasImageUDF("udf_name", "path/to/my/keras/model.h5", preprocessor)
-
-    Or, we can provide the model
+    The user can provide an existing model in Keras as follows.
 
     .. code-block:: python
 
         from keras.applications import InceptionV3
-        registerKerasImageUDF("udf_name", InceptionV3(weights="imagenet"), preprocessor)    
+        registerKerasImageUDF("udf_name", InceptionV3(weights="imagenet"))
 
+    To use a customized Keras model, we can save it and pass the file path as parameter.
+    
+    .. code-block:: python
+    
+        # Assume we have a compiled and trained Keras model
+        model.save('path/to/my/model.h5')
+        
+        registerKerasImageUDF("my_custom_keras_model_udf", "path/to/my/model.h5")
+
+    If there are further preprocessing steps are required to prepare the images,
+    the user has the option to provide a preprocessing function :py:obj:`preprocessor`.
     The :py:obj:`preprocessor` converts a file path into a image array.
     This function is usually introduced in Keras workflow, as in the following example.
 
@@ -59,14 +67,6 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
 
         registerKerasImageUDF("my_inception_udf", InceptionV3(weights="imagenet"), keras_load_img)
 
-    To use a customized Keras model, we can save it and pass the file path as parameter.
-    
-    .. code-block:: python
-        model = Sequential()
-        model.add(Dense(32, input_dim=784))
-        model.save('path/to/my/model.h5')
-        
-        registerKerasImageUDF("my_custom_keras_model_udf", "path/to/my/model.h5")
 
     If the `preprocessor` is not provided, we assume the function will be applied to
     a (struct) column encoded in [sparkdl.image.imageIO.imageSchema]. 
@@ -101,7 +101,7 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
 
     with IsolatedSession() as issn:
         _, fetches = issn.importGraphFunction(gfn, prefix='')
-        issn.asUDF(keras_udf_name, fetches)
+        makeGraphUDF(issn.graph, keras_udf_name, fetches)
         ordered_udf_names.append(keras_udf_name)
 
     if len(ordered_udf_names) > 1:

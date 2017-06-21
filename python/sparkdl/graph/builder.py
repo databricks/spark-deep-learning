@@ -23,10 +23,7 @@ import keras.backend as K
 from keras.models import Model as KerasModel, load_model
 import tensorflow as tf
 
-import tensorframes as tfs
-
 import sparkdl.graph.utils as tfx
-from sparkdl.utils import jvmapi as JVMAPI
 
 logger = logging.getLogger('sparkdl')
 
@@ -76,90 +73,6 @@ class IsolatedSession(object):
         Reference: https://www.tensorflow.org/api_docs/python/tf/Session#run
         """
         return self.sess.run(*args, **kargs)
-
-    def asUDF(self, udf_name, fetches, feeds_to_fields_map=None, blocked=False, register=True):
-        """
-        Register the graph in this session as a Spark SQL UserDefinedFunction.
-
-        The following example creates a UDF that takes the input
-        from a DataFrame column named 'image_col' and produce some random prediction.
-
-        .. code-block:: python
-
-            import sparkdl.graph.utils as tfx
-
-            with IsolatedSession(using_keras=True) as issn:
-                model = Sequential()
-                model.add(Flatten(input_shape=(640,480,3)))
-                model.add(Dense(units=64))
-                model.add(Activation('relu'))
-                model.add(Dense(units=10))
-                model.add(Activation('softmax'))
-                # Initialize the variables
-                init_op = tf.global_variables_initializer()
-                issn.run(init_op)
-                # Export the model as UDF
-                issn.asUDF('my_keras_model_udf',
-                           model.outputs,
-                           {tfx.op_name(issn.graph, model.inputs[0]): 'image_col'})
-
-        :param udf_name: str, name of the SQL UDF
-        :param fetches: list, output tensors of the graph
-        :param feeds_to_fields_map: a dict of str -> str,
-                                    The key is the name of a placeholder in the current
-                                    TensorFlow graph of computation.
-                                    The value is the name of a column in the dataframe.
-                                    For now, only the top-level fields in a dataframe are supported.
-
-                                    .. note:: For any placeholder that is
-                                              not specified in the feed dictionary,
-                                              the name of the input column is assumed to be
-                                              the same as that of the placeholder.
-
-        :param blocked: bool, if set to True, the TensorFrames will execute the function
-                        over blocks/batches of rows. This should provide better performance.
-                        Otherwise, the function is applied to individual rows
-        :param register: bool, if set to True, the SQL UDF will be registered.
-                         In this case, it will be accessible in SQL queries.
-        :return: JVM function handle object
-        """
-        # pylint: disable=W0212
-        # TODO: Work with TensorFlow's registered expansions
-        # https://github.com/tensorflow/tensorflow/blob/v1.1.0/tensorflow/python/client/session.py#L74
-        # TODO: Most part of this implementation might be better off moved to TensorFrames
-        jvm_builder = JVMAPI.createTensorFramesModelBuilder()
-        tfs.core._add_graph(self.graph, jvm_builder)
-
-        # Obtain the fetches and their shapes
-        fetch_names = [tfx.tensor_name(self.graph, fetch) for fetch in fetches]
-        fetch_shapes = [tfx.get_shape(self.graph, fetch) for fetch in fetches]
-
-        # Traverse the graph nodes and obtain all the placeholders and their shapes
-        placeholder_names = []
-        placeholder_shapes = []
-        for node in self.graph.as_graph_def(add_shapes=True).node:
-            if len(node.input) == 0 and str(node.op) == 'Placeholder':
-                tnsr_name = tfx.tensor_name(self.graph, node.name)
-                tnsr = self.graph.get_tensor_by_name(tnsr_name)
-                try:
-                    tnsr_shape = tfx.get_shape(self.graph, tnsr)
-                    placeholder_names.append(tnsr_name)
-                    placeholder_shapes.append(tnsr_shape)
-                except ValueError:
-                    pass
-
-        # Passing fetches and placeholders to TensorFrames
-        jvm_builder.shape(fetch_names + placeholder_names, fetch_shapes + placeholder_shapes)
-        jvm_builder.fetches(fetch_names)
-        # Passing feeds to TensorFrames
-        placeholder_op_names = [tfx.op_name(self.graph, name) for name in placeholder_names]
-        # Passing the graph input to DataFrame column mapping and additional placeholder names
-        tfs.core._add_inputs(jvm_builder, feeds_to_fields_map, placeholder_op_names)
-
-        if register:
-            return jvm_builder.registerUDF(udf_name, blocked)
-        else:
-            return jvm_builder.makeUDF(udf_name, blocked)
 
     def asGraphFunction(self, inputs, outputs, strip_and_freeze=True):
         """
@@ -355,3 +268,4 @@ class GraphFunction(object):
             gfn = issn.asGraphFunction(first_inputs, last_outputs)
 
         return gfn
+

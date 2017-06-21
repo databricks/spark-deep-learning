@@ -29,6 +29,7 @@ from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
 from sparkdl.graph.builder import IsolatedSession
+from sparkdl.graph.spark_utils import makeGraphUDF
 import sparkdl.graph.utils as tfx
 from sparkdl.udf.keras_image_model import registerKerasImageUDF
 from sparkdl.utils import jvmapi as JVMAPI
@@ -62,9 +63,10 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             # Initialize the variables
             init_op = tf.global_variables_initializer()
             issn.run(init_op)
-            issn.asUDF('my_keras_model_udf',
-                       model.outputs,
-                       {tfx.op_name(issn.graph, model.inputs[0]): 'image_col'})
+            makeGraphUDF(issn.graph,
+                         'my_keras_model_udf',
+                         model.outputs,
+                         {tfx.op_name(issn.graph, model.inputs[0]): 'image_col'})
             # Run the training procedure
             # Export the graph in this IsolatedSession as a GraphFunction
             # gfn = issn.asGraphFunction(model.inputs, model.outputs)
@@ -140,7 +142,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             # The output that adds 3 to x
             z = tf.add(x, 3, name='z')
             # Let's register these computations in SQL.
-            issn.asUDF("map_rows_sql_1", [z])
+            makeGraphUDF(issn.graph, "map_rows_sql_1", [z])
 
         # Here we go, for the SQL users, straight from PySpark.
         df2 = df.selectExpr("map_rows_sql_1(x) AS z")
@@ -158,7 +160,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             # The output that adds 3 to x
             z = tf.add(x, 3, name='z')
             # Let's register these computations in SQL.
-            issn.asUDF("map_blocks_sql_1", [z], blocked=True)
+            makeGraphUDF(issn.graph, "map_blocks_sql_1", [z], blocked=True)
 
         # Here we go, for the SQL users, straight from PySpark.
         df2 = df.selectExpr("map_blocks_sql_1(x) AS z")
