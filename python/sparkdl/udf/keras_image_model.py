@@ -27,8 +27,12 @@ logger = logging.getLogger('sparkdl')
 def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None):
     """
     Create a Keras image model as a Spark SQL UDF.
-    The function takes a column (formatted in :py:const:`sparkdl.image.imageIO.imageSchema`)
-    and produce a prediction as a probability over of a set of known categories.
+    The UDF takes a column (formatted in :py:const:`sparkdl.image.imageIO.imageSchema`)
+    and produces the output of the given Keras model (e.g.
+    for `Inception V3 <https://keras.io/applications/#inceptionv3]>`_
+    it produces a real valued score vector over the ImageNet object categories).
+    For other models, the output could have different meanings.
+    Please consult the actual models specification.
 
     The user can provide an existing model in Keras as follows.
 
@@ -38,12 +42,12 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
         registerKerasImageUDF("udf_name", InceptionV3(weights="imagenet"))
 
     To use a customized Keras model, we can save it and pass the file path as parameter.
-    
+
     .. code-block:: python
-    
+
         # Assume we have a compiled and trained Keras model
         model.save('path/to/my/model.h5')
-        
+
         registerKerasImageUDF("my_custom_keras_model_udf", "path/to/my/model.h5")
 
     If there are further preprocessing steps are required to prepare the images,
@@ -61,7 +65,7 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
         def keras_load_img(fpath):
             from keras.preprocessing.image import load_img, img_to_array
             import numpy as np
-            from pyspark.sql import Row            
+            from pyspark.sql import Row
             img = load_img(fpath, target_size=(299, 299))
             return img_to_array(img).astype(np.uint8)
 
@@ -69,14 +73,14 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
 
 
     If the `preprocessor` is not provided, we assume the function will be applied to
-    a (struct) column encoded in [sparkdl.image.imageIO.imageSchema]. 
+    a (struct) column encoded in [sparkdl.image.imageIO.imageSchema].
     The output will be a single (struct) column containing the resulting tensor data.
 
     :param udf_name: str, name of the UserDefinedFunction. If the name exists, it will be overwritten.
-    :param keras_model_or_file_path: str or KerasModel, 
+    :param keras_model_or_file_path: str or KerasModel,
                                      either a path to the HDF5 Keras model file
                                      or an actual loaded Keras model
-    :param preprocessor: function, optional, a function that 
+    :param preprocessor: function, optional, a function that
                          converts image file path to image tensor/ndarray
                          in the correct shape to be served as input to the Keras model
     :return: :py:class:`GraphFunction`, the graph function for the Keras image model
@@ -84,7 +88,7 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
     ordered_udf_names = []
     keras_udf_name = udf_name
     if preprocessor is not None:
-        # Spill the image structure to file and reload it 
+        # Spill the image structure to file and reload it
         # with the user provided preprocessing funcition
         preproc_udf_name = '{}__preprocess'.format(udf_name)
         ordered_udf_names.append(preproc_udf_name)
@@ -117,10 +121,10 @@ def _serialize_and_reload_with(preprocessor):
     Retruns a function that performs the following steps
 
     * takes a [sparkdl.imageSchema] encoded image,
-    * serialize and reload it with provided proprocessor function 
+    * serialize and reload it with provided proprocessor function
       * the preprocessor: (image_file_path => image_tensor)
-    * encode the output image tensor with [sparkdl.imageSchema]    
-    
+    * encode the output image tensor with [sparkdl.imageSchema]
+
     :param preprocessor: function, mapping from image file path to an image tensor
                          (image_file_path => image_tensor)
     :return: the UDF preprocessor implementation
@@ -130,8 +134,8 @@ def _serialize_and_reload_with(preprocessor):
         from PIL import Image
         from tempfile import NamedTemporaryFile
         from sparkdl.image.imageIO import imageArrayToStruct, imageType
-        
-        pil_mode = imageType(spimg).pilMode        
+
+        pil_mode = imageType(spimg).pilMode
         img_shape = (spimg.width, spimg.height)
         img = Image.frombytes(pil_mode, img_shape, bytes(spimg.data))
         # Warning: must use lossless format to guarantee consistency
@@ -139,7 +143,7 @@ def _serialize_and_reload_with(preprocessor):
         img.save(temp_fp, 'PNG')
         img_arr_reloaded = preprocessor(temp_fp.name)
         assert isinstance(img_arr_reloaded, np.ndarray), \
-            "expect preprocessor to return a numpy array"        
+            "expect preprocessor to return a numpy array"
         img_arr_reloaded = img_arr_reloaded.astype(np.uint8)
         return imageArrayToStruct(img_arr_reloaded)
 
