@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
 import logging
 import os
 import shutil
@@ -30,7 +31,7 @@ logger = logging.getLogger('sparkdl')
 class IsolatedSession(object):
     """
     Provide an isolated session to work with mixed Keras and TensorFlow
-    graph segments.
+    graph segments. 
 
     It provides utility functions to
     - importing existing `GraphFunction` object as a subgraph
@@ -154,6 +155,48 @@ class GraphFunction(object):
         self.input_names = input_names
         self.output_names = output_names
 
+    def dump(self, fpath):
+        """
+        Store the GraphFunction to a file
+
+        :param fpath: str or path, path to the serialized GraphFunction
+        """
+        assert isinstance(fpath, six.string_types)
+
+        gdef_bytes_fpath = "{}.gdef.bytes".format(fpath)
+        with open(gdef_bytes_fpath, 'wb') as fout:
+            gdef_bytes = self.graph_def.SerializeToString()
+            fout.write(gdef_bytes)
+
+        serialized = {"graph_def_file": gdef_bytes_fpath,
+                      "inputs": self.input_names,
+                      "outputs": self.output_names}
+        with open(fpath, 'w') as fout:
+            json.dump(serialized, fout)
+
+    @classmethod
+    def fromSerialized(cls, fpath):
+        """
+        Load an existing GraphFunction from file.
+
+        :param fpath: str or path, path to the serialized GraphFunction
+        """
+        with open(str(fpath)) as fin:
+            serialized = json.load(fin)
+        assert set(['inputs', 'graph_def_file', 'outputs']) <= set(serialized.keys())
+
+        gdef_bytes_fpath = serialized["graph_def_file"]
+        assert os.path.exists(gdef_bytes_fpath), \
+            "TensorFlow GraphDef binary file must be found"
+
+        with open(gdef_bytes_fpath, 'rb') as fin:
+            gdef_bytes = fin.read()
+            gdef = tf.GraphDef.FromString(gdef_bytes)  # pylint: disable=E1101
+
+        return cls(graph_def=gdef,
+                   input_names=serialized["inputs"],
+                   output_names=serialized["outputs"])
+
     @classmethod
     def _fromKerasModelFile(cls, file_path):
         """
@@ -226,12 +269,12 @@ class GraphFunction(object):
 
         # Acquire initial placeholders' properties
         # We want the input names of the merged function are not under scoped
-        # In this way users of the merged function could still use the input names
+        # In this way users of the merged function could still use the input names 
         # of the first function to get the correct input tensors.
         first_input_info = []
         with IsolatedSession() as issn:
             _, first_gfn = functions[0]
-            feeds, _ = issn.importGraphFunction(first_gfn, prefix='')
+            feeds, _ = issn.importGraphFunction(first_gfn, prefix='')            
             for tnsr in feeds:
                 name = tfx.op_name(issn.graph, tnsr)
                 first_input_info.append((tnsr.dtype, tnsr.shape, name))
@@ -268,4 +311,3 @@ class GraphFunction(object):
             gfn = issn.asGraphFunction(first_inputs, last_outputs)
 
         return gfn
-
