@@ -29,7 +29,7 @@ from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
 from sparkdl.graph.builder import IsolatedSession
-from sparkdl.graph.spark_utils import makeGraphUDF
+from sparkdl.graph.tensorframes_udf import makeGraphUDF
 import sparkdl.graph.utils as tfx
 from sparkdl.udf.keras_image_model import registerKerasImageUDF
 from sparkdl.utils import jvmapi as JVMAPI

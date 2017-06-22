@@ -32,7 +32,7 @@ def makeGraphUDF(graph, udf_name, fetches, feeds_to_fields_map=None, blocked=Fal
 
     .. code-block:: python
 
-        from sparkdl.graph.spark_utils import makeUDF
+        from sparkdl.graph.tensorframes_udf import makeUDF
         
         with IsolatedSession() as issn:
             x = tf.placeholder(tf.double, shape=[], name="input_x")
