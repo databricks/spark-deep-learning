@@ -1,10 +1,12 @@
 # This file should list any python package dependencies.
 coverage==4.4.1
-h5py==2.7.0
-keras==2.0.4
 nose==1.3.7  # for testing
-numpy==1.11.2
-pillow==4.1.1
 pygments==2.2.0
-tensorflow==1.1.0
 six==1.10.0
+
+h5py==2.7.0
+numpy==1.13.0
+pillow==4.1.1
+
+tensorflow==1.2.0
+keras==2.0.5
