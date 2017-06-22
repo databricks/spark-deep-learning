@@ -18,7 +18,7 @@ import logging
 
 from sparkdl.graph.builder import GraphFunction, IsolatedSession
 from sparkdl.graph.pieces import buildSpImageConverter, buildFlattener
-from sparkdl.graph.spark_utils import makeGraphUDF
+from sparkdl.graph.tensorframes_udf import makeGraphUDF
 from sparkdl.image.imageIO import imageSchema
 from sparkdl.utils import jvmapi as JVMAPI
 
