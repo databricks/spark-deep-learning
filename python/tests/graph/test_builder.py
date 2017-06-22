@@ -58,9 +58,18 @@ class GraphFunctionWithIsolatedSessionTest(SparkDLTestCase):
 
         self.assertEqual(z_ref, z_tgt)
 
-        # # Version texts are not essential part of the graph, ignore them
-        # gdef_ref.ClearField("versions")
-        # gfn.graph_def.ClearField("versions")
+        def to_ser_dict(gdef):
+            _st = {}
+            for node in gdef.node:
+                _st[node.name] = node.SerializeToString()
+            return _st
+
+        tgt_st = to_ser_dict(gfn.graph_def)
+        ref_st = to_ser_dict(gdef_ref)
+        self.assertEqual(len(tgt_st), len(ref_st))
+        for k, v in ref_st.items():
+            self.assertTrue(k in ref_st)
+            #self.assertEqual(v, tgt_st[k])
 
         # # The GraphDef contained in the GraphFunction object
         # # should be the same as that in the one exported directly from TensorFlow session
