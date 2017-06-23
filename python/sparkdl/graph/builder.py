@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import json
 import logging
 import os
 import shutil
@@ -31,7 +30,7 @@ logger = logging.getLogger('sparkdl')
 class IsolatedSession(object):
     """
     Provide an isolated session to work with mixed Keras and TensorFlow
-    graph segments. 
+    graph segments.
 
     It provides utility functions to
     - importing existing `GraphFunction` object as a subgraph
@@ -67,17 +66,17 @@ class IsolatedSession(object):
     def run(self, *args, **kargs):
         """
         This method delegate the TensorFlow graph execution
-        to the underlying tf.Session object to perform 
+        to the underlying tf.Session object to perform
         one step of graph computation.
 
         All the parameters are defined according to `tf.Session.run`
-        Reference: https://www.tensorflow.org/api_docs/python/tf/Session#run        
+        Reference: https://www.tensorflow.org/api_docs/python/tf/Session#run
         """
         return self.sess.run(*args, **kargs)
 
     def asGraphFunction(self, inputs, outputs, strip_and_freeze=True):
         """
-        Export the graph in this session as a GraphFunction object
+        Export the graph in this session as a :py:class:`GraphFunction` object
 
         :param inputs: list, graph elements representing the inputs
         :param outputs: list, graph elements representing the outputs
@@ -94,13 +93,16 @@ class IsolatedSession(object):
     def importGraphFunction(self, gfn, input_map=None, prefix="GFN-IMPORT", **gdef_kargs):
         """
         Import a GraphFunction object into the current session.
-        The API is similar to `tf.import_graph_def`
-        https://www.tensorflow.org/api_docs/python/tf/import_graph_def
+        The API is similar to :py:meth:`tf.import_graph_def`
+
+        .. _a link: https://www.tensorflow.org/api_docs/python/tf/import_graph_def
 
         :param gfn: GraphFunction, an object representing a TensorFlow graph and its inputs and outputs
         :param input_map: dict, mapping from input names to existing graph elements
-        :param prefix: str, the scope for all the variables in the GraphFunction's elements
-                       (https://www.tensorflow.org/programmers_guide/variable_scope)
+        :param prefix: str, the scope for all the variables in the :py:class:`GraphFunction` elements
+
+                       .. _a link: https://www.tensorflow.org/programmers_guide/variable_scope
+
         :param gdef_kargs: other keyword elements for TensorFlow's `import_graph_def`
         """
         try:
@@ -194,7 +196,7 @@ class GraphFunction(object):
     @classmethod
     def fromList(cls, functions):
         """
-        Construct a single GraphFunction from a list of graph functions. 
+        Construct a single GraphFunction from a list of graph functions.
         Each function in the list corresponds to a stage.
 
         Each function is also scoped by a scope name, in order to avoid
@@ -224,12 +226,12 @@ class GraphFunction(object):
 
         # Acquire initial placeholders' properties
         # We want the input names of the merged function are not under scoped
-        # In this way users of the merged function could still use the input names 
+        # In this way users of the merged function could still use the input names
         # of the first function to get the correct input tensors.
         first_input_info = []
         with IsolatedSession() as issn:
             _, first_gfn = functions[0]
-            feeds, _ = issn.importGraphFunction(first_gfn, prefix='')            
+            feeds, _ = issn.importGraphFunction(first_gfn, prefix='')
             for tnsr in feeds:
                 name = tfx.op_name(issn.graph, tnsr)
                 first_input_info.append((tnsr.dtype, tnsr.shape, name))
@@ -256,7 +258,7 @@ class GraphFunction(object):
                 prev_outputs = fetches
 
             # Add a non-scoped output name as the output node
-            # So that users can still use the output name of the last function's output 
+            # So that users can still use the output name of the last function's output
             # to fetch the correct output tensors
             last_output_names = functions[-1][1].output_names
             last_outputs = []
@@ -266,3 +268,4 @@ class GraphFunction(object):
             gfn = issn.asGraphFunction(first_inputs, last_outputs)
 
         return gfn
+

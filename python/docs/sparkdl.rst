@@ -6,28 +6,11 @@ Subpackages
 
 .. toctree::
 
+    sparkdl.graph
     sparkdl.image
     sparkdl.transformers
-
-Submodules
-----------
-
-sparkdl\.sparkdl module
---------------------------
-
-.. automodule:: sparkdl.sparkdl
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-sparkdl\.utils module
----------------------
-
-.. automodule:: sparkdl.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
+    sparkdl.udf
+    sparkdl.utils
 
 Module contents
 ---------------

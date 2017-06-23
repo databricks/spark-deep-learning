@@ -168,8 +168,9 @@ def validated_input(graph, tfobj_or_name):
 def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
     """
     Create a static view of the graph by
-    1. Converting all variables into constants
-    2. Removing graph elements not reachacble to `fetches`
+
+    * Converting all variables into constants
+    * Removing graph elements not reachacble to `fetches`
 
     :param graph: tf.Graph, the graph to be frozen
     :param fetches: list, graph elements representing the outputs of the graph
