@@ -201,6 +201,42 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
 
 ### Deploying models as SQL functions
 
+The UDF takes a column a (formatted as a image struct "`SpImage`") and produces the output of the given Keras model (e.g. for [Inception V3](https://keras.io/applications/#inceptionv3), it produces a real valued score vector over the ImageNet object categories). For other models, the output could have different meanings. Please consult the actual models specification.
+
+We can register any Keras models that work on images as follows.
+
+```python
+from keras.applications import InceptionV3
+from sparkdl.udf.keras_image_model import registerKerasImageUDF
+
+from keras.applications import InceptionV3
+registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"))
+```
+
+To use a customized Keras model, we can save it and pass the file path as parameter.
+
+```python
+# Assume we have a compiled and trained Keras model
+model.save('path/to/my/model.h5')
+registerKerasImageUDF("my_custom_keras_model_udf", "path/to/my/model.h5")
+```
+
+If there are further preprocessing steps are required to prepare the images, the user has the option to provide a preprocessing function `preprocessor`. The `preprocessor` converts a file path into a image array. This function is usually introduced in Keras workflow, as in the following example.
+
+```python
+from keras.applications import InceptionV3
+from sparkdl.udf.keras_image_model import registerKerasImageUDF
+
+def keras_load_img(fpath):
+    from keras.preprocessing.image import load_img, img_to_array
+    import numpy as np
+    img = load_img(fpath, target_size=(299, 299))
+    return img_to_array(img).astype(np.uint8)
+
+registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"), keras_load_img)
+
+```
+
 
 <a id="releases"></a>
 
