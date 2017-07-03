@@ -21,8 +21,7 @@ from keras.applications.imagenet_utils import decode_predictions
 import tensorflow as tf
 
 from sparkdl.transformers.utils import (
-    imageInputPlaceholder, InceptionV3Constants) #, ResNet50Constants)
-
+    imageInputPlaceholder, InceptionV3Constants)
 
 
 KERAS_APPLICATION_MODELS = set(["InceptionV3"]) #, "ResNet50", "Xception", "VGG16", "VGG19"])

@@ -30,8 +30,6 @@ import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.transformers.tf_image import TFImageTransformer
-# from sparkdl.transformers.utils import (
-#     imageInputPlaceholder, InceptionV3Constants, ResNet50Constants)
 
 
 SUPPORTED_MODELS = ["InceptionV3"]
@@ -225,61 +223,15 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
         return result.drop(resizedCol)
 
 
-# def _buildTFGraphForName(name, featurize):
-#     if name == "InceptionV3":
-#         modelData = _buildInceptionV3Session(featurize)
-#     # elif name == "ResNet50":
-#     #     modelData = _buildResNet50Session(featurize)
-#     else:
-#         raise ValueError("%s is not a supported model. Supported models: %s" % name,
-#                          str(SUPPORTED_MODELS))
-
-#     sess = modelData["session"]
-#     outputTensorName = modelData["outputTensorName"]
-#     graph = tfx.strip_and_freeze_until([outputTensorName], sess.graph, sess, return_graph=True)
-
-#     modelData["graph"] = graph
-#     return modelData
-
 def _buildTFGraphForName(name, featurize):
     if name not in keras_apps.KERAS_APPLICATION_MODELS:
         raise ValueError("%s is not a supported model. Supported models: %s" % name,
                          str(KERAS_APPLICATION_MODELS))
 
     modelData = keras_apps.getKerasApplicationModel(name).getModelData(featurize)
-
     sess = modelData["session"]
     outputTensorName = modelData["outputTensorName"]
     graph = tfx.strip_and_freeze_until([outputTensorName], sess.graph, sess, return_graph=True)
-
     modelData["graph"] = graph
+
     return modelData
-
-
-# def _buildInceptionV3Session(featurize):
-#     sess = tf.Session()
-#     with sess.as_default():
-#         K.set_learning_phase(0)
-#         inputImage = imageInputPlaceholder(nChannels=3)
-#         preprocessed = inception_v3.preprocess_input(inputImage)
-#         model = InceptionV3(input_tensor=preprocessed, weights="imagenet",
-#                             include_top=(not featurize))
-#     return dict(inputTensorName=inputImage.name,
-#                 outputTensorName=model.output.name,
-#                 session=sess,
-#                 inputTensorSize=InceptionV3Constants.INPUT_SHAPE,
-#                 outputMode="vector")
-
-# def _buildResNet50Session(featurize):
-#     sess = tf.Session()
-#     with sess.as_default():
-#         K.set_learning_phase(0)
-#         inputImage = imageInputPlaceholder(nChannels=3)
-#         preprocessed = resnet50.preprocess_input(inputImage)
-#         model = ResNet50(input_tensor=preprocessed, weights="imagenet",
-#                             include_top=(not featurize))
-#     return dict(inputTensorName=inputImage.name,
-#                 outputTensorName=model.output.name,
-#                 session=sess,
-#                 inputTensorSize=ResNet50Constants.INPUT_SHAPE,
-#                 outputMode="vector")
