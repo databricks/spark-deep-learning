@@ -30,11 +30,11 @@ import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.transformers.tf_image import TFImageTransformer
-from sparkdl.transformers.utils import (
-    imageInputPlaceholder, InceptionV3Constants, ResNet50Constants)
+# from sparkdl.transformers.utils import (
+#     imageInputPlaceholder, InceptionV3Constants, ResNet50Constants)
 
 
-SUPPORTED_MODELS = ["InceptionV3", "ResNet50"]
+SUPPORTED_MODELS = ["InceptionV3"]
 
 
 class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):

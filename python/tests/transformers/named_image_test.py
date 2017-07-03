@@ -23,9 +23,10 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import IntegerType, StructType, StructField
 
 from sparkdl.image import imageIO
+import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.transformers.named_image import (DeepImagePredictor, DeepImageFeaturizer,
                                               _buildTFGraphForName)
-from sparkdl.transformers.utils import InceptionV3Constants
+#from sparkdl.transformers.utils import InceptionV3Constants
 from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF, getSampleImageList
 
@@ -139,7 +140,7 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         collected = transformed_df.collect()
         for row in collected:
             predictions = row[output_col]
-            self.assertEqual(len(predictions), InceptionV3Constants.NUM_OUTPUT_FEATURES)
+            self.assertEqual(len(predictions), keras_apps.InceptionV3Model().numOutputFeatures())
             # TODO: actually check the value of the output to see if they are reasonable
             # e.g. -- compare to just running with keras.
 
