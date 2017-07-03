@@ -18,7 +18,7 @@ import tensorflow as tf
 from pyspark.ml.param import TypeConverters
 
 from sparkdl.image.imageIO import imageType
-from sparkdl.transformers.keras_applications import InceptionV3Model
+
 
 # image stuff
 
@@ -31,8 +31,8 @@ def imageInputPlaceholder(nChannels=None):
 class ImageNetConstants:
     NUM_CLASSES = 1000
 
-
 # InceptionV3 is used in a lot of tests, so we'll make this shortcut available
+# For other networks, see the keras_applications module.
 class InceptionV3Constants:
-    INPUT_SHAPE = InceptionV3Model().inputShape()
-    NUM_OUTPUT_FEATURES = InceptionV3Model().numOutputFeatures()
+    INPUT_SHAPE = (299, 299)
+    NUM_OUTPUT_FEATURES = 131072
