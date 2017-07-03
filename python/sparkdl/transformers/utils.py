@@ -34,3 +34,7 @@ class ImageNetConstants:
 class InceptionV3Constants:
     INPUT_SHAPE = (299, 299)
     NUM_OUTPUT_FEATURES = 131072
+
+# class ResNet50Constants:
+#     INPUT_SHAPE = (224, 224)
+#     NUM_OUTPUT_FEATURES = 131072
