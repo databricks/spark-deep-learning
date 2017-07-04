@@ -20,8 +20,7 @@ from keras.applications import inception_v3, resnet50, vgg16, vgg19, xception
 from keras.applications.imagenet_utils import decode_predictions
 import tensorflow as tf
 
-from sparkdl.transformers.utils import (
-    imageInputPlaceholder, InceptionV3Constants)
+from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
 
 
 KERAS_APPLICATION_MODELS = set(["InceptionV3"]) #, "ResNet50", "Xception", "VGG16", "VGG19"])
@@ -86,6 +85,13 @@ class KerasApplicationModel:
         """
         pass
 
+    @abstractmethod
+    def testKerasModel(self):
+        """
+        For testing, the keras model object to compare to.
+        """
+        pass
+
 
 class InceptionV3Model(KerasApplicationModel):
     def preprocess(self, inputImage):
@@ -101,4 +107,5 @@ class InceptionV3Model(KerasApplicationModel):
     def numOutputFeatures(self):
         return InceptionV3Constants.NUM_OUTPUT_FEATURES
 
-
+    def testKerasModel(self):
+        return inception_v3.InceptionV3()
