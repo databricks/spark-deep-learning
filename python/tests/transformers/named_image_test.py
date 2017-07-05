@@ -57,8 +57,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
 
     def test_buildtfgraphforname(self):
         """"
-        Run the graph produced by _buildtfgraphforname and compare the result to above keras
-        result.
+        Run the graph produced by _buildtfgraphforname using tensorflow and compare to keras result.
         """
         imageArray = self.imageArray
         kerasPredict = self.kerasPredict
@@ -169,4 +168,3 @@ class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
 
     __test__ = True
     name = "InceptionV3"
-

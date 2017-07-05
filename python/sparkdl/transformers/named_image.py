@@ -13,11 +13,8 @@
 # limitations under the License.
 #
 
-import keras.backend as K
-from keras.applications import InceptionV3, inception_v3, ResNet50, resnet50
 from keras.applications.imagenet_utils import decode_predictions
 import numpy as np
-import tensorflow as tf
 
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters

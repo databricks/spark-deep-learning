@@ -16,18 +16,18 @@
 from abc import ABCMeta, abstractmethod
 
 import keras.backend as K
-from keras.applications import inception_v3, resnet50, vgg16, vgg19, xception
+from keras.applications import inception_v3
 from keras.applications.imagenet_utils import decode_predictions
 import tensorflow as tf
 
 from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
 
 
-KERAS_APPLICATION_MODELS = set(["InceptionV3"]) #, "ResNet50", "Xception", "VGG16", "VGG19"])
+KERAS_APPLICATION_MODELS = set(["InceptionV3"])
 
 
 """
-Essentially a factory function for getting the correct KerasApplicationModelSession class
+Essentially a factory function for getting the correct KerasApplicationModel class
 for the network name.
 """
 def getKerasApplicationModel(name):
@@ -37,14 +37,6 @@ def getKerasApplicationModel(name):
 
     if name == "InceptionV3":
         return InceptionV3Model()
-    # elif name == "ResNet50":
-    #     return ResNet50Model()
-    # elif name == "Xception":
-    #     return XceptionModel()
-    # elif name == "VGG16":
-    #     return VGG16Model()
-    # elif name == "VGG19":
-    #     return VGG19Model()
     else:
         raise ValueError("%s is not implemented but is in the supported models list: %s" %
                          name, str(KERAS_APPLICATION_MODELS))
@@ -108,4 +100,4 @@ class InceptionV3Model(KerasApplicationModel):
         return InceptionV3Constants.NUM_OUTPUT_FEATURES
 
     def testKerasModel(self):
-        return inception_v3.InceptionV3()
+        return inception_v3.InceptionV3(weights="imagenet")
