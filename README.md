@@ -17,7 +17,7 @@ Deep Learning Pipelines provides high-level APIs for scalable deep learning in P
   - [Transfer learning](#transfer-learning)
   - [Applying deep learning models at scale](#applying-deep-learning-models-at-scale)
   - [Deploying models as SQL functions](#deploying-models-as-sql-functions)
-- [Releases:](#releases)
+- [Releases](#releases)
 
 ## Overview
 
@@ -36,7 +36,7 @@ For an overview of the library, see the Databricks [blog post](https://databrick
 
 The library is in its early days, and we welcome everyone's feedback and contribution.
 
-Authors: Bago Amirbekian, Joseph Bradley, Sue Ann Hong, Tim Hunter, Philip Yang
+Maintainers: Bago Amirbekian, Joseph Bradley, Sue Ann Hong, Tim Hunter, Philip Yang
 
 
 ## Building and running unit tests
@@ -45,7 +45,8 @@ To compile this project, run `build/sbt assembly` from the project home director
 
 To run the Python unit tests, run the `run-tests.sh` script from the `python/` directory. You will need to set a few environment variables, e.g.
 
-```sh
+```bash
+# Be sure to run build/sbt assembly before running the Python tests
 sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.1.1-bin-hadoop2.7 PYSPARK_PYTHON=python2 SCALA_VERSION=2.11.8 SPARK_VERSION=2.1.1 ./python/run-tests.sh
 ```
 
@@ -196,7 +197,9 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
 
 ### Deploying models as SQL functions
 
-The UDF takes a column a (formatted as a image struct "`SpImage`") and produces the output of the given Keras model (e.g. for [Inception V3](https://keras.io/applications/#inceptionv3), it produces a real valued score vector over the ImageNet object categories). For other models, the output could have different meanings. Please consult the actual models specification.
+One way to productionize a model is to deploy it as a [Spark SQL User Defined Function](https://docs.databricks.com/spark/latest/spark-sql/udf-in-python.html), which allows anyone who knows SQL to use it. Deep Learning Pipelines provides mechanisms to take a deep learning model and register a Spark SQL User Defined Function (UDF).
+
+The resulting UDF takes a column (formatted as a image struct "`SpImage`") and produces the output of the given Keras model (e.g. for [Inception V3](https://keras.io/applications/#inceptionv3), it produces a real valued score vector over the ImageNet object categories). For other models, the output could have different meanings. Please consult the actual models specification.
 
 We can register any Keras models that work on images as follows.
 
@@ -216,7 +219,13 @@ model.save('path/to/my/model.h5')
 registerKerasImageUDF("my_custom_keras_model_udf", "path/to/my/model.h5")
 ```
 
-If there are further preprocessing steps are required to prepare the images, the user has the option to provide a preprocessing function `preprocessor`. The `preprocessor` converts a file path into a image array. This function is usually introduced in Keras workflow, as in the following example.
+Once the UDF is registered as described above, it can be used in a SQL query.
+
+```sql
+SELECT my_custom_keras_model_udf(image) as predictions from my_spark_image_table
+```
+
+If there are further preprocessing steps required to prepare the images, the user has the option to provide a preprocessing function `preprocessor`. The `preprocessor` converts a file path into a image array. This function is usually introduced in Keras workflow, as in the following example.
 
 ```python
 from keras.applications import InceptionV3
