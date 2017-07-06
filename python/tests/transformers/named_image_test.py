@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 
-from keras.applications import inception_v3
 import numpy as np
 import tensorflow as tf
 
@@ -23,42 +22,46 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import IntegerType, StructType, StructField
 
 from sparkdl.image import imageIO
+import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.transformers.named_image import (DeepImagePredictor, DeepImageFeaturizer,
                                               _buildTFGraphForName)
-from sparkdl.transformers.utils import InceptionV3Constants
 from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF, getSampleImageList
 
 
-class NamedImageTransformerImagenetTest(SparkDLTestCase):
+class NamedImageTransformerBaseTestCase(SparkDLTestCase):
+
+    __test__ = False
+    name = None
 
     @classmethod
     def setUpClass(cls):
-        super(NamedImageTransformerImagenetTest, cls).setUpClass()
+        super(NamedImageTransformerBaseTestCase, cls).setUpClass()
 
-        # Compute values used by multiple tests.
         imgFiles, images = getSampleImageList()
         imageArray = np.empty((len(images), 299, 299, 3), 'uint8')
         for i, img in enumerate(images):
             assert img is not None and img.mode == "RGB"
             imageArray[i] = np.array(img.resize((299, 299)))
-
-        # Predict the class probabilities for the images in our test library using keras API.
-        prepedImaged = inception_v3.preprocess_input(imageArray.astype('float32'))
-        model = inception_v3.InceptionV3()
-        kerasPredict = model.predict(prepedImaged)
-        # These values are used by multiple tests so cache them on class setup.
         cls.imageArray = imageArray
+
+        # Predict the class probabilities for the images in our test library using keras API
+        # and cache for use by multiple tests.
+        cls.appModel = keras_apps.getKerasApplicationModel(cls.name)
+        preppedImage = cls.appModel.preprocess(imageArray.astype('float32'))
+        kerasPredict = cls.appModel.testKerasModel().predict(preppedImage)
         cls.kerasPredict = kerasPredict
+
+        cls.imageDF = getSampleImageDF().limit(5)
+
 
     def test_buildtfgraphforname(self):
         """"
-        Run the graph produced by _buildtfgraphforname and compare the result to above keras
-        result.
+        Run the graph produced by _buildtfgraphforname using tensorflow and compare to keras result.
         """
         imageArray = self.imageArray
         kerasPredict = self.kerasPredict
-        modelGraphInfo = _buildTFGraphForName("InceptionV3", False)
+        modelGraphInfo = _buildTFGraphForName(self.name, False)
         graph = modelGraphInfo["graph"]
         sess = tf.Session(graph=graph)
         with sess.as_default():
@@ -71,8 +74,8 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
 
     def test_DeepImagePredictorNoReshape(self):
         """
-        Run sparkDL inceptionV3 transformer on resized images and compare result to cached keras
-        result.
+        Run sparkDL transformer on manually-resized images and compare result to the
+        keras result.
         """
         imageArray = self.imageArray
         kerasPredict = self.kerasPredict
@@ -87,8 +90,8 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         dfType = StructType([StructField("image", imageIO.imageSchema)])
         imageDf = rdd.toDF(dfType)
 
-        transformer = DeepImagePredictor(inputCol='image', modelName="InceptionV3",
-                                         outputCol="prediction",)
+        transformer = DeepImagePredictor(inputCol='image', modelName=self.name,
+                                         outputCol="prediction")
         dfPredict = transformer.transform(imageDf).collect()
         dfPredict = np.array([i.prediction for i in dfPredict])
 
@@ -97,14 +100,13 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
 
     def test_DeepImagePredictor(self):
         """
-        Run sparkDL inceptionV3 transformer on raw (original size) images and compare result to
+        Run sparkDL transformer on raw (original size) images and compare result to
         above keras (using keras resizing) result.
         """
         kerasPredict = self.kerasPredict
-        transformer = DeepImagePredictor(inputCol='image', modelName="InceptionV3",
+        transformer = DeepImagePredictor(inputCol='image', modelName=self.name,
                                          outputCol="prediction",)
-        origImgDf = getSampleImageDF()
-        fullPredict = transformer.transform(origImgDf).collect()
+        fullPredict = transformer.transform(self.imageDF).collect()
         fullPredict = np.array([i.prediction for i in fullPredict])
 
         self.assertEqual(kerasPredict.shape, fullPredict.shape)
@@ -112,14 +114,12 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         # TODO: match keras resize step to get closer prediction
         np.testing.assert_array_almost_equal(kerasPredict, fullPredict, decimal=6)
 
-    def test_inceptionV3_prediction_decoded(self):
+    def test_prediction_decoded(self):
         output_col = "prediction"
         topK = 10
         transformer = DeepImagePredictor(inputCol="image", outputCol=output_col,
-                                         modelName="InceptionV3", decodePredictions=True, topK=topK)
-
-        image_df = getSampleImageDF()
-        transformed_df = transformer.transform(image_df.limit(5))
+                                         modelName=self.name, decodePredictions=True, topK=topK)
+        transformed_df = transformer.transform(self.imageDF)
 
         collected = transformed_df.collect()
         for row in collected:
@@ -128,18 +128,16 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
             # TODO: actually check the value of the output to see if they are reasonable
             # e.g. -- compare to just running with keras.
 
-    def test_inceptionV3_featurization(self):
+    def test_featurization(self):
         output_col = "prediction"
         transformer = DeepImageFeaturizer(inputCol="image", outputCol=output_col,
-                                          modelName="InceptionV3")
-
-        image_df = getSampleImageDF()
-        transformed_df = transformer.transform(image_df.limit(5))
+                                          modelName=self.name)
+        transformed_df = transformer.transform(self.imageDF)
 
         collected = transformed_df.collect()
         for row in collected:
             predictions = row[output_col]
-            self.assertEqual(len(predictions), InceptionV3Constants.NUM_OUTPUT_FEATURES)
+            self.assertEqual(len(predictions), self.appModel.numOutputFeatures())
             # TODO: actually check the value of the output to see if they are reasonable
             # e.g. -- compare to just running with keras.
 
@@ -149,19 +147,24 @@ class NamedImageTransformerImagenetTest(SparkDLTestCase):
         Does not test how good the featurization is for generalization.
         """
         featurizer = DeepImageFeaturizer(inputCol="image", outputCol="features",
-                                         modelName="InceptionV3")
+                                         modelName=self.name)
         lr = LogisticRegression(maxIter=20, regParam=0.05, elasticNetParam=0.3, labelCol="label")
         pipeline = Pipeline(stages=[featurizer, lr])
 
         # add arbitrary labels to run logistic regression
         # TODO: it's weird that the test fails on some combinations of labels. check why.
         label_udf = udf(lambda x: abs(hash(x)) % 2, IntegerType())
-        image_df = getSampleImageDF()
-        train_df = image_df.withColumn("label", label_udf(image_df["filePath"]))
+        train_df = self.imageDF.withColumn("label", label_udf(self.imageDF["filePath"]))
 
         lrModel = pipeline.fit(train_df)
         # see if we at least get the training examples right.
-        # with 5 examples and 131k features, it ought to.
+        # with 5 examples and e.g. 131k features (for InceptionV3), it ought to.
         pred_df_collected = lrModel.transform(train_df).collect()
         for row in pred_df_collected:
             self.assertEqual(int(row.prediction), row.label)
+
+
+class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
+
+    __test__ = True
+    name = "InceptionV3"

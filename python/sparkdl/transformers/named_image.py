@@ -13,11 +13,8 @@
 # limitations under the License.
 #
 
-import keras.backend as K
-from keras.applications import InceptionV3, inception_v3
 from keras.applications.imagenet_utils import decode_predictions
 import numpy as np
-import tensorflow as tf
 
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
@@ -26,11 +23,10 @@ from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, St
 
 import sparkdl.graph.utils as tfx
 from sparkdl.image.imageIO import resizeImage
+import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.transformers.tf_image import TFImageTransformer
-from sparkdl.transformers.utils import (
-    imageInputPlaceholder, InceptionV3Constants)
 
 
 SUPPORTED_MODELS = ["InceptionV3"]
@@ -225,30 +221,14 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
 
 
 def _buildTFGraphForName(name, featurize):
-    if name == "InceptionV3":
-        modelData = _buildInceptionV3Session(featurize)
-    else:
+    if name not in keras_apps.KERAS_APPLICATION_MODELS:
         raise ValueError("%s is not a supported model. Supported models: %s" % name,
-                         str(SUPPORTED_MODELS))
+                         str(KERAS_APPLICATION_MODELS))
 
+    modelData = keras_apps.getKerasApplicationModel(name).getModelData(featurize)
     sess = modelData["session"]
     outputTensorName = modelData["outputTensorName"]
     graph = tfx.strip_and_freeze_until([outputTensorName], sess.graph, sess, return_graph=True)
-
     modelData["graph"] = graph
+
     return modelData
-
-
-def _buildInceptionV3Session(featurize):
-    sess = tf.Session()
-    with sess.as_default():
-        K.set_learning_phase(0)
-        inputImage = imageInputPlaceholder(nChannels=3)
-        preprocessed = inception_v3.preprocess_input(inputImage)
-        model = InceptionV3(input_tensor=preprocessed, weights="imagenet",
-                            include_top=(not featurize))
-    return dict(inputTensorName=inputImage.name,
-                outputTensorName=model.output.name,
-                session=sess,
-                inputTensorSize=InceptionV3Constants.INPUT_SHAPE,
-                outputMode="vector")
