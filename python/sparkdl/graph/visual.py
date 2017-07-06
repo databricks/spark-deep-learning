@@ -24,6 +24,9 @@ import sparkdl.graph.utils as tfx
 
 logger = logging.getLogger('sparkdl')
 
+TFB_URL_PREFIX = "https://tensorboard.appspot.com"
+TFB_URL = "{}/tf-graph-basic.build.html".format(TFB_URL_PREFIX)
+
 
 def write_visualization_html(graph, html_file_path=None, max_const_size=32, show_in_browser=True):
     """
@@ -39,9 +42,11 @@ def write_visualization_html(graph, html_file_path=None, max_const_size=32, show
     :param max_const_size: int, if a constant is way too long, clip it in the plot
     :param show_in_browser: bool, indicate if we want to launch a browser to show the generated HTML page.
     """
-    graph = tfx.validated_graph(graph)
-    _tfb_url_prefix = "https://tensorboard.appspot.com"
-    _tfb_url = "{}/tf-graph-basic.build.html".format(_tfb_url_prefix)
+    if isinstance(graph, tf.GraphDef):
+        gdef = graph
+    else:
+        graph = tfx.validated_graph(graph)
+        gdef = graph.as_graph_def()
 
     def strip_consts(gdef, max_const_size=32):
         """Strip large constant values from graph_def."""
@@ -56,20 +61,26 @@ def write_visualization_html(graph, html_file_path=None, max_const_size=32, show
                     tensor.tensor_content = str.encode("<stripped {} bytes>".format(nbytes))
         return strip_def
 
-    strip_def = strip_consts(graph.as_graph_def(), max_const_size)
-    html_code = """
+    strip_gdef = strip_consts(gdef, max_const_size)
+    html_header = """
+        <style>
+          body, html { height: 100%; }
+          div#graphdef { height: 100%; }
+        </style>
+    """
+    html_code = html_header + """
         <script>
           function load() {{
             document.getElementById("{id}").pbtxt = {data};
           }}
         </script>
         <link rel="import" href="{tfb}" onload=load()>
-        <div style="height:600px">
+        <div id="graphdef">
           <tf-graph-basic id="{id}"></tf-graph-basic>
         </div>
-    """.format(data=repr(str(strip_def)),
+    """.format(data=repr(str(strip_gdef)),
                id='gfn-sess-graph',
-               tfb=_tfb_url)
+               tfb=TFB_URL)
 
     if not html_file_path:
         html_file_path = NamedTemporaryFile(prefix="tf_graph_def", suffix=".html").name
