@@ -16,14 +16,14 @@
 from abc import ABCMeta, abstractmethod
 
 import keras.backend as K
-from keras.applications import inception_v3, resnet50, vgg16, vgg19, xception
+from keras.applications import inception_v3, xception
 from keras.applications.imagenet_utils import decode_predictions
 import tensorflow as tf
 
 from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
 
 
-KERAS_APPLICATION_MODELS = set(["InceptionV3", "ResNet50", "VGG16", "VGG19", "Xception"])
+KERAS_APPLICATION_MODELS = set(["InceptionV3", "Xception"])
 
 """
 Essentially a factory function for getting the correct KerasApplicationModel class
@@ -105,27 +105,6 @@ class InceptionV3Model(KerasApplicationModel):
     def testKerasModel(self, include_top):
         return inception_v3.InceptionV3(weights="imagenet", include_top=include_top)
 
-class ResNet50Model(KerasApplicationModel):
-    def preprocess(self, inputImage):
-        return _preprocess_input(inputImage)  ############## DEBUG
-        #return resnet50.preprocess_input(inputImage)
-
-    def model(self, preprocessed, featurize):
-        return resnet50.ResNet50(input_tensor=preprocessed, weights="imagenet",
-                                 include_top=(not featurize), input_shape=self._inputShapeFull())
-
-    def _inputShapeFull(self):
-        return (224, 224, 3)
-
-    def inputShape(self):
-        return self._inputShapeFull()[0:2]
-
-    def testPreprocess(self, inputImage):
-        return resnet50.preprocess_input(inputImage)
-
-    def testKerasModel(self, include_top):
-        return resnet50.ResNet50(weights="imagenet", include_top=include_top)
-
 class XceptionModel(KerasApplicationModel):
     def preprocess(self, inputImage):
         return xception.preprocess_input(inputImage)
@@ -139,14 +118,3 @@ class XceptionModel(KerasApplicationModel):
 
     def testKerasModel(self, include_top):
         return xception.Xception(weights="imagenet", include_top=include_top)
-
-
-# Translated to tensorflow operations from numpy operations in
-# https://github.com/tensorflow/tensorflow/blob/f49f801276154d0f693c5d57db6977a7eb32f017/tensorflow/contrib/keras/python/keras/applications/imagenet_utils.py#L53
-# Could break, but it doesn't seem that Keras models can be easily updated, so unlikely.
-def _preprocess_input(x):
-    # 'RGB'->'BGR'
-    y = tf.reverse(x, [-1])
-    # Zero-center by mean pixel
-    ones = tf.ones_like(y[:, :, :, 1])
-    return y - tf.stack([ones * 103.939, ones * 116.779, ones * 123.68], axis=-1)

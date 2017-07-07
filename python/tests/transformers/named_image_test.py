@@ -175,17 +175,12 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             self.assertEqual(int(row.prediction), row.label)
 
 
-# class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
+class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
 
-#     __test__ = True
-#     name = "InceptionV3"
+    __test__ = True
+    name = "InceptionV3"
 
 class NamedImageTransformerXceptionTest(NamedImageTransformerBaseTestCase):
 
     __test__ = True
     name = "Xception"
-
-# class NamedImageTransformerResNet50Test(NamedImageTransformerBaseTestCase):
-
-#     __test__ = True
-#     name = "ResNet50"
