@@ -30,6 +30,11 @@ from .image_utils import getSampleImageDF, getSampleImageList
 
 
 class NamedImageTransformerBaseTestCase(SparkDLTestCase):
+    """
+    The tests here are written for Keras application -based models but test the
+    NamedImageTransformer API. If we add non-Keras application -based models we
+    will want to refactor.
+    """
 
     __test__ = False
     name = None
@@ -38,19 +43,21 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
     def setUpClass(cls):
         super(NamedImageTransformerBaseTestCase, cls).setUpClass()
 
+        cls.appModel = keras_apps.getKerasApplicationModel(cls.name)
+        shape = cls.appModel.inputShape()
+
         imgFiles, images = getSampleImageList()
-        imageArray = np.empty((len(images), 299, 299, 3), 'uint8')
+        imageArray = np.empty((len(images), shape[0], shape[1], 3), 'uint8')
         for i, img in enumerate(images):
             assert img is not None and img.mode == "RGB"
-            imageArray[i] = np.array(img.resize((299, 299)))
+            imageArray[i] = np.array(img.resize(shape))
         cls.imageArray = imageArray
 
         # Predict the class probabilities for the images in our test library using keras API
         # and cache for use by multiple tests.
-        cls.appModel = keras_apps.getKerasApplicationModel(cls.name)
-        preppedImage = cls.appModel.preprocess(imageArray.astype('float32'))
-        kerasPredict = cls.appModel.testKerasModel().predict(preppedImage)
-        cls.kerasPredict = kerasPredict
+        preppedImage = cls.appModel.testPreprocess(imageArray.astype('float32'))
+        cls.kerasPredict = cls.appModel.testKerasModel(include_top=True).predict(preppedImage)
+        cls.kerasFeatures = cls.appModel.testKerasModel(include_top=False).predict(preppedImage)
 
         cls.imageDF = getSampleImageDF().limit(5)
 
@@ -74,7 +81,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
 
     def test_DeepImagePredictorNoReshape(self):
         """
-        Run sparkDL transformer on manually-resized images and compare result to the
+        Run sparkDL predictor on manually-resized images and compare result to the
         keras result.
         """
         imageArray = self.imageArray
@@ -100,8 +107,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
 
     def test_DeepImagePredictor(self):
         """
-        Run sparkDL transformer on raw (original size) images and compare result to
-        above keras (using keras resizing) result.
+        Tests that predictor returns (almost) the same values as Keras.
         """
         kerasPredict = self.kerasPredict
         transformer = DeepImagePredictor(inputCol='image', modelName=self.name,
@@ -110,11 +116,12 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         fullPredict = np.array([i.prediction for i in fullPredict])
 
         self.assertEqual(kerasPredict.shape, fullPredict.shape)
-        # We use a large tolerance below because of differences in the resize step
-        # TODO: match keras resize step to get closer prediction
         np.testing.assert_array_almost_equal(kerasPredict, fullPredict, decimal=6)
 
     def test_prediction_decoded(self):
+        """
+        Tests that predictor with decoded=true returns reasonable values.
+        """
         output_col = "prediction"
         topK = 10
         transformer = DeepImagePredictor(inputCol="image", outputCol=output_col,
@@ -129,21 +136,25 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             # e.g. -- compare to just running with keras.
 
     def test_featurization(self):
+        """
+        Tests that featurizer returns (almost) the same values as Keras.
+        """
         output_col = "prediction"
         transformer = DeepImageFeaturizer(inputCol="image", outputCol=output_col,
                                           modelName=self.name)
         transformed_df = transformer.transform(self.imageDF)
-
         collected = transformed_df.collect()
-        for row in collected:
-            predictions = row[output_col]
-            self.assertEqual(len(predictions), self.appModel.numOutputFeatures())
-            # TODO: actually check the value of the output to see if they are reasonable
-            # e.g. -- compare to just running with keras.
+        features = np.array([i.prediction for i in collected])
+
+        # Note: keras features may be multi-dimensional np arrays, but transformer features
+        # will be 1-d vectors. Regardless, the dimensions should add up to the same.
+        self.assertEqual(np.prod(self.kerasFeatures.shape), np.prod(features.shape))
+        kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
+        np.testing.assert_array_almost_equal(kerasReshaped, features, decimal=6)
 
     def test_featurizer_in_pipeline(self):
         """
-        Tests that the featurizer fits into an MLlib Pipeline.
+        Tests that featurizer fits into an MLlib Pipeline.
         Does not test how good the featurization is for generalization.
         """
         featurizer = DeepImageFeaturizer(inputCol="image", outputCol="features",
@@ -164,7 +175,17 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             self.assertEqual(int(row.prediction), row.label)
 
 
-class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
+# class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
+
+#     __test__ = True
+#     name = "InceptionV3"
+
+class NamedImageTransformerXceptionTest(NamedImageTransformerBaseTestCase):
 
     __test__ = True
-    name = "InceptionV3"
+    name = "Xception"
+
+# class NamedImageTransformerResNet50Test(NamedImageTransformerBaseTestCase):
+
+#     __test__ = True
+#     name = "ResNet50"
