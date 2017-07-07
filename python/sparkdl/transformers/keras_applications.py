@@ -38,10 +38,6 @@ def getKerasApplicationModel(name):
         return InceptionV3Model()
     elif name == "ResNet50":
         return ResNet50Model()
-    # elif name == "VGG16":
-    #     return VGG16Model()
-    # elif name == "VGG19":
-    #     return VGG19Model()
     elif name == "Xception":
         return XceptionModel()
     else:
