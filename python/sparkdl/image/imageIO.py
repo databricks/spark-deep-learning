@@ -199,8 +199,65 @@ def _decodeImage(imageData):
     image = imageArrayToStruct(imgArray, mode.sparkMode)
     return image
 
+
+def _decodeGif(gifData):
+    """
+    Decode compressed GIF data into a sequence of images.
+
+    :param gifData: (bytes, bytearray) compressed GIF data in PIL compatible format.
+    :return: list of tuples of zero-indexed numbers and
+        DataFrame Rows of image structs: (idx, struct)
+    """
+    try:
+        img = Image.open(BytesIO(gifData))
+    except IOError:
+        return None
+
+    if img.tile and img.tile[0] and img.tile[0][0] == "gif":
+        mode = pilModeLookup["RGB"]
+    else:
+        msg = "GIFs are not supported with image mode: {mode}"
+        warn(msg.format(mode=img.mode))
+        return None
+
+    frames = []
+    i = 0
+    mypalette = img.getpalette()
+    try:
+        while True:
+            img.putpalette(mypalette)
+            newImg = Image.new("RGB", img.size)
+            newImg.paste(img)
+            newImg.show()
+
+            newImgArray = np.asarray(newImg)
+            newImage = imageArrayToStruct(newImgArray, mode.sparkMode)
+            frames.append(newImage)
+
+            i += 1
+            img.seek(img.tell() + 1)
+    except EOFError:
+        # end of sequence
+        pass
+
+    return frames
+
 # Creating a UDF on import can cause SparkContext issues sometimes.
 # decodeImage = udf(_decodeImage, imageSchema)
+
+def filesToRDD(sc, path, numPartitions=None):
+    """
+    Read files from a directory to an RDD.
+
+    :param sc: SparkContext.
+    :param path: str, path to files.
+    :param numPartitions: int, number or partitions to use for reading files.
+    :return: RDD, with columns: (filePath: str, fileData: BinaryType)
+    """
+    numPartitions = numPartitions or sc.defaultParallelism
+    rdd = sc.binaryFiles(path, minPartitions=numPartitions).repartition(numPartitions)
+    return rdd.map(lambda x: (x[0], bytearray(x[1])))
+
 
 def filesToDF(sc, path, numPartitions=None):
     """
@@ -208,14 +265,12 @@ def filesToDF(sc, path, numPartitions=None):
 
     :param sc: SparkContext.
     :param path: str, path to files.
-    :param numPartition: int, number or partitions to use for reading files.
+    :param numPartitions: int, number or partitions to use for reading files.
     :return: DataFrame, with columns: (filePath: str, fileData: BinaryType)
     """
-    numPartitions = numPartitions or sc.defaultParallelism
     schema = StructType([StructField("filePath", StringType(), False),
                          StructField("fileData", BinaryType(), False)])
-    rdd = sc.binaryFiles(path, minPartitions=numPartitions).repartition(numPartitions)
-    rdd = rdd.map(lambda x: (x[0], bytearray(x[1])))
+    rdd = filesToRDD(sc, path, numPartitions)
     return rdd.toDF(schema)
 
 
@@ -235,3 +290,24 @@ def _readImages(imageDirectory, numPartition, sc):
     decodeImage = udf(_decodeImage, imageSchema)
     imageData = filesToDF(sc, imageDirectory, numPartitions=numPartition)
     return imageData.select("filePath", decodeImage("fileData").alias("image"))
+
+
+def readGifs(gifDirectory, numPartition=None):
+    """
+    Read a directory of GIFs (or a single GIF) into a DataFrame.
+
+    :param sc: spark context
+    :param gifDirectory: str, file path.
+    :param numPartition: int, number or partitions to use for reading files.
+    :return: DataFrame, with columns: (filepath: str, image: imageSchema).
+    """
+    return _readGifs(gifDirectory, numPartition, SparkContext.getOrCreate())
+
+
+def _readGifs(gifDirectory, numPartition, sc):
+    schema = StructType([StructField("filePath", StringType(), False),
+                         StructField("frameNum", IntegerType(), False),
+                         StructField("gifFrame", imageSchema, False)])
+    gifsRDD = filesToRDD(sc, gifDirectory, numPartitions=numPartition)
+    framesRDD = gifsRDD.flatMap(lambda x: [(x[0], i, frame) for (i, frame) in _decodeGif(x[1])])
+    return framesRDD.toDF(schema)
