@@ -55,9 +55,9 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
 
         # Predict the class probabilities for the images in our test library using keras API
         # and cache for use by multiple tests.
-        preppedImage = cls.appModel.testPreprocess(imageArray.astype('float32'))
-        cls.kerasPredict = cls.appModel.testKerasModel(include_top=True).predict(preppedImage)
-        cls.kerasFeatures = cls.appModel.testKerasModel(include_top=False).predict(preppedImage)
+        preppedImage = cls.appModel._testPreprocess(imageArray.astype('float32'))
+        cls.kerasPredict = cls.appModel._testKerasModel(include_top=True).predict(preppedImage)
+        cls.kerasFeatures = cls.appModel._testKerasModel(include_top=False).predict(preppedImage)
 
         cls.imageDF = getSampleImageDF().limit(5)
 
@@ -173,14 +173,3 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         pred_df_collected = lrModel.transform(train_df).collect()
         for row in pred_df_collected:
             self.assertEqual(int(row.prediction), row.label)
-
-
-class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
-
-    __test__ = True
-    name = "InceptionV3"
-
-class NamedImageTransformerXceptionTest(NamedImageTransformerBaseTestCase):
-
-    __test__ = True
-    name = "Xception"

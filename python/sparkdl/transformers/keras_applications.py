@@ -23,25 +23,15 @@ import tensorflow as tf
 from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
 
 
-KERAS_APPLICATION_MODELS = set(["InceptionV3", "Xception"])
-
 """
 Essentially a factory function for getting the correct KerasApplicationModel class
 for the network name.
 """
 def getKerasApplicationModel(name):
-    if name not in KERAS_APPLICATION_MODELS:
+    try:
+        return KERAS_APPLICATION_MODELS[name]()
+    except KeyError:
         raise ValueError("%s is not a supported model. Supported models: %s" %
-                         (name, str(KERAS_APPLICATION_MODELS)))
-
-    if name == "InceptionV3":
-        return InceptionV3Model()
-    elif name == "ResNet50":
-        return ResNet50Model()
-    elif name == "Xception":
-        return XceptionModel()
-    else:
-        raise ValueError("%s is not implemented but is in the supported models list: %s" %
                          (name, str(KERAS_APPLICATION_MODELS)))
 
 
@@ -73,16 +63,16 @@ class KerasApplicationModel:
     def inputShape(self):
         pass
 
-    def testPreprocess(self, inputImage):
+    def _testPreprocess(self, inputImage):
         """
-        For testing, the keras preprocess function for the model.
+        For testing only. The preprocess function to be called before kerasModel.predict().
         """
         return self.preprocess(inputImage)
 
     @abstractmethod
-    def testKerasModel(self, include_top):
+    def _testKerasModel(self, include_top):
         """
-        For testing, the keras model object to compare to.
+        For testing only. The keras model object to compare to.
         """
         pass
 
@@ -98,7 +88,7 @@ class InceptionV3Model(KerasApplicationModel):
     def inputShape(self):
         return InceptionV3Constants.INPUT_SHAPE
 
-    def testKerasModel(self, include_top):
+    def _testKerasModel(self, include_top):
         return inception_v3.InceptionV3(weights="imagenet", include_top=include_top)
 
 class XceptionModel(KerasApplicationModel):
@@ -112,5 +102,12 @@ class XceptionModel(KerasApplicationModel):
     def inputShape(self):
         return (299, 299)
 
-    def testKerasModel(self, include_top):
+    def _testKerasModel(self, include_top):
         return xception.Xception(weights="imagenet", include_top=include_top)
+
+
+KERAS_APPLICATION_MODELS = {
+    "InceptionV3": InceptionV3Model,
+    "Xception": XceptionModel
+}
+
