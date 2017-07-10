@@ -30,7 +30,7 @@ from .image_utils import getSampleImageDF, getSampleImageList
 
 
 class GetKerasApplicationModelTestCase(SparkDLTestCase):
-    def test_getKerasApplicationModel(self):
+    def test_getKerasApplicationModelError(self):
         self.assertRaises(ValueError, keras_apps.getKerasApplicationModel, "NotAModelABC")
 
 
