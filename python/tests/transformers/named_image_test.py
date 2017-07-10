@@ -29,6 +29,11 @@ from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF, getSampleImageList
 
 
+class GetKerasApplicationModelTestCase(SparkDLTestCase):
+    def test_getKerasApplicationModel(self):
+        self.assertRaises(ValueError, keras_apps.getKerasApplicationModel, "NotAModelABC")
+
+
 class NamedImageTransformerBaseTestCase(SparkDLTestCase):
     """
     The tests here are written for Keras application -based models but test the

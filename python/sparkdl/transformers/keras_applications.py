@@ -32,7 +32,7 @@ def getKerasApplicationModel(name):
         return KERAS_APPLICATION_MODELS[name]()
     except KeyError:
         raise ValueError("%s is not a supported model. Supported models: %s" %
-                         (name, str(KERAS_APPLICATION_MODELS)))
+                         (name, ', '.join(KERAS_APPLICATION_MODELS.keys())))
 
 
 class KerasApplicationModel:
