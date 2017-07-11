@@ -16,14 +16,10 @@
 from abc import ABCMeta, abstractmethod
 
 import keras.backend as K
-from keras.applications import inception_v3
-from keras.applications.imagenet_utils import decode_predictions
+from keras.applications import inception_v3, xception
 import tensorflow as tf
 
 from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
-
-
-KERAS_APPLICATION_MODELS = set(["InceptionV3"])
 
 
 """
@@ -31,15 +27,11 @@ Essentially a factory function for getting the correct KerasApplicationModel cla
 for the network name.
 """
 def getKerasApplicationModel(name):
-    if name not in KERAS_APPLICATION_MODELS:
-        raise ValueError("%s is not a supported model. Supported models: %s" % name,
-                         str(KERAS_APPLICATION_MODELS))
-
-    if name == "InceptionV3":
-        return InceptionV3Model()
-    else:
-        raise ValueError("%s is not implemented but is in the supported models list: %s" %
-                         name, str(KERAS_APPLICATION_MODELS))
+    try:
+        return KERAS_APPLICATION_MODELS[name]()
+    except KeyError:
+        raise ValueError("%s is not a supported model. Supported models: %s" %
+                         (name, ', '.join(KERAS_APPLICATION_MODELS.keys())))
 
 
 class KerasApplicationModel:
@@ -70,17 +62,16 @@ class KerasApplicationModel:
     def inputShape(self):
         pass
 
-    @abstractmethod
-    def numOutputFeatures(self):
+    def _testPreprocess(self, inputImage):
         """
-        For testing
+        For testing only. The preprocess function to be called before kerasModel.predict().
         """
-        pass
+        return self.preprocess(inputImage)
 
     @abstractmethod
-    def testKerasModel(self):
+    def _testKerasModel(self, include_top):
         """
-        For testing, the keras model object to compare to.
+        For testing only. The keras model object to compare to.
         """
         pass
 
@@ -96,8 +87,26 @@ class InceptionV3Model(KerasApplicationModel):
     def inputShape(self):
         return InceptionV3Constants.INPUT_SHAPE
 
-    def numOutputFeatures(self):
-        return InceptionV3Constants.NUM_OUTPUT_FEATURES
+    def _testKerasModel(self, include_top):
+        return inception_v3.InceptionV3(weights="imagenet", include_top=include_top)
 
-    def testKerasModel(self):
-        return inception_v3.InceptionV3(weights="imagenet")
+class XceptionModel(KerasApplicationModel):
+    def preprocess(self, inputImage):
+        return xception.preprocess_input(inputImage)
+
+    def model(self, preprocessed, featurize):
+        return xception.Xception(input_tensor=preprocessed, weights="imagenet",
+                                 include_top=(not featurize))
+
+    def inputShape(self):
+        return (299, 299)
+
+    def _testKerasModel(self, include_top):
+        return xception.Xception(weights="imagenet", include_top=include_top)
+
+
+KERAS_APPLICATION_MODELS = {
+    "InceptionV3": InceptionV3Model,
+    "Xception": XceptionModel
+}
+
