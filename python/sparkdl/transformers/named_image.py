@@ -24,7 +24,7 @@ from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, St
 import sparkdl.graph.utils as tfx
 from sparkdl.image.imageIO import resizeImage
 import sparkdl.transformers.keras_applications as keras_apps
-from sparkdl.transformers.param import (
+from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.transformers.tf_image import TFImageTransformer
 

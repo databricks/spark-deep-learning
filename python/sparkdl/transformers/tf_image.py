@@ -22,15 +22,13 @@ from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
 
 from sparkdl.image.imageIO import imageSchema, sparkModeLookup, SparkMode
-from sparkdl.transformers.param import (
-    keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
+from sparkdl.param import (
+    keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters, HasTensorOutput)
 import sparkdl.transformers.utils as utils
 import sparkdl.utils.jvmapi as JVMAPI
 import sparkdl.graph.utils as tfx
 
-OUTPUT_MODES = ["vector", "image"]
-
-class TFImageTransformer(Transformer, HasInputCol, HasOutputCol):
+class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasTensorOutput):
     """
     Applies the Tensorflow graph to the image column in DataFrame.
 
@@ -60,11 +58,6 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol):
     outputTensor = Param(Params._dummy(), "outputTensor",
                          "A TensorFlow tensor object or name representing the output",
                          typeConverter=SparkDLTypeConverters.toStringOrTFTensor)
-    outputMode = Param(Params._dummy(), "outputMode",
-                       "How the output column should be formatted. 'vector' for a 1-d MLlib " +
-                       "Vector of floats. 'image' to format the output to work with the image " +
-                       " tools in this package.",
-                       typeConverter=SparkDLTypeConverters.supportedNameConverter(OUTPUT_MODES))
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, graph=None,

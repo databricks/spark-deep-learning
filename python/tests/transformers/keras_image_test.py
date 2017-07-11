@@ -34,7 +34,7 @@ class KerasImageFileTransformerTest(SparkDLTestCase):
                                                 outputMode="vector")
 
         uri_df = image_utils.getSampleImagePathsDF(self.sql, input_col)
-        image_df = transformer._loadImages(uri_df)
+        image_df = transformer.loadImagesInternal(uri_df, input_col)
         self.assertEqual(len(image_df.columns), 2)
 
         img_col = transformer._loadedImageCol()
