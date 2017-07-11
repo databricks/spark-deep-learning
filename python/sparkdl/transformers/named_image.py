@@ -223,10 +223,9 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
 
 
 def _buildTFGraphForName(name, featurize):
-    if name not in keras_apps.KERAS_APPLICATION_MODELS:
-        raise ValueError("%s is not a supported model. Supported models: %s" %
-                         (name, str(KERAS_APPLICATION_MODELS)))
-
+    """
+    Currently only supports pre-trained models from the Keras applications module.
+    """
     modelData = keras_apps.getKerasApplicationModel(name).getModelData(featurize)
     sess = modelData["session"]
     outputTensorName = modelData["outputTensorName"]

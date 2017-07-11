@@ -17,7 +17,6 @@ from abc import ABCMeta, abstractmethod
 
 import keras.backend as K
 from keras.applications import inception_v3, xception
-from keras.applications.imagenet_utils import decode_predictions
 import tensorflow as tf
 
 from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
