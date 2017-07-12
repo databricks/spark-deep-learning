@@ -211,14 +211,14 @@ def _decodeGif(gifData):
     try:
         img = Image.open(BytesIO(gifData))
     except IOError:
-        return None
+        return [(None, None)]
 
     if img.tile and img.tile[0] and img.tile[0][0] == "gif":
         mode = pilModeLookup["RGB"]
     else:
         msg = "GIFs are not supported with image mode: {mode}"
         warn(msg.format(mode=img.mode))
-        return None
+        return [(None, None)]
 
     frames = []
     i = 0
@@ -232,7 +232,7 @@ def _decodeGif(gifData):
 
             newImgArray = np.asarray(newImg)
             newImage = imageArrayToStruct(newImgArray, mode.sparkMode)
-            frames.append(newImage)
+            frames.append((i, newImage))
 
             i += 1
             img.seek(img.tell() + 1)
@@ -306,8 +306,8 @@ def readGifs(gifDirectory, numPartition=None):
 
 def _readGifs(gifDirectory, numPartition, sc):
     schema = StructType([StructField("filePath", StringType(), False),
-                         StructField("frameNum", IntegerType(), False),
-                         StructField("gifFrame", imageSchema, False)])
+                         StructField("frameNum", IntegerType(), True),
+                         StructField("gifFrame", imageSchema, True)])
     gifsRDD = filesToRDD(sc, gifDirectory, numPartitions=numPartition)
     framesRDD = gifsRDD.flatMap(lambda x: [(x[0], i, frame) for (i, frame) in _decodeGif(x[1])])
     return framesRDD.toDF(schema)

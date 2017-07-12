@@ -173,4 +173,92 @@ class TestReadImages(SparkDLTestCase):
         self.assertEqual(type(first.fileData), bytearray)
 
 
+# Create dome fake GIF data to work with
+def create_gif_data():
+    # Random image-like data
+    array = np.random.randint(0, 256, (10, 11, 3), 'uint8')
+
+    # Compress as png
+    imgFile = BytesIO()
+    PIL.Image.fromarray(array).save(imgFile, 'png')
+    imgFile.seek(0)
+
+    # Get Png data as stream
+    gifData = imgFile.read()
+    return array, gifData
+
+gifArray, gifData = create_gif_data()
+
+
+class BinaryGifFilesMock(object):
+
+    defaultParallelism = 4
+
+    def __init__(self, sc):
+        self.sc = sc
+
+    def binaryFiles(self, path, minPartitions=None):
+        gifsData = [["file/path", gifData],
+                    ["another/file/path", gifData],
+                    ["bad/gif", b"badGifData"]
+                    ]
+        rdd = self.sc.parallelize(gifsData)
+        if minPartitions is not None:
+            rdd = rdd.repartition(minPartitions)
+        return rdd
+
+class TestReadGifs(SparkDLTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(TestReadGifs, cls).setUpClass()
+        cls.binaryFilesMock = BinaryGifFilesMock(cls.sc)
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestReadGifs, cls).tearDownClass()
+        cls.binaryFilesMock = None
+
+    def test_decodeGif(self):
+        badFrames = imageIO._decodeGif(b"xxx")
+        self.assertEqual(badFrames, [(None, None)])
+        # gifFrames = imageIO._decodeGif(gifData)
+        # self.assertIsNotNone(gifFrames)
+        # self.assertEqual(len(gifFrames), len(imageIO.imageSchema.names))
+        # for n in imageIO.imageSchema.names:
+        #     imgRow[n]
+
+    def test_gif_round_trip(self):
+        # Test round trip: array -> png -> sparkImg -> array
+        binarySchema = StructType([StructField("data", BinaryType(), False)])
+        df = self.session.createDataFrame([[bytearray(pngData)]], binarySchema)
+
+        # Convert to images
+        decImg = udf(imageIO._decodeImage, imageIO.imageSchema)
+        imageDF = df.select(decImg("data").alias("image"))
+        row = imageDF.first()
+
+        testArray = imageIO.imageStructToArray(row.image)
+        self.assertEqual(testArray.shape, array.shape)
+        self.assertEqual(testArray.dtype, array.dtype)
+        self.assertTrue(np.all(array == testArray))
+
+    def test_readGifs(self):
+        # Test that reading
+        gifDF = imageIO._readGifs("some/path", 2, self.binaryFilesMock)
+        self.assertTrue("filePath" in gifDF.schema.names)
+        self.assertTrue("frameNum" in gifDF.schema.names)
+        self.assertTrue("gifFrame" in gifDF.schema.names)
+
+        # The DF should have 2 images and 1 null.
+        self.assertEqual(gifDF.count(), 3)
+        validGifs = gifDF.filter(col("gifFrame").isNotNull())
+        self.assertEqual(validGifs.count(), 2)
+
+        img = validGifs.first().image
+        self.assertEqual(img.height, array.shape[0])
+        self.assertEqual(img.width, array.shape[1])
+        self.assertEqual(imageIO.imageType(img).nChannels, array.shape[2])
+        self.assertEqual(img.data, array.tobytes())
+
+
 # TODO: make unit tests for arrayToImageRow on arrays of varying shapes, channels, dtypes.
