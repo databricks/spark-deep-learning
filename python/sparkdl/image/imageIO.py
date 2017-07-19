@@ -216,8 +216,7 @@ def _decodeGif(gifData):
     if img.tile and img.tile[0] and img.tile[0][0] == "gif":
         mode = pilModeLookup["RGB"]
     else:
-        msg = "GIFs are not supported with image mode: {mode}"
-        warn(msg.format(mode=img.mode))
+        warn("Image file does not appear to be a GIF")
         return [(None, None)]
 
     frames = []
@@ -228,7 +227,6 @@ def _decodeGif(gifData):
             img.putpalette(mypalette)
             newImg = Image.new("RGB", img.size)
             newImg.paste(img)
-            newImg.show()
 
             newImgArray = np.asarray(newImg)
             newImage = imageArrayToStruct(newImgArray, mode.sparkMode)
@@ -252,7 +250,7 @@ def filesToRDD(sc, path, numPartitions=None):
     :param sc: SparkContext.
     :param path: str, path to files.
     :param numPartitions: int, number or partitions to use for reading files.
-    :return: RDD, with columns: (filePath: str, fileData: BinaryType)
+    :return: RDD tuple of: (filePath: str, fileData: BinaryType)
     """
     numPartitions = numPartitions or sc.defaultParallelism
     rdd = sc.binaryFiles(path, minPartitions=numPartitions).repartition(numPartitions)
