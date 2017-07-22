@@ -20,13 +20,13 @@ from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql.functions import udf
 
-import sparkdl.graph.utils as tfx
+from sparkdl.graph import utils as tfx
 from sparkdl.image import imageIO
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.transformers.tf_image import TFImageTransformer, OUTPUT_MODES
-import sparkdl.transformers.utils as utils
+from sparkdl.transformers import utils
 
 
 class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol):

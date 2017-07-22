@@ -24,9 +24,9 @@ from pyspark.sql.functions import udf
 from sparkdl.image.imageIO import imageSchema, sparkModeLookup, SparkMode
 from sparkdl.transformers.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
-import sparkdl.transformers.utils as utils
-import sparkdl.utils.jvmapi as JVMAPI
-import sparkdl.graph.utils as tfx
+from sparkdl.transformers import utils
+from sparkdl.utils import jvmapi as JVMAPI
+from sparkdl.graph import utils as tfx
 
 OUTPUT_MODES = ["vector", "image"]
 
