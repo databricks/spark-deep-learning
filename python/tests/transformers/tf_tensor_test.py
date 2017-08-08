@@ -1,0 +1,236 @@
+# Copyright 2017 Databricks, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import os
+import shutil
+import tempfile
+
+from keras.layers import Conv1D, Dense, Flatten, MaxPool1D
+import numpy as np
+import tensorflow as tf
+import tensorframes as tfs
+
+from pyspark.sql.types import Row
+
+from sparkdl.graph.builder import IsolatedSession
+import sparkdl.graph.utils as tfx
+from sparkdl.transformers.tf_tensor import TFTransformer
+
+from ..tests import SparkDLTestCase
+
+def grab_df_arr(df, output_col):
+    """ Stack the numpy array from a DataFrame column """
+    return np.array([row.asDict()[output_col]
+                     for row in df.select(output_col).toLocalIterator()])
+
+class TFTransformerTest(SparkDLTestCase):
+
+    def _get_rand_vec_df(self, num_rows, vec_size):
+        return self.session.createDataFrame(
+            Row(idx=idx, vec=np.random.randn(vec_size).tolist())
+            for idx in range(num_rows))
+
+    def test_checkpoint_reload(self):
+        vec_size = 17
+        num_vecs = 31
+        df = self._get_rand_vec_df(num_vecs, vec_size)
+        analyzed_df = tfs.analyze(df)
+        input_col = 'vec'
+        output_col = 'outputCol'
+
+        # Build the TensorFlow graph
+        model_temp_dir = tempfile.mkdtemp()
+        ckpt_dir = os.path.join(model_temp_dir, 'model_ckpt')
+        with tf.Session() as sess:
+            x = tf.placeholder(tf.float64, shape=[None, vec_size], name='tnsrIn')
+            w = tf.Variable(tf.random_normal([vec_size], dtype=tf.float64),
+                            dtype=tf.float64, name='varW')
+            z = tf.reduce_mean(x * w, axis=1, name='tnsrOut')
+            sess.run(w.initializer)
+            saver = tf.train.Saver(var_list=[w])
+            saved_path = saver.save(sess, ckpt_dir, global_step=2702)
+
+            # Get the reference data
+            _results = []
+            for row in df.rdd.toLocalIterator():
+                arr = np.array(row.vec)[np.newaxis, :]
+                _results.append(sess.run(z, {x: arr}))
+            out_ref = np.hstack(_results)
+
+        # Load the saved model checkpoint
+        # We want to clear device assignment in order to run it anywhere we want
+        with IsolatedSession() as issn:
+            saver = tf.train.import_meta_graph('{}.meta'.format(saved_path), clear_devices=True)
+            saver.restore(issn.sess, saved_path)
+            gfn = issn.asGraphFunction(
+                [tfx.get_tensor(issn.graph, 'tnsrIn')],
+                [tfx.get_tensor(issn.graph, 'tnsrOut')])
+
+        transformer = TFTransformer(tfGraph=gfn,
+                                    inputMapping={
+                                        input_col: 'tnsrIn'
+                                    },
+                                    outputMapping={
+                                        'tnsrOut': output_col
+                                    })
+        final_df = transformer.transform(analyzed_df)
+        out_tgt = grab_df_arr(final_df, output_col)
+
+        shutil.rmtree(model_temp_dir, ignore_errors=True)
+        self.assertTrue(np.allclose(out_ref, out_tgt))
+
+    def test_simple(self):
+        # Build a simple input DataFrame
+        vec_size = 17
+        num_vecs = 31
+        df = self._get_rand_vec_df(num_vecs, vec_size)
+        analyzed_df = tfs.analyze(df)
+
+        # Build the TensorFlow graph
+        with tf.Session() as sess:
+            #x = tf.placeholder(tf.float64, shape=[None, vec_size])
+            x = tfs.block(analyzed_df, 'vec')
+            z = tf.reduce_mean(x, axis=1)
+            graph = sess.graph
+
+            # Get the reference data
+            _results = []
+            for row in df.rdd.toLocalIterator():
+                arr = np.array(row.vec)[np.newaxis, :]
+                _results.append(sess.run(z, {x: arr}))
+            out_ref = np.hstack(_results)
+
+        # Apply the transform
+        transfomer = TFTransformer(tfGraph=graph,
+                                   inputMapping={
+                                       'vec': x
+                                   },
+                                   outputMapping={
+                                       z: 'outCol'
+                                   })
+        final_df = transfomer.transform(analyzed_df)
+        out_tgt = grab_df_arr(final_df, 'outCol')
+
+        self.assertTrue(np.allclose(out_ref, out_tgt))
+
+
+    def test_multi_io(self):
+        # Build a simple input DataFrame
+        vec_size = 17
+        num_vecs = 31
+        _df = self._get_rand_vec_df(num_vecs, vec_size)
+        df_x = _df.withColumnRenamed('vec', 'vec_x')
+        _df = self._get_rand_vec_df(num_vecs, vec_size)
+        df_y = _df.withColumnRenamed('vec', 'vec_y')
+        df = df_x.join(df_y, on='idx', how='inner')
+        analyzed_df = tfs.analyze(df)
+
+        # Build the TensorFlow graph
+        with tf.Session() as sess:
+            x = tfs.block(analyzed_df, 'vec_x')
+            y = tfs.block(analyzed_df, 'vec_y')
+            p = tf.reduce_mean(x + y, axis=1)
+            q = tf.reduce_mean(x - y, axis=1)
+            graph = sess.graph
+
+            # Get the reference data
+            p_out_ref = []
+            q_out_ref = []
+            for row in df.rdd.toLocalIterator():
+                arr_x = np.array(row['vec_x'])[np.newaxis, :]
+                arr_y = np.array(row['vec_y'])[np.newaxis, :]
+                p_val, q_val = sess.run([p, q], {x: arr_x, y: arr_y})
+                p_out_ref.append(p_val)
+                q_out_ref.append(q_val)
+            p_out_ref = np.hstack(p_out_ref)
+            q_out_ref = np.hstack(q_out_ref)
+
+        # Apply the transform
+        transfomer = TFTransformer(tfGraph=graph,
+                                   inputMapping={
+                                       'vec_x': x,
+                                       'vec_y': y
+                                   },
+                                   outputMapping={
+                                       p: 'outcol_p',
+                                       q: 'outcol_q'
+                                   })
+        final_df = transfomer.transform(analyzed_df)
+        p_out_tgt = grab_df_arr(final_df, 'outcol_p')
+        q_out_tgt = grab_df_arr(final_df, 'outcol_q')
+
+        self.assertTrue(np.allclose(p_out_ref, p_out_tgt))
+        self.assertTrue(np.allclose(q_out_ref, q_out_tgt))
+
+    def test_map_blocks_graph(self):
+
+        vec_size = 17
+        num_vecs = 137
+        df = self._get_rand_vec_df(num_vecs, vec_size)
+        analyzed_df = tfs.analyze(df)
+
+        input_col = 'vec'
+        output_col = 'outCol'
+
+        # Build the graph: the output should have the same leading/batch dimension
+        with IsolatedSession(using_keras=True) as issn:
+            tnsr_in = tfs.block(analyzed_df, input_col)
+            inp = tf.expand_dims(tnsr_in, axis=2)
+            # Keras layers does not take tf.double
+            inp = tf.cast(inp, tf.float32)
+            conv = Conv1D(filters=4, kernel_size=2)(inp)
+            pool = MaxPool1D(pool_size=2)(conv)
+            flat = Flatten()(pool)
+            dense = Dense(1)(flat)
+            # We must keep the leading dimension of the output
+            redsum = tf.reduce_sum(dense, axis=1)
+            tnsr_out = tf.cast(redsum, tf.double, name='TnsrOut')
+
+            # Initialize the variables
+            init_op = tf.global_variables_initializer()
+            issn.run(init_op)
+            # We could train the model ... but skip it here
+            gfn = issn.asGraphFunction([tnsr_in], [tnsr_out])
+
+        with IsolatedSession() as issn:
+            # Import the graph function object
+            feeds, fetches = issn.importGraphFunction(gfn, prefix='')
+
+            # Rename the input column name to the feed op's name
+            orig_in_name = tfx.op_name(issn.graph, feeds[0])
+            input_df = analyzed_df.withColumnRenamed(input_col, orig_in_name)
+
+            # Do the actual computation
+            output_df = tfs.map_blocks(fetches, input_df)
+
+            # Rename the output column (by default, the name of the fetch op's name)
+            orig_out_name = tfx.op_name(issn.graph, fetches[0])
+            final_df = output_df.withColumnRenamed(orig_out_name, output_col)
+
+        arr_ref = grab_df_arr(final_df, output_col)
+
+        # Using the Transformer
+        transformer = TFTransformer(tfGraph=gfn,
+                                    inputMapping={
+                                        input_col: gfn.input_names[0]
+                                    },
+                                    outputMapping={
+                                        gfn.output_names[0]: output_col
+                                    })
+        transformed_df = transformer.transform(analyzed_df)
+
+        arr_tgt = grab_df_arr(transformed_df, output_col)
+
+        self.assertTrue(np.allclose(arr_ref, arr_tgt))
+

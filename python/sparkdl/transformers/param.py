@@ -20,14 +20,19 @@ private APIs.
 """
 
 from functools import wraps
+import six
 
 import keras
 import tensorflow as tf
 
 from pyspark.ml.param import Param, Params, TypeConverters
 
+from sparkdl.graph.builder import GraphFunction, IsolatedSession
+import sparkdl.graph.utils as tfx
 
-# From pyspark
+"""
+Copied from PySpark for backward compatibility. First in Apache Spark version 2.1.1.
+"""
 
 def keyword_only(func):
     """
@@ -50,7 +55,8 @@ class HasInputCol(Params):
     Mixin for param inputCol: input column name.
     """
 
-    inputCol = Param(Params._dummy(), "inputCol", "input column name.", typeConverter=TypeConverters.toString)
+    inputCol = Param(Params._dummy(), "inputCol", "input column name.",
+                     typeConverter=TypeConverters.toString)
 
     def __init__(self):
         super(HasInputCol, self).__init__()
@@ -73,7 +79,8 @@ class HasOutputCol(Params):
     Mixin for param outputCol: output column name.
     """
 
-    outputCol = Param(Params._dummy(), "outputCol", "output column name.", typeConverter=TypeConverters.toString)
+    outputCol = Param(Params._dummy(), "outputCol", "output column name.",
+                      typeConverter=TypeConverters.toString)
 
     def __init__(self):
         super(HasOutputCol, self).__init__()
@@ -92,9 +99,43 @@ class HasOutputCol(Params):
         return self.getOrDefault(self.outputCol)
 
 
-# New in sparkdl
-
+"""
+TensorFlow Specific Parameters
+"""
 class SparkDLTypeConverters(object):
+
+    @staticmethod
+    def toTFGraph(value):
+        if isinstance(value, tf.Graph):
+            return value
+        elif isinstance(value, GraphFunction):
+            with IsolatedSession() as issn:
+                issn.importGraphFunction(value, prefix='')
+                g = issn.graph
+            return g
+        else:
+            raise TypeError("Could not convert %s to TensorFlow Graph" % type(value))
+
+    @staticmethod
+    def asColumnToTensorMap(value):
+        if isinstance(value, dict):
+            strs_pair_seq = [(k, tfx.as_tensor_name(v)) for k, v in value.items()]
+            return sorted(strs_pair_seq)
+        raise TypeError("Could not convert %s to TensorFlow Tensor" % type(value))
+
+    @staticmethod
+    def asTensorToColumnMap(value):
+        if isinstance(value, dict):
+            strs_pair_seq = [(tfx.as_tensor_name(k), v) for k, v in value.items()]
+            return sorted(strs_pair_seq)
+        raise TypeError("Could not convert %s to TensorFlow Tensor" % type(value))
+
+    @staticmethod
+    def toTFHParams(value):
+        if isinstance(value, tf.contrib.training.HParams):
+            return value
+        else:
+            raise TypeError("Could not convert %s to TensorFlow HParams" % type(value))
 
     @staticmethod
     def toStringOrTFTensor(value):
@@ -107,18 +148,73 @@ class SparkDLTypeConverters(object):
                 raise TypeError("Could not convert %s to tensorflow.Tensor or str" % type(value))
 
     @staticmethod
-    def toTFGraph(value):
-        # TODO: we may want to support tf.GraphDef in the future instead of tf.Graph since user
-        # is less likely to mess up using GraphDef vs Graph (e.g. constants vs variables).
-        if isinstance(value, tf.Graph):
-            return value
-        else:
-            raise TypeError("Could not convert %s to tensorflow.Graph type" % type(value))
-
-    @staticmethod
     def supportedNameConverter(supportedList):
         def converter(value):
             if value in supportedList:
                 return value
             else:
                 raise TypeError("%s %s is not in the supported list." % type(value), str(value))
+        return converter
+
+
+class HasTFHParams(Params):
+    """
+    Mixin for TensorFlow params
+    """
+    hparam = Param(Params._dummy(), "hparams", "instance of :class:`tf.contrib.training.HParams`",
+                   typeConverter=SparkDLTypeConverters.toTFHParams)
+
+# New in sparkdl
+
+class HasOutputMapping(Params):
+    """
+    Mixin for param outputMapping: ordered list of ('outputTensorName', 'outputColName') pairs
+    """
+    outputMapping = Param(Params._dummy(), "outputMapping",
+                          "Mapping output :class:`tf.Tensor` objects to DataFrame column names",
+                          typeConverter=SparkDLTypeConverters.asTensorToColumnMap)
+
+    def __init__(self):
+        super(HasOutputMapping, self).__init__()
+
+    def setOutputMapping(self, value):
+        return self._set(outputMapping=value)
+
+    def getOutputMapping(self):
+        return self.getOrDefault(self.outputMapping)
+
+
+class HasInputMapping(Params):
+    """
+    Mixin for param inputMapping: ordered list of ('inputColName', 'inputTensorName') pairs
+    """
+    inputMapping = Param(Params._dummy(), "inputMapping",
+                         "Mapping input DataFrame column names to :class:`tf.Tensor` objects",
+                         typeConverter=SparkDLTypeConverters.asColumnToTensorMap)
+
+    def __init__(self):
+        super(HasInputMapping, self).__init__()
+
+    def setInputMapping(self, value):
+        return self._set(inputMapping=value)
+
+    def getInputMapping(self):
+        return self.getOrDefault(self.inputMapping)
+
+
+class HasTFGraph(Params):
+    """
+    Mixin for param tfGraph: the :class:`tf.Graph` object that represents a TensorFlow computation.
+    """
+    tfGraph = Param(Params._dummy(), "tfGraph",
+                            "TensorFlow Graph object",
+                            typeConverter=SparkDLTypeConverters.toTFGraph)
+
+    def __init__(self):
+        super(HasTFGraph, self).__init__()
+
+    def setTFGraph(self, value):
+        return self._set(tfGraph=value)
+
+    def getTFGraph(self):
+        return self.getOrDefault(self.tfGraph)
