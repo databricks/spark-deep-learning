@@ -119,14 +119,14 @@ class SparkDLTypeConverters(object):
     @staticmethod
     def asColumnToTensorMap(value):
         if isinstance(value, dict):
-            strs_pair_seq = [(k, tfx.as_tensor_name(v)) for k, v in value.items()]
+            strs_pair_seq = [(k, tfx.as_op_name(v)) for k, v in value.items()]
             return sorted(strs_pair_seq)
         raise TypeError("Could not convert %s to TensorFlow Tensor" % type(value))
 
     @staticmethod
     def asTensorToColumnMap(value):
         if isinstance(value, dict):
-            strs_pair_seq = [(tfx.as_tensor_name(k), v) for k, v in value.items()]
+            strs_pair_seq = [(tfx.as_op_name(k), v) for k, v in value.items()]
             return sorted(strs_pair_seq)
         raise TypeError("Could not convert %s to TensorFlow Tensor" % type(value))
 
@@ -161,8 +161,8 @@ class HasTFHParams(Params):
     """
     Mixin for TensorFlow params
     """
-    hparam = Param(Params._dummy(), "hparams", "instance of :class:`tf.contrib.training.HParams`",
-                   typeConverter=SparkDLTypeConverters.toTFHParams)
+    tfHParms = Param(Params._dummy(), "hparams", "instance of :class:`tf.contrib.training.HParams`",
+                     typeConverter=SparkDLTypeConverters.toTFHParams)
 
 # New in sparkdl
 
@@ -202,6 +202,76 @@ class HasInputMapping(Params):
         return self.getOrDefault(self.inputMapping)
 
 
+class HasTagSet(Params):
+    # TODO: add docs
+    tagSet = Param(Params._dummy(), "tagSet",
+                     "signature def tag set",
+                     typeConverter=TypeConverters.toString)
+
+    def __init__(self):
+        super(HasTagSet, self).__init__()
+        # TODO: add default value
+
+    def setTagSet(self, value):
+        return self._set(tagSet=value)
+
+    def getTagSet(self):
+        return self.getOrDefault(self.tagSet)
+
+
+class HasSignatureDefKey(Params):
+    # TODO: add docs
+    signatureDefKey = Param(Params._dummy(), "signatureDefKey",
+                            "signature def",
+                            typeConverter=TypeConverters.toString)
+
+    def __init__(self):
+        super(HasSignatureDefKey, self).__init__()
+        # TODO: add default value
+
+    def setSignatureDefKey(self, value):
+        return self._set(signatureDefKey=value)
+
+    def getSignatureDefKey(self):
+        return self.getOrDefault(self.signatureDefKey)
+
+
+class HasExportDir(Params):
+    """
+    Mixin for param for constructing inputs
+    """
+    exportDir = Param(Params._dummy(), "exportDir",
+                      "Directory of saved model",
+                      typeConverter=TypeConverters.toString)
+
+    def __init__(self):
+        super(HasExportDir, self).__init__()
+
+    def setExportDir(self, value):
+        return self._set(exportDir=value)
+
+    def getExportDir(self):
+        return self.getOrDefault(self.exportDir)
+
+
+class HasTFCheckpointDir(Params):
+    """
+    Mixin for TensorFlow model checkpoint
+    """
+    tfCheckpointDir = Param(Params._dummy(), "tfCheckpointDir",
+                            "Directory that contains a model checkpoint",
+                            typeConverter=TypeConverters.toString)
+
+    def __init__(self):
+        super(HasTFCheckpointDir, self).__init__()
+
+    def setTFCheckpointDir(self, value):
+        return self._set(tfCheckpointDir=value)
+
+    def getTFCheckpointDir(self):
+        return self.getOrDefault(self.tfCheckpointDir)
+
+
 class HasTFGraph(Params):
     """
     Mixin for param tfGraph: the :class:`tf.Graph` object that represents a TensorFlow computation.
@@ -212,6 +282,7 @@ class HasTFGraph(Params):
 
     def __init__(self):
         super(HasTFGraph, self).__init__()
+        self._setDefault(tfGraph=None)
 
     def setTFGraph(self, value):
         return self._set(tfGraph=value)
