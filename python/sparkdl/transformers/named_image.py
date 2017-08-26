@@ -29,12 +29,13 @@ from sparkdl.transformers.param import (
 from sparkdl.transformers.tf_image import TFImageTransformer
 
 
-SUPPORTED_MODELS = ["InceptionV3"]
+SUPPORTED_MODELS = ["InceptionV3", "Xception"]
 
 
 class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
     """
     Applies the model specified by its popular name to the image column in DataFrame.
+    The input image column should be 3-channel SpImage.
     The output is a MLlib Vector.
     """
 
@@ -120,6 +121,7 @@ class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
     Applies the model specified by its popular name, with its prediction layer(s) chopped off,
     to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
     can be used in a MLlib Pipeline.
+    The input image column should be 3-channel SpImage.
     """
 
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
@@ -221,10 +223,9 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
 
 
 def _buildTFGraphForName(name, featurize):
-    if name not in keras_apps.KERAS_APPLICATION_MODELS:
-        raise ValueError("%s is not a supported model. Supported models: %s" % name,
-                         str(KERAS_APPLICATION_MODELS))
-
+    """
+    Currently only supports pre-trained models from the Keras applications module.
+    """
     modelData = keras_apps.getKerasApplicationModel(name).getModelData(featurize)
     sess = modelData["session"]
     outputTensorName = modelData["outputTensorName"]
