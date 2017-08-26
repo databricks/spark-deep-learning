@@ -34,6 +34,10 @@ imageSchema = StructType([StructField("mode", StringType(), False),
                           StructField("nChannels", IntegerType(), False),
                           StructField("data", BinaryType(), False)])
 
+gifSchema = StructType([StructField("filePath", StringType(), False),
+                        StructField("frameNum", IntegerType(), True),
+                        StructField("gifFrame", imageSchema, True)])
+
 
 # ImageType class for holding metadata about images stored in DataFrames.
 # fields:
@@ -304,9 +308,6 @@ def readGifs(gifDirectory, numPartition=None):
 
 
 def _readGifs(gifDirectory, numPartition, sc):
-    schema = StructType([StructField("filePath", StringType(), False),
-                         StructField("frameNum", IntegerType(), True),
-                         StructField("gifFrame", imageSchema, True)])
     gifsRDD = filesToRDD(sc, gifDirectory, numPartitions=numPartition)
     framesRDD = gifsRDD.flatMap(lambda x: [(x[0], i, frame) for (i, frame) in _decodeGif(x[1])])
-    return framesRDD.toDF(schema)
+    return framesRDD.toDF(gifSchema)
