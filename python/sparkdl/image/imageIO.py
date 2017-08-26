@@ -213,7 +213,7 @@ def _decodeGif(gifData):
     except IOError:
         return [(None, None)]
 
-    if img.tile and img.tile[0] and img.tile[0][0] == "gif":
+    if img.format.lower() == "gif":
         mode = pilModeLookup["RGB"]
     else:
         warn("Image file does not appear to be a GIF")
@@ -224,7 +224,8 @@ def _decodeGif(gifData):
     mypalette = img.getpalette()
     try:
         while True:
-            img.putpalette(mypalette)
+            if not img.getpalette() and mypalette:
+                img.putpalette(mypalette)
             newImg = Image.new("RGB", img.size)
             newImg.paste(img)
 

@@ -26,7 +26,7 @@ from pyspark.sql.types import BinaryType, StringType, StructField, StructType
 from sparkdl.image import imageIO
 from ..tests import SparkDLTestCase
 
-# Create dome fake image data to work with
+# Create some fake image data to work with
 def create_image_data():
     # Random image-like data
     array = np.random.randint(0, 256, (10, 11, 3), 'uint8')
@@ -176,17 +176,19 @@ class TestReadImages(SparkDLTestCase):
 # Create some fake GIF data to work with
 def create_gif_data():
     # Random GIF-like data
-    arrays = [np.random.randint(0, 256, (10, 11, 3), 'uint8') for _ in xrange(3)]
-    frames = [PIL.Image.fromarray(a) for a in arrays]
+    arrays2D = [np.random.randint(0, 256, (10, 11), 'uint8') for _ in xrange(3)]
+    arrays3D = [np.dstack((a, a, a)) for a in arrays2D]
+    # Create frames in P mode because Pillow always reads GIFs as P or L images
+    frames = [PIL.Image.fromarray(a, mode='P') for a in arrays2D]
 
     # Compress as GIF
     gifFile = BytesIO()
-    frames[0].save(gifFile, 'gif', save_all=True, append_images=frames[1:])
+    frames[0].save(gifFile, 'gif', save_all=True, append_images=frames[1:], optimize=False)
     gifFile.seek(0)
 
     # Get GIF data as stream
     gifData = gifFile.read()
-    return arrays, gifData
+    return arrays3D, gifData
 
 gifArray, gifData = create_gif_data()
 frameArray = gifArray[0]
@@ -244,7 +246,7 @@ class TestReadGifs(SparkDLTestCase):
         testArray = imageIO.imageStructToArray(row)
         self.assertEqual(testArray.shape, frameArray.shape)
         self.assertEqual(testArray.dtype, frameArray.dtype)
-        # self.assertTrue(np.all(frameArray == testArray))
+        self.assertTrue(np.all(frameArray == testArray))
 
     def test_readGifs(self):
         # Test that reading
@@ -262,7 +264,7 @@ class TestReadGifs(SparkDLTestCase):
         self.assertEqual(frame.height, frameArray.shape[0])
         self.assertEqual(frame.width, frameArray.shape[1])
         self.assertEqual(imageIO.imageType(frame).nChannels, frameArray.shape[2])
-        # self.assertEqual(frame.data, frameArray.tobytes())
+        self.assertEqual(frame.data, frameArray.tobytes())
 
 
 # TODO: make unit tests for arrayToImageRow on arrays of varying shapes, channels, dtypes.
