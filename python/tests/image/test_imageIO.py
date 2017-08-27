@@ -176,7 +176,7 @@ class TestReadImages(SparkDLTestCase):
 # Create some fake GIF data to work with
 def create_gif_data():
     # Random GIF-like data
-    arrays2D = [np.random.randint(0, 256, (10, 11), 'uint8') for _ in xrange(3)]
+    arrays2D = [np.random.randint(0, 256, (10, 11), 'uint8') for _ in range(3)]
     arrays3D = [np.dstack((a, a, a)) for a in arrays2D]
     # Create frames in P mode because Pillow always reads GIFs as P or L images
     frames = [PIL.Image.fromarray(a, mode='P') for a in arrays2D]
