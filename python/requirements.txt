@@ -1,7 +1,7 @@
 # This file should list any python package dependencies.
 coverage>=4.4.1
 h5py>=2.7.0
-keras==2.0.4
+keras>=2.0.4
 nose>=1.3.7  # for testing
 numpy>=1.11.2
 pillow>=4.1.1,<4.2
