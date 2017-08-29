@@ -120,9 +120,6 @@ class GraphPiecesTest(SparkDLTestCase):
 
             _preproc_img_list = []
             for fpath in img_fpaths:
-                print("@SID target_size:  " + target_size)
-                print("@SID target_size deconstructed: %s, %s"%(target_size[0], target_size[1]))
-                print("@SID types: (%s, %s)"%(type(target_size[0]), type(target_size[1])))
                 img = load_img(fpath, target_size=target_size)
                 # WARNING: must apply expand dimensions first, or ResNet50 preprocessor fails
                 img_arr = np.expand_dims(img_to_array(img), axis=0)
