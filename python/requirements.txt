@@ -1,10 +1,11 @@
 # This file should list any python package dependencies.
-coverage==4.4.1
-h5py==2.7.0
-keras==2.0.4
-nose==1.3.7  # for testing
-numpy==1.11.2
-pillow==4.1.1
-pygments==2.2.0
-tensorflow==1.1.0
-six==1.10.0
+coverage>=4.4.1
+h5py>=2.7.0
+keras==2.0.4 # NOTE: this package has only been tested with keras 2.0.4 and may not work with other releases
+nose>=1.3.7  # for testing
+numpy>=1.11.2
+pillow>=4.1.1,<4.2
+pygments>=2.2.0
+tensorflow==1.3.0
+pandas>=0.19.1
+six>=1.10.0

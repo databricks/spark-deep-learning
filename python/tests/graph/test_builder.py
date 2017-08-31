@@ -58,9 +58,13 @@ class GraphFunctionWithIsolatedSessionTest(SparkDLTestCase):
 
         self.assertEqual(z_ref, z_tgt)
 
-        # Version texts are not essential part of the graph, ignore them
-        gdef_ref.ClearField("versions")
-        gfn.graph_def.ClearField("versions")
+        # Remove all fields besides "node" from the graph definition, since we only
+        # care that the nodes are equal
+        # TODO(sid.murching) find a cleaner way of removing all fields besides "node"
+        nonessentialFields = ["versions", "version", "library"]
+        for fieldName in nonessentialFields:
+            gdef_ref.ClearField(fieldName)
+            gfn.graph_def.ClearField(fieldName)
 
         # The GraphDef contained in the GraphFunction object
         # should be the same as that in the one exported directly from TensorFlow session
