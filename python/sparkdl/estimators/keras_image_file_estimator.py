@@ -26,8 +26,9 @@ from pyspark.ml.param import Param, Params, TypeConverters
 
 from sparkdl.image.imageIO import imageStructToArray
 from sparkdl.param import (
-    keyword_only, HasInputCol, HasOutputCol, HasLabelCol,
-    CanLoadImage, HasKerasModel, HasTensorOutput)
+    keyword_only, CanLoadImage, HasKerasModel,
+    HasInputCol, HasInputImageNodeName, HasLabelCol,
+    HasOutputNodeName, HasOutputCol, HasOutputMode)
 from sparkdl.transformers.keras_image import KerasImageFileTransformer
 import sparkdl.utils.jvmapi as JVMAPI
 import sparkdl.utils.keras_model as kmutil
@@ -36,8 +37,9 @@ __all__ = ['KerasImageFileEstimator']
 
 logger = logging.getLogger('sparkdl')
 
-class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
-                              CanLoadImage, HasKerasModel, HasTensorOutput):
+class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
+                              HasOutputCol, HasOutputNodeName, HasLabelCol,
+                              CanLoadImage, HasKerasModel, HasOutputMode):
     """
     Build a Estimator from a Keras model.
     """
@@ -53,21 +55,26 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
                  typeConverter=TypeConverters.toString)
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
+    def __init__(self, inputCol=None, inputImageNodeName=None, outputCol=None,
+                 outputNodeName=None, outputMode="vector", labelCol=None,
                  modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None):
         """
-        __init__(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
+        __init__(self, inputCol=None, inputImageNodeName=None, outputCol=None,
+                 outputNodeName=None, outputMode="vector", labelCol=None,
                  modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None)
         """
+        # TODO: currently, we ignore output mode
         super(KerasImageFileEstimator, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
+    def setParams(self, inputCol=None, inputImageNodeName=None, outputCol=None,
+                  outputNodeName=None, outputMode="vector", labelCol=None,
                   modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None):
         """
-        setParams(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
+        setParams(self, inputCol=None, inputImageNodeName=None, outputCol=None,
+                  outputNodeName=None, outputMode="vector", labelCol=None,
                   modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None)
         """
         kwargs = self._input_kwargs
@@ -125,6 +132,11 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         return kmutil.model_to_bytes(model)
 
     def _getNumpyFeaturesAndLabels(self, dataset):
+        """
+        We assume the training data fits in memory on a single server.
+        The input dataframe is converted to numerical image features and
+        broadcast to all the worker nodes.
+        """
         image_uri_col = self.getInputCol()
         label_col = None
         if self.isDefined(self.labelCol) and self.getLabelCol() != "":

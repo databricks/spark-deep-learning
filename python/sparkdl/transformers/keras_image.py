@@ -25,13 +25,13 @@ from sparkdl.image import imageIO
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters,
-    CanLoadImage, HasKerasModel, HasTensorOutput)
+    CanLoadImage, HasKerasModel, HasOutputMode)
 from sparkdl.transformers.tf_image import TFImageTransformer
 import sparkdl.transformers.utils as utils
 
 
-class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol, 
-                                CanLoadImage, HasKerasModel, HasTensorOutput):
+class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
+                                CanLoadImage, HasKerasModel, HasOutputMode):
     """
     Applies the Tensorflow-backed Keras model (specified by a file name) to
     images (specified by the URI in the inputCol column) in the DataFrame.

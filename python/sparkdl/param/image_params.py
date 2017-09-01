@@ -27,7 +27,39 @@ from sparkdl.param import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
 
-class HasTensorOutput(Params):
+class HasInputImageNodeName(Params):
+
+    inputImageNodeName = Param(Params._dummy(), "inputImageNodeName",
+                               "name of the graph element/node corresponding to the input",
+                               typeConverter=TypeConverters.toString)
+
+    def __init__(self):
+        super(HasInputImageNodeName, self).__init__()
+
+    def setInputImageNodeName(self, value):
+        return self._set(inputImageNodeName=value)
+
+    def getInputImageNodeName(self):
+        return self.getOrDefault(self.inputImageNodeName)
+
+
+class HasOutputNodeName(Params):
+
+    outputNodeName = Param(Params._dummy(), "outputImageNodeName",
+                           "name of the graph element/node corresponding to the output",
+                           typeConverter=TypeConverters.toString)
+
+    def __init__(self):
+        super(HasOutputNodeName, self).__init__()
+
+    def setOutputNodeName(self, value):
+        return self._set(outputNodeName=value)
+
+    def getOutputNodeName(self):
+        return self.getOrDefault(self.outputNodeName)
+
+
+class HasOutputMode(Params):
 
     outputMode = Param(Params._dummy(), "outputMode",
                        "How the output column should be formatted. 'vector' for a 1-d MLlib " +
@@ -36,7 +68,7 @@ class HasTensorOutput(Params):
                        typeConverter=SparkDLTypeConverters.supportedNameConverter(OUTPUT_MODES))
 
     def __init__(self):
-        super(HasTensorOutput, self).__init__()
+        super(HasOutputMode, self).__init__()
 
     def setOutputMode(self, value):
         return self._set(outputMode=value)

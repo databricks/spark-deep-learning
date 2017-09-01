@@ -97,7 +97,7 @@ class KerasEstimatorsTest(SparkDLTestCase):
         # Create image URI dataframe
         label_cardinality = 1000
         image_uri_df = self._create_train_image_uris_and_labels(
-            repeat_factor=10, cardinality=label_cardinality)
+            repeat_factor=3, cardinality=label_cardinality)
         estimator = self._get_estimator(Xception(weights=None))
         self.assertTrue(estimator._validateParams())
         transformers = estimator.fit(image_uri_df)

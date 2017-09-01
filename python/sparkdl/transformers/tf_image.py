@@ -23,12 +23,12 @@ from pyspark.sql.functions import udf
 
 from sparkdl.image.imageIO import imageSchema, sparkModeLookup, SparkMode
 from sparkdl.param import (
-    keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters, HasTensorOutput)
+    keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters, HasOutputMode)
 import sparkdl.transformers.utils as utils
 import sparkdl.utils.jvmapi as JVMAPI
 import sparkdl.graph.utils as tfx
 
-class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasTensorOutput):
+class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     """
     Applies the Tensorflow graph to the image column in DataFrame.
 

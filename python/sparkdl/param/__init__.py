@@ -16,4 +16,5 @@
 from sparkdl.param.shared_params import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.param.image_params import (
-    CanLoadImage, HasLabelCol, HasKerasModel, HasTensorOutput, OUTPUT_MODES)
+    CanLoadImage, HasLabelCol, HasKerasModel,
+    HasInputImageNodeName, HasOutputMode, HasOutputNodeName, OUTPUT_MODES)
