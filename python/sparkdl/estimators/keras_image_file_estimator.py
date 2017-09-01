@@ -21,6 +21,7 @@ import logging
 import numpy as np
 
 from pyspark.ml import Estimator
+import pyspark.ml.linalg as spla
 from pyspark.ml.param import Param, Params, TypeConverters
 
 from sparkdl.image.imageIO import imageStructToArray
@@ -52,30 +53,22 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
                  typeConverter=TypeConverters.toString)
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, modelFile=None,
-                 labelCol=None, labelCardinality=None, isOneHotLabel=None,
-                 imageLoader=None, outputMode="vector", optimizer=None, loss=None,
-                 kerasFitParams=None):
+    def __init__(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
+                 modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None):
         """
-        __init__(self, inputCol=None, outputCol=None, modelFile=None,
-                 labelCol=None, labelCardinality=None, isOneHotLabel=None,
-                 imageLoader=None, outputMode="vector", optimizer=None, loss=None,
-                 kerasFitParams=None):
+        __init__(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
+                 modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None)
         """
         super(KerasImageFileEstimator, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, modelFile=None,
-                  labelCol=None, labelCardinality=None, isOneHotLabel=None,
-                  imageLoader=None, outputMode="vector", optimizer=None, loss=None,
-                  kerasFitParams=None):
+    def setParams(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
+                  modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None):
         """
-        setParams(self, inputCol=None, outputCol=None, modelFile=None,
-                  labelCol=None, labelCardinality=None, isOneHotLabel=None,
-                  imageLoader=None, outputMode="vector", optimizer=None, loss=None,
-                  kerasFitParams=None):
+        setParams(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
+                  modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None)
         """
         kwargs = self._input_kwargs
         self._set(**kwargs)
@@ -126,9 +119,9 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         model = kmutil.bytes_to_model(modelBytesBc.value)
 
         model.compile(optimizer=estimator.getOptimizer(), loss=estimator.getLoss())
-        fit_params = estimator.getKerasFitParams()
+        _fit_params = estimator.getKerasFitParams()
 
-        model.fit(x=features, y=labels, **fit_params)
+        model.fit(x=features, y=labels, **_fit_params)
         return kmutil.model_to_bytes(model)
 
     def _getNumpyFeaturesAndLabels(self, dataset):
@@ -142,44 +135,34 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         localFeatures = []
         localLabels = []
         is_with_labels = label_col is not None
+
+        if is_with_labels:
+            label_schema = image_df.schema[label_col]
+            assert isinstance(label_schema.dataType, spla.VectorUDT), \
+                "must encode labels in one-hot vector format"
+
         for row in image_df.collect():
             spimg = row[tmp_image_col]
             features = imageStructToArray(spimg)
             localFeatures.append(features)
             if is_with_labels:
-                _label = int(row[label_col])
-                localLabels.append(_label)
+                try:
+                    _keras_label = row[label_col].array
+                except ValueError:
+                    raise ValueError("Cannot extract encoded label array")
+                localLabels.append(_keras_label)
 
         if len(localFeatures) == 0:
             raise ValueError("Given empty dataset!")
 
         # We must reshape input data to form to the same size so as to be stacked
         X = np.stack(localFeatures, axis=0)
-        if not is_with_labels:
-            return X, None
-
-        y_category = np.asarray(localLabels).ravel()
-        if self.isDefined(self.labelCardinality):
-            category_field_size = self.getLabelCardinality()
-        else:
-            category_field_size = np.max(y_category) + 1
-            warn_msg = 'inferring label cardinality from training labels {}'
-            warn_msg = warn_msg.format(category_field_size)
-            logger.warning(warn_msg)
-
-        # We also need to convert them to one-hot encoding
-        if self.getIsOneHotLabel():
-            y = y_category
-            assert y.shape[1] == category_field_size, \
-                "label categories must conform {} != {}".format(y.shape[1], category_field_size)
-        else:
-            local_train_set_size = y_category.shape[0]
-            y_one_hot = np.zeros((local_train_set_size, category_field_size))
-            y_one_hot[np.arange(local_train_set_size), y_category] = 1
-            y = y_one_hot
-            info_msg = 'shape of the training labels {}'.format(y.shape)
-            logger.warning(info_msg)
-
+        y = None
+        if is_with_labels:
+            if not localLabels:
+                raise ValueError("Failed to load any labels from dataset, but labels are required")
+            y = np.stack(localLabels, axis=0)
+            assert y.shape[0] == X.shape[0], "must have same amount of features and labels"
         return X, y
 
     def _collectModels(self, kerasModelsBytesRDD):

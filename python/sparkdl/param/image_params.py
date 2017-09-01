@@ -33,7 +33,7 @@ class HasTensorOutput(Params):
                        "How the output column should be formatted. 'vector' for a 1-d MLlib " +
                        "Vector of floats. 'image' to format the output to work with the image " +
                        "tools in this package.",
-                       typeConverter=SparkDLTypeConverters.supportedNameConverter(OUTPUT_MODES))    
+                       typeConverter=SparkDLTypeConverters.supportedNameConverter(OUTPUT_MODES))
 
     def __init__(self):
         super(HasTensorOutput, self).__init__()
@@ -46,22 +46,20 @@ class HasTensorOutput(Params):
 
 
 class HasLabelCol(Params):
+    """
+    When training Keras image models in a supervised learning setting,
+    users will provide a :py:obj:`DataFrame` column with the labels.
 
+    .. note:: The Estimator expect this columnd to contain data directly usable for the Keras model.
+              This usually means that the labels are already encoded in one-hot format.
+              Please consider adding a :py:obj:`OneHotEncoder` to transform the label column.
+    """
     labelCol = Param(Params._dummy(), "labelCol",
                      "name of the column storing the training data labels",
                      typeConverter=TypeConverters.toString)
-    
-    labelCardinality = Param(Params._dummy(), "labelCardinality",
-                             "distinct integer encoded labels",
-                             typeConverter=TypeConverters.toInt)
-    
-    isOneHotLabel = Param(Params._dummy(), "isOneHotLabel",
-                          "whether the labels are integers or one-hot encoded vectors",
-                          typeConverter=TypeConverters.toBoolean)
 
     def __init__(self):
         super(HasLabelCol, self).__init__()
-        self._setDefault(isOneHotLabel=False)
 
     def setLabelCol(self, value):
         return self._set(labelCol=value)
@@ -69,21 +67,9 @@ class HasLabelCol(Params):
     def getLabelCol(self):
         return self.getOrDefault(self.labelCol)
 
-    def setLabelCardinality(self, value):
-        return self._set(labelCardinality=value)
-
-    def getLabelCardinality(self):
-        return self.getOrDefault(self.labelCardinality)
-
-    def setIsOneHotLabel(self, value):
-        return self._set(isOneHotLabel=value)
-    
-    def getIsOneHotLabel(self):
-        return self.getOrDefault(self.isOneHotLabel)
-
 class HasKerasModel(Params):
     """
-    This parameter allows users to provide Keras model file 
+    This parameter allows users to provide Keras model file
     """
     # TODO: add an option to allow user to use Keras Model object
     modelFile = Param(Params._dummy(), "modelFile",
@@ -105,7 +91,7 @@ class HasKerasModel(Params):
 
     def setKerasFitParams(self, value):
         return self._set(kerasFitParams=value)
-    
+
     def getKerasFitParams(self):
         return self.getOrDefault(self.kerasFitParams)
 
@@ -121,16 +107,16 @@ class CanLoadImage(Params):
     will load each image from the image URI column, encode the image in
     our :py:obj:`~sparkdl.imageIO.imageSchema` format and store it in the :py:meth:`~_loadedImageCol` column.
 
-    Below is an example ``image_loader`` function to load Xception https://arxiv.org/abs/1610.02357 
+    Below is an example ``image_loader`` function to load Xception https://arxiv.org/abs/1610.02357
     compatible images.
-    
+
 
     .. code-block:: python
-        
+
         from keras.applications.xception import preprocess_input
         import numpy as np
         import PIL.Image
-    
+
         def image_loader(uri):
             img = PIL.Image.open(uri).convert('RGB')
             img_resized = img.resize((299, 299), PIL.Image.ANTIALIAS))
@@ -138,7 +124,7 @@ class CanLoadImage(Params):
             img_tnsr = preprocess_input(img_arr[np.newaxis, :])
             return img_tnsr
     """
-    
+
     imageLoader = Param(Params._dummy(), "imageLoader",
                         "Function containing the logic for loading and pre-processing images. " +
                         "The function should take in a URI string and return a 4-d numpy.array " +
@@ -152,17 +138,17 @@ class CanLoadImage(Params):
 
     def _loadedImageCol(self):
         return "__sdl_img"
-    
+
     def loadImagesInternal(self, dataframe, inputCol):
         """
-        Load image files specified in dataset as image format specified in `sparkdl.image.imageIO`.                
+        Load image files specified in dataset as image format specified in `sparkdl.image.imageIO`.
         """
         # plan 1: udf(loader() + convert from np.array to imageSchema) -> call TFImageTransformer
         # plan 2: udf(loader()) ... we don't support np.array as a dataframe column type...
         loader = self.getImageLoader()
 
         # Load from external resources can fail, so we should allow None to be returned
-        def load_image_uri_impl(uri): 
+        def load_image_uri_impl(uri):
             try:
                 return imageArrayToStruct(loader(uri))
             except: # pylint: disable=bare-except

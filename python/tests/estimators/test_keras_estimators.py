@@ -26,6 +26,9 @@ import numpy as np
 from keras.applications import Xception
 from keras.applications.imagenet_utils import preprocess_input
 
+import pyspark.ml.linalg as spla
+import pyspark.sql.types as sptyp
+
 from sparkdl.estimators.keras_image_file_estimator import KerasImageFileEstimator
 from sparkdl.transformers.keras_image import KerasImageFileTransformer
 import sparkdl.utils.keras_model as kmutil
@@ -44,23 +47,41 @@ def _load_image_from_uri(local_uri):
 
 class KerasEstimatorsTest(SparkDLTestCase):
 
-    def _create_test_image_uri(self, repeat_factor=1, cardinality=100):
+    def _create_train_image_uris_and_labels(self, repeat_factor=1, cardinality=100):
         image_uris = getSampleImagePaths() * repeat_factor
-        image_labels = [np.random.randint(low=0, high=cardinality), len(image_uris)]
-        image_uri_df = self.sc.parallelize(
-            zip(image_uris, image_labels)).toDF([self.input_col, self.label_col])
+        # Create image categorical labels (integer IDs)
+        local_rows = []
+        for uri in image_uris:
+            label = np.random.randint(low=0, high=cardinality, size=1)[0]
+            label_inds = np.zeros(cardinality)
+            label_inds[label] = 1.0
+            label_inds = label_inds.ravel()
+            assert label_inds.shape[0] == cardinality, label_inds.shape
+            one_hot_vec = spla.Vectors.dense(label_inds.tolist())
+            _row_struct = {self.input_col: uri, self.label_col: one_hot_vec}
+            row = sptyp.Row(**_row_struct)
+            local_rows.append(row)
+
+        image_uri_df = self.session.createDataFrame(local_rows)
+        image_uri_df.printSchema()
         return image_uri_df
 
-    def _get_estimator(self, model, label_cardinality,
-                       optimizer='adam', loss='categorical_crossentropy',
-                       keras_fit_params={'verbose': 1}):                
-        model_filename = os.path.join(self.temp_dir, 'model-{}.h5'.format(str(uuid.uuid4())))
+    def _get_estimator(self, model, optimizer='adam', loss='categorical_crossentropy',
+                       keras_fit_params={'verbose': 1}):
+        """
+        Create a :py:obj:`KerasImageFileEstimator` from an existing Keras model
+        """
+        _random_filename_suffix = str(uuid.uuid4())
+        model_filename = os.path.join(self.temp_dir, 'model-{}.h5'.format(_random_filename_suffix))
         model.save(model_filename)
-        estm = KerasImageFileEstimator(inputCol=self.input_col, outputCol=self.output_col,
-                                       labelCol=self.label_col, labelCardinality=label_cardinality,
-                                       isOneHotLabel=False, imageLoader=_load_image_from_uri,
-                                       optimizer=optimizer, loss=loss,
-                                       kerasFitParams=keras_fit_params, modelFile=model_filename)  
+        estm = KerasImageFileEstimator(inputCol=self.input_col,
+                                       outputCol=self.output_col,
+                                       labelCol=self.label_col,
+                                       imageLoader=_load_image_from_uri,
+                                       optimizer=optimizer,
+                                       loss=loss,
+                                       kerasFitParams=keras_fit_params,
+                                       modelFile=model_filename)
         return estm
 
     def setUp(self):
@@ -75,8 +96,9 @@ class KerasEstimatorsTest(SparkDLTestCase):
     def test_valid_workflow(self):
         # Create image URI dataframe
         label_cardinality = 1000
-        image_uri_df = self._create_test_image_uri(repeat_factor=10, cardinality=label_cardinality)
-        estimator = self._get_estimator(Xception(weights=None), label_cardinality)
+        image_uri_df = self._create_train_image_uris_and_labels(
+            repeat_factor=10, cardinality=label_cardinality)
+        estimator = self._get_estimator(Xception(weights=None))
         self.assertTrue(estimator._validateParams())
         transformers = estimator.fit(image_uri_df)
         self.assertEqual(1, len(transformers))
