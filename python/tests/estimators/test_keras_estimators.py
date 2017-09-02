@@ -23,7 +23,8 @@ import uuid
 
 import PIL.Image
 import numpy as np
-from keras.applications import Xception
+from keras.layers import Activation, Dense, Flatten
+from keras.models import Sequential
 from keras.applications.imagenet_utils import preprocess_input
 
 import pyspark.ml.linalg as spla
@@ -95,10 +96,17 @@ class KerasEstimatorsTest(SparkDLTestCase):
 
     def test_valid_workflow(self):
         # Create image URI dataframe
-        label_cardinality = 1000
+        label_cardinality = 10
         image_uri_df = self._create_train_image_uris_and_labels(
             repeat_factor=3, cardinality=label_cardinality)
-        estimator = self._get_estimator(Xception(weights=None))
+
+        # We need a small model so that machines with limited resources can run it
+        model = Sequential()
+        model.add(Flatten(input_shape=(299, 299, 3)))
+        model.add(Dense(label_cardinality))
+        model.add(Activation("softmax"))
+
+        estimator = self._get_estimator(model)
         self.assertTrue(estimator._validateParams())
         transformers = estimator.fit(image_uri_df)
         self.assertEqual(1, len(transformers))
