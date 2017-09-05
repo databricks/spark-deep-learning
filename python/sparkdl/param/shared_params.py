@@ -24,9 +24,6 @@ from functools import wraps
 import tensorflow as tf
 
 from pyspark.ml.param import Param, Params, TypeConverters
-from pyspark.sql.functions import udf
-
-from sparkdl.image.imageIO import imageArrayToStruct, imageStructToArray, imageSchema
 
 
 # From pyspark
