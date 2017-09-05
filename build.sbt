@@ -36,7 +36,6 @@ sparkComponents ++= Seq("mllib-local", "mllib", "sql")
 // e.g. spDependencies += "databricks/spark-avro:0.1"
 spDependencies += s"databricks/tensorframes:0.2.9-s_${scalaMajorVersion}"
 
-
 // These versions are ancient, but they cross-compile around scala 2.10 and 2.11.
 // Update them when dropping support for scala 2.10
 libraryDependencies ++= Seq(
