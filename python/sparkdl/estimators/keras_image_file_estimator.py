@@ -118,19 +118,6 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
             raise ValueError("Output column must be defined")
         return True
 
-    def _localFit(self, featuresBc, labelsBc, modelBytesBc, paramMap):
-        # Copy the estimator to add to the Params without modifying this instance.
-        estimator = self.copy(paramMap)
-        features = featuresBc.value
-        labels = None if labelsBc is None else labelsBc.value
-        model = kmutil.bytes_to_model(modelBytesBc.value)
-
-        model.compile(optimizer=estimator.getOptimizer(), loss=estimator.getLoss())
-        _fit_params = estimator.getKerasFitParams()
-
-        model.fit(x=features, y=labels, **_fit_params)
-        return kmutil.model_to_bytes(model)
-
     def _getNumpyFeaturesAndLabels(self, dataset):
         """
         We assume the training data fits in memory on a single server.
@@ -211,9 +198,39 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         modelBytes = self._loadModelAsBytes()
         modelBytesBc = sc.broadcast(modelBytes)
 
-        kerasModelBytesRDD = paramMapsRDD.map(
-            lambda paramMap: (
-                paramMap, self._localFit(localFeaturesBc, localLabelsBc, modelBytesBc, paramMap)))
+        # Obtain params for this estimator instance
+        baseParamMap = self.extractParamMap()
+        baseParamDict = dict([(param.name, val) for param, val in baseParamMap.items()])
+        baseParamDictBc = sc.broadcast(baseParamDict)
+
+        # Create useful parameters from paramMap
+        def _local_fit(override_param_map):
+            """
+            Fit locally a model with a combination of this estimator's param plus
+            with additional parameters provided by the input.
+            :param override_param_map: dict, key type is MLllib Param
+                                       They are meant to override the base estimator's params.
+            :return: serialized Keras model bytes
+            """
+            # Update params
+            params = baseParamDictBc.value
+            override_param_dict = dict([
+                (param.name, val) for param, val in override_param_map.items()])
+            params.update(override_param_dict)
+
+            # Create Keras model
+            model = kmutil.bytes_to_model(modelBytesBc.value)
+            model.compile(optimizer=params['optimizer'], loss=params['loss'])
+
+            # Retrieve features and labels and fit Keras model
+            features = localFeaturesBc.value
+            labels = None if localLabelsBc is None else localLabelsBc.value
+            _fit_params = params['kerasFitParams']
+            model.fit(x=features, y=labels, **_fit_params)
+
+            return kmutil.model_to_bytes(model)
+
+        kerasModelBytesRDD = paramMapsRDD.map(lambda paramMap: (paramMap, _local_fit(paramMap)))
         return self._collectModels(kerasModelBytesRDD)
 
     def _loadModelAsBytes(self):

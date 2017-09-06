@@ -33,9 +33,6 @@ class HasInputImageNodeName(Params):
                                "name of the graph element/node corresponding to the input",
                                typeConverter=TypeConverters.toString)
 
-    def __init__(self):
-        super(HasInputImageNodeName, self).__init__()
-
     def setInputImageNodeName(self, value):
         return self._set(inputImageNodeName=value)
 
@@ -48,9 +45,6 @@ class HasOutputNodeName(Params):
     outputNodeName = Param(Params._dummy(), "outputImageNodeName",
                            "name of the graph element/node corresponding to the output",
                            typeConverter=TypeConverters.toString)
-
-    def __init__(self):
-        super(HasOutputNodeName, self).__init__()
 
     def setOutputNodeName(self, value):
         return self._set(outputNodeName=value)
@@ -66,9 +60,6 @@ class HasOutputMode(Params):
                        "Vector of floats. 'image' to format the output to work with the image " +
                        "tools in this package.",
                        typeConverter=SparkDLTypeConverters.supportedNameConverter(OUTPUT_MODES))
-
-    def __init__(self):
-        super(HasOutputMode, self).__init__()
 
     def setOutputMode(self, value):
         return self._set(outputMode=value)
@@ -89,9 +80,6 @@ class HasLabelCol(Params):
     labelCol = Param(Params._dummy(), "labelCol",
                      "name of the column storing the training data labels",
                      typeConverter=TypeConverters.toString)
-
-    def __init__(self):
-        super(HasLabelCol, self).__init__()
 
     def setLabelCol(self, value):
         return self._set(labelCol=value)
