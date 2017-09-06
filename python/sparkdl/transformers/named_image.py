@@ -125,7 +125,7 @@ class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
     """
 
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-        typeConverter=SparkDLTypeConverters.supportedNameConverter(SUPPORTED_MODELS))
+                      typeConverter=SparkDLTypeConverters.supportedNameConverter(SUPPORTED_MODELS))
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelName=None):

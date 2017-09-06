@@ -183,7 +183,7 @@ class CanLoadImage(Params):
         def load_image_uri_impl(uri):
             try:
                 return imageArrayToStruct(loader(uri))
-            except: # pylint: disable=bare-except
+            except:  # pylint: disable=bare-except
                 return None
 
         load_udf = udf(load_image_uri_impl, imageSchema)

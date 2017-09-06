@@ -72,7 +72,8 @@ class HasOutputCol(Params):
     Mixin for param outputCol: output column name.
     """
 
-    outputCol = Param(Params._dummy(), "outputCol", "output column name.", typeConverter=TypeConverters.toString)
+    outputCol = Param(Params._dummy(),
+                      "outputCol", "output column name.", typeConverter=TypeConverters.toString)
 
     def __init__(self):
         super(HasOutputCol, self).__init__()

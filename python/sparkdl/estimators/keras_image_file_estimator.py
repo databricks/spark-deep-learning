@@ -212,8 +212,8 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         modelBytesBc = sc.broadcast(modelBytes)
 
         kerasModelBytesRDD = paramMapsRDD.map(
-            lambda paramMap: (paramMap,
-                              self._localFit(localFeaturesBc, localLabelsBc, modelBytesBc, paramMap)))
+            lambda paramMap: (
+                paramMap, self._localFit(localFeaturesBc, localLabelsBc, modelBytesBc, paramMap)))
         return self._collectModels(kerasModelBytesRDD)
 
     def _loadModelAsBytes(self):
@@ -226,7 +226,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
             fileContent = fin.read()
         return fileContent
 
-    def _fit(self, dataset): # pylint: disable=unused-argument
+    def _fit(self, dataset):  # pylint: disable=unused-argument
         err_msgs = ["This function should not have been called",
                     "Please contact library mantainers to file a bug"]
         raise NotImplementedError('\n'.join(err_msgs))

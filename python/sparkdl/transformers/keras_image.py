@@ -17,17 +17,14 @@ import keras.backend as K
 from keras.models import load_model
 
 from pyspark.ml import Transformer
-from pyspark.ml.param import Param, Params, TypeConverters
-from pyspark.sql.functions import udf
+from pyspark.ml.param import Params, TypeConverters
 
 import sparkdl.graph.utils as tfx
-from sparkdl.image import imageIO
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.param import (
-    keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters,
+    keyword_only, HasInputCol, HasOutputCol,
     CanLoadImage, HasKerasModel, HasOutputMode)
 from sparkdl.transformers.tf_image import TFImageTransformer
-import sparkdl.transformers.utils as utils
 
 
 class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
