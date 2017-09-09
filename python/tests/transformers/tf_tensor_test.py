@@ -133,7 +133,7 @@ class TFTransformerTest(SparkDLTestCase):
         # Build the transformer from exported serving model
         # We are using signaures, thus must provide the keys
         trans_with_sig = TFTransformer(
-            tfInputGraph=TFInputGraphBuilder.fromSavedModelDir(
+            tfInputGraph=TFInputGraphBuilder.fromSavedModel(
                 saved_model_dir, tag_set=serving_tag, signature_def_key=serving_sigdef_key),
             inputMapping={
                 input_col: 'input_sig'
@@ -145,7 +145,7 @@ class TFTransformerTest(SparkDLTestCase):
         # Build the transformer from exported serving model
         # We are not using signatures, thus must provide tensor/operation names
         trans_no_sig = TFTransformer(
-            tfInputGraph=TFInputGraphBuilder.fromSavedModelDir(
+            tfInputGraph=TFInputGraphBuilder.fromSavedModel(
                 saved_model_dir, tag_set=serving_tag, signature_def_key=None),
             inputMapping={
                 input_col: 'tnsrIn'
@@ -195,7 +195,7 @@ class TFTransformerTest(SparkDLTestCase):
             out_ref = np.hstack(_results)
 
         transformer = TFTransformer(
-            tfInputGraph=TFInputGraphBuilder.fromCheckpointDir(model_ckpt_dir),
+            tfInputGraph=TFInputGraphBuilder.fromCheckpoint(model_ckpt_dir),
             inputMapping={
                 input_col: 'tnsrIn'
             },

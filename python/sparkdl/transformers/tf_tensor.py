@@ -29,21 +29,37 @@ from sparkdl.transformers.param import (
     keyword_only, SparkDLTypeConverters, HasInputMapping,
     HasOutputMapping, HasTFInputGraph, HasTFHParams)
 
-__all__ = ['TFTransformer']
+__all__ = ['TFTransformer', 'TFInputGraphBuilder']
 
 logger = logging.getLogger('sparkdl')
 
+def _assert_set_incl(seq_small, seq_large, msg):
+    set_small = set(seq_small)
+    set_large = set(seq_large)
+    assert set_small <= set_large, \
+        'set not inclusive: {} => diff items {}'.format(msg, set_small - set_large)
+
 class TFInputGraph(object):
+    """
+    An opaque serializable object containing TensorFlow graph.
+    """
+    # TODO: for (de-)serialization, the class should correspond to a ProtocolBuffer definition.
     def __init__(self, graph_function, input_mapping, output_mapping):
         # GraphFunction
         self.graph_function = graph_function
-        # type: (str, str) list
+
+        _assert_set_incl(input_mapping.values(), graph_function.input_names, 'input names')
         if isinstance(input_mapping, dict):
-            input_mapping = input_mapping.items()
+            input_mapping = list(input_mapping.items())
+        assert isinstance(input_mapping, list), \
+            "output mapping must be a list of strings, found type {}".format(type(input_mapping))
         self.input_mapping = sorted(input_mapping)
-        # type: (str, str) list
+
+        _assert_set_incl(output_mapping.keys(), graph_function.output_names, 'output names')
         if isinstance(output_mapping, dict):
-            output_mapping = output_mapping.items()
+            output_mapping = list(output_mapping.items())
+        assert isinstance(output_mapping, list), \
+            "output mapping must be a list of strings, found type {}".format(type(output_mapping))
         self.output_mapping = sorted(output_mapping)
 
 class TFInputGraphBuilder(object):
@@ -51,13 +67,18 @@ class TFInputGraphBuilder(object):
     Create a builder function so as to be able to compile graph for inference.
     The actual compilation will be done at the time when the
     inputs (feeds) and outputs (fetches) are provided.
+    :param graph_import_fn: `tf.Session` -> `tf.signature_def`, load a graph to the provided session.
+                            If the meta_graph contains a `signature_def`, return it.
     """
     def __init__(self, graph_import_fn):
-        # Return graph_def, input_mapping, output_mapping
+        # Return signature_def if the underlying graph contains one
         self.graph_import_fn = graph_import_fn
 
     def build(self, input_mapping, output_mapping):
-
+        """
+        Create a serializable TensorFlow graph representation
+        :param input_mapping: dict, from input DataFrame column name to internal graph name.
+        """
         with IsolatedSession() as issn:
             sig_def = self.graph_import_fn(issn.sess)
 
@@ -95,31 +116,40 @@ class TFInputGraphBuilder(object):
 
     @classmethod
     def fromGraph(cls, graph):
+        """
+        Construct a TFInputGraphBuilder from a in memory tf.Graph object
+        """
         assert isinstance(graph, tf.Graph), \
             ('expect tf.Graph type but got', type(graph))
 
         def import_graph_fn(sess):
-            #graph.finalize()
             gdef = graph.as_graph_def(add_shapes=True)
-            tf.import_graph_def(gdef, name='')
+            with sess.as_default():
+                tf.import_graph_def(gdef, name='')
             return None  # no meta_graph_def
 
         return cls(import_graph_fn)
 
     @classmethod
     def fromGraphDef(cls, graph_def):
+        """
+        Construct a TFInputGraphBuilder from a tf.GraphDef object
+        """
         assert isinstance(graph_def, tf.GraphDef), \
             ('expect tf.GraphDef type but got', type(graph_def))
 
         def import_graph_fn(sess):
-            tf.import_graph_def(graph_def, name='')
+            with sess.as_default():
+                tf.import_graph_def(graph_def, name='')
             return None
 
         return cls(import_graph_fn)
 
     @classmethod
-    def fromCheckpointDir(cls, checkpoint_dir, signature_def_key=None):
-
+    def fromCheckpoint(cls, checkpoint_dir, signature_def_key=None):
+        """
+        Construct a TFInputGraphBuilder from a model checkpoint
+        """
         def import_graph_fn(sess):
             # Load checkpoint and import the graph
             ckpt_path = tf.train.latest_checkpoint(checkpoint_dir)
@@ -137,8 +167,10 @@ class TFInputGraphBuilder(object):
         return cls(import_graph_fn)
 
     @classmethod
-    def fromSavedModelDir(cls, saved_model_dir, tag_set, signature_def_key=None):
-
+    def fromSavedModel(cls, saved_model_dir, tag_set, signature_def_key=None):
+        """
+        Construct a TFInputGraphBuilder from a SavedModel
+        """
         def import_graph_fn(sess):
             tag_sets = tag_set.split(',')
             meta_graph_def = tf.saved_model.loader.load(sess, tag_sets, saved_model_dir)
@@ -172,8 +204,6 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         """
         super(TFTransformer, self).__init__()
         kwargs = self._input_kwargs
-        gin = tfInputGraph.build(inputMapping, outputMapping)
-        kwargs['tfInputGraph'] = gin
         self.setParams(**kwargs)
 
     @keyword_only
@@ -183,6 +213,7 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         """
         super(TFTransformer, self).__init__()
         kwargs = self._input_kwargs
+        kwargs['tfInputGraph'] = tfInputGraph.build(inputMapping, outputMapping)
         return self._set(**kwargs)
 
     def _transform(self, dataset):
