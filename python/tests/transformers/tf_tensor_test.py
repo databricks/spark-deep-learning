@@ -27,7 +27,7 @@ from pyspark.sql.types import Row
 
 from sparkdl.graph.builder import IsolatedSession
 import sparkdl.graph.utils as tfx
-from sparkdl.transformers.tf_tensor import TFTransformer
+from sparkdl.transformers.tf_tensor import TFTransformer, TFInputGraphBuilder
 
 from ..tests import SparkDLTestCase
 
@@ -65,13 +65,14 @@ class TFTransformerTest(SparkDLTestCase):
             out_ref = np.hstack(_results)
 
         # Apply the transform
-        transfomer = TFTransformer(tfGraph=graph,
-                                   inputMapping={
-                                       'vec': x
-                                   },
-                                   outputMapping={
-                                       z: 'outCol'
-                                   })
+        transfomer = TFTransformer(
+            tfInputGraph=TFInputGraphBuilder.fromGraph(graph),
+            inputMapping={
+                'vec': x
+            },
+            outputMapping={
+                z: 'outCol'
+            })
         final_df = transfomer.transform(analyzed_df)
         out_tgt = grab_df_arr(final_df, 'outCol')
 
@@ -131,27 +132,27 @@ class TFTransformerTest(SparkDLTestCase):
 
         # Build the transformer from exported serving model
         # We are using signaures, thus must provide the keys
-        trans_with_sig = TFTransformer(exportDir=saved_model_dir,
-                                       signatureDefKey=serving_sigdef_key,
-                                       tagSet=serving_tag,
-                                       inputMapping={
-                                           input_col: 'input_sig'
-                                       },
-                                       outputMapping={
-                                           'output_sig': output_col
-                                       })
+        trans_with_sig = TFTransformer(
+            tfInputGraph=TFInputGraphBuilder.fromSavedModelDir(
+                saved_model_dir, tag_set=serving_tag, signature_def_key=serving_sigdef_key),
+            inputMapping={
+                input_col: 'input_sig'
+            },
+            outputMapping={
+                'output_sig': output_col
+            })
 
         # Build the transformer from exported serving model
         # We are not using signatures, thus must provide tensor/operation names
-        trans_no_sig = TFTransformer(exportDir=saved_model_dir,
-                                     signatureDefKey=None,
-                                     tagSet=serving_tag,
-                                     inputMapping={
-                                         input_col: 'tnsrIn'
-                                     },
-                                     outputMapping={
-                                         'tnsrOut': output_col
-                                     })
+        trans_no_sig = TFTransformer(
+            tfInputGraph=TFInputGraphBuilder.fromSavedModelDir(
+                saved_model_dir, tag_set=serving_tag, signature_def_key=None),
+            inputMapping={
+                input_col: 'tnsrIn'
+            },
+            outputMapping={
+                'tnsrOut': output_col
+            })
 
         df_trans_with_sig = trans_with_sig.transform(analyzed_df)
         df_trans_no_sig = trans_no_sig.transform(analyzed_df)
@@ -193,13 +194,14 @@ class TFTransformerTest(SparkDLTestCase):
                 _results.append(sess.run(z, {x: arr}))
             out_ref = np.hstack(_results)
 
-        transformer = TFTransformer(tfCheckpointDir=model_ckpt_dir,
-                                    inputMapping={
-                                        input_col: 'tnsrIn'
-                                    },
-                                    outputMapping={
-                                        'tnsrOut': output_col
-                                    })
+        transformer = TFTransformer(
+            tfInputGraph=TFInputGraphBuilder.fromCheckpointDir(model_ckpt_dir),
+            inputMapping={
+                input_col: 'tnsrIn'
+            },
+            outputMapping={
+                'tnsrOut': output_col
+            })
         final_df = transformer.transform(analyzed_df)
         out_tgt = grab_df_arr(final_df, output_col)
 
@@ -239,15 +241,16 @@ class TFTransformerTest(SparkDLTestCase):
             q_out_ref = np.hstack(q_out_ref)
 
         # Apply the transform
-        transfomer = TFTransformer(tfGraph=graph,
-                                   inputMapping={
-                                       'vec_x': x,
-                                       'vec_y': y
-                                   },
-                                   outputMapping={
-                                       p: 'outcol_p',
-                                       q: 'outcol_q'
-                                   })
+        transfomer = TFTransformer(
+            tfInputGraph=TFInputGraphBuilder.fromGraph(graph),
+            inputMapping={
+                'vec_x': x,
+                'vec_y': y
+            },
+            outputMapping={
+                p: 'outcol_p',
+                q: 'outcol_q'
+            })
         final_df = transfomer.transform(analyzed_df)
         p_out_tgt = grab_df_arr(final_df, 'outcol_p')
         q_out_tgt = grab_df_arr(final_df, 'outcol_q')
@@ -303,13 +306,14 @@ class TFTransformerTest(SparkDLTestCase):
         arr_ref = grab_df_arr(final_df, output_col)
 
         # Using the Transformer
-        transformer = TFTransformer(tfGraph=gfn,
-                                    inputMapping={
-                                        input_col: gfn.input_names[0]
-                                    },
-                                    outputMapping={
-                                        gfn.output_names[0]: output_col
-                                    })
+        transformer = TFTransformer(
+            tfInputGraph=TFInputGraphBuilder.fromGraphDef(gfn.graph_def),
+            inputMapping={
+                input_col: gfn.input_names[0]
+            },
+            outputMapping={
+                gfn.output_names[0]: output_col
+            })
         transformed_df = transformer.transform(analyzed_df)
 
         arr_tgt = grab_df_arr(transformed_df, output_col)

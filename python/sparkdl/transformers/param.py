@@ -58,9 +58,6 @@ class HasInputCol(Params):
     inputCol = Param(Params._dummy(), "inputCol", "input column name.",
                      typeConverter=TypeConverters.toString)
 
-    def __init__(self):
-        super(HasInputCol, self).__init__()
-
     def setInputCol(self, value):
         """
         Sets the value of :py:attr:`inputCol`.
@@ -117,6 +114,16 @@ class SparkDLTypeConverters(object):
             raise TypeError("Could not convert %s to TensorFlow Graph" % type(value))
 
     @staticmethod
+    def toTFInputGraph(value):
+        return value
+        # if isinstance(value, tf.Graph):
+        #     return value.as_graph_def(add_shapes=True)
+        # elif isinstance(value, tf.GraphDef):
+        #     return value
+        # else:
+        #     raise TypeError("Could not convert %s to TFInputGraph" % type(value))
+
+    @staticmethod
     def asColumnToTensorMap(value):
         if isinstance(value, dict):
             strs_pair_seq = [(k, tfx.as_op_name(v)) for k, v in value.items()]
@@ -156,14 +163,6 @@ class SparkDLTypeConverters(object):
                 raise TypeError("%s %s is not in the supported list." % type(value), str(value))
         return converter
 
-
-class HasTFHParams(Params):
-    """
-    Mixin for TensorFlow params
-    """
-    tfHParms = Param(Params._dummy(), "hparams", "instance of :class:`tf.contrib.training.HParams`",
-                     typeConverter=SparkDLTypeConverters.toTFHParams)
-
 # New in sparkdl
 
 class HasOutputMapping(Params):
@@ -173,9 +172,6 @@ class HasOutputMapping(Params):
     outputMapping = Param(Params._dummy(), "outputMapping",
                           "Mapping output :class:`tf.Tensor` objects to DataFrame column names",
                           typeConverter=SparkDLTypeConverters.asTensorToColumnMap)
-
-    def __init__(self):
-        super(HasOutputMapping, self).__init__()
 
     def setOutputMapping(self, value):
         return self._set(outputMapping=value)
@@ -192,9 +188,6 @@ class HasInputMapping(Params):
                          "Mapping input DataFrame column names to :class:`tf.Tensor` objects",
                          typeConverter=SparkDLTypeConverters.asColumnToTensorMap)
 
-    def __init__(self):
-        super(HasInputMapping, self).__init__()
-
     def setInputMapping(self, value):
         return self._set(inputMapping=value)
 
@@ -202,90 +195,34 @@ class HasInputMapping(Params):
         return self.getOrDefault(self.inputMapping)
 
 
-class HasTagSet(Params):
-    # TODO: add docs
-    tagSet = Param(Params._dummy(), "tagSet",
-                     "signature def tag set",
-                     typeConverter=TypeConverters.toString)
-
-    def __init__(self):
-        super(HasTagSet, self).__init__()
-        # TODO: add default value
-
-    def setTagSet(self, value):
-        return self._set(tagSet=value)
-
-    def getTagSet(self):
-        return self.getOrDefault(self.tagSet)
-
-
-class HasSignatureDefKey(Params):
-    # TODO: add docs
-    signatureDefKey = Param(Params._dummy(), "signatureDefKey",
-                            "signature def",
-                            typeConverter=TypeConverters.toString)
-
-    def __init__(self):
-        super(HasSignatureDefKey, self).__init__()
-        # TODO: add default value
-
-    def setSignatureDefKey(self, value):
-        return self._set(signatureDefKey=value)
-
-    def getSignatureDefKey(self):
-        return self.getOrDefault(self.signatureDefKey)
-
-
-class HasExportDir(Params):
-    """
-    Mixin for param for constructing inputs
-    """
-    exportDir = Param(Params._dummy(), "exportDir",
-                      "Directory of saved model",
-                      typeConverter=TypeConverters.toString)
-
-    def __init__(self):
-        super(HasExportDir, self).__init__()
-
-    def setExportDir(self, value):
-        return self._set(exportDir=value)
-
-    def getExportDir(self):
-        return self.getOrDefault(self.exportDir)
-
-
-class HasTFCheckpointDir(Params):
-    """
-    Mixin for TensorFlow model checkpoint
-    """
-    tfCheckpointDir = Param(Params._dummy(), "tfCheckpointDir",
-                            "Directory that contains a model checkpoint",
-                            typeConverter=TypeConverters.toString)
-
-    def __init__(self):
-        super(HasTFCheckpointDir, self).__init__()
-
-    def setTFCheckpointDir(self, value):
-        return self._set(tfCheckpointDir=value)
-
-    def getTFCheckpointDir(self):
-        return self.getOrDefault(self.tfCheckpointDir)
-
-
-class HasTFGraph(Params):
+class HasTFInputGraph(Params):
     """
     Mixin for param tfGraph: the :class:`tf.Graph` object that represents a TensorFlow computation.
     """
-    tfGraph = Param(Params._dummy(), "tfGraph",
-                            "TensorFlow Graph object",
-                            typeConverter=SparkDLTypeConverters.toTFGraph)
+    tfInputGraph = Param(Params._dummy(), "tfInputGraph",
+                         "TensorFlow Graph object",
+                         typeConverter=SparkDLTypeConverters.toTFInputGraph)
 
     def __init__(self):
-        super(HasTFGraph, self).__init__()
-        self._setDefault(tfGraph=None)
+        super(HasTFInputGraph, self).__init__()
+        self._setDefault(tfInputGraph=None)
 
-    def setTFGraph(self, value):
-        return self._set(tfGraph=value)
+    def setTFInputGraph(self, value):
+        return self._set(tfInputGraph=value)
 
-    def getTFGraph(self):
-        return self.getOrDefault(self.tfGraph)
+    def getTFInputGraph(self):
+        return self.getOrDefault(self.tfInputGraph)
+
+
+class HasTFHParams(Params):
+    """
+    Mixin for TensorFlow model hyper-parameters
+    """
+    tfHParams = Param(Params._dummy(), "hparams", "instance of :class:`tf.contrib.training.HParams`",
+                     typeConverter=SparkDLTypeConverters.toTFHParams)
+
+    def setTFHParams(self, value):
+        return self._set(tfHParam=value)
+
+    def getTFHParams(self):
+        return self.getOrDefault(self.tfHParams)

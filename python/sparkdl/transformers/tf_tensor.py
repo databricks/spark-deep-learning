@@ -23,19 +23,137 @@ from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
 
-from sparkdl.graph.builder import IsolatedSession
+from sparkdl.graph.builder import GraphFunction, IsolatedSession
 import sparkdl.graph.utils as tfx
 from sparkdl.transformers.param import (
-    keyword_only, HasInputMapping, HasOutputMapping, SparkDLTypeConverters,
-    HasTFGraph, HasTFHParams, HasTFCheckpointDir, HasExportDir, HasTagSet, HasSignatureDefKey)
+    keyword_only, SparkDLTypeConverters, HasInputMapping,
+    HasOutputMapping, HasTFInputGraph, HasTFHParams)
 
 __all__ = ['TFTransformer']
 
 logger = logging.getLogger('sparkdl')
 
-class TFTransformer(Transformer, HasTFCheckpointDir, HasTFGraph,
-                    HasExportDir, HasTagSet, HasSignatureDefKey,
-                    HasTFHParams, HasInputMapping, HasOutputMapping):
+class TFInputGraph(object):
+    def __init__(self, graph_function, input_mapping, output_mapping):
+        # GraphFunction
+        self.graph_function = graph_function
+        # type: (str, str) list
+        if isinstance(input_mapping, dict):
+            input_mapping = input_mapping.items()
+        self.input_mapping = sorted(input_mapping)
+        # type: (str, str) list
+        if isinstance(output_mapping, dict):
+            output_mapping = output_mapping.items()
+        self.output_mapping = sorted(output_mapping)
+
+class TFInputGraphBuilder(object):
+    """
+    Create a builder function so as to be able to compile graph for inference.
+    The actual compilation will be done at the time when the
+    inputs (feeds) and outputs (fetches) are provided.
+    """
+    def __init__(self, graph_import_fn):
+        # Return graph_def, input_mapping, output_mapping
+        self.graph_import_fn = graph_import_fn
+
+    def build(self, input_mapping, output_mapping):
+
+        with IsolatedSession() as issn:
+            sig_def = self.graph_import_fn(issn.sess)
+
+            # Append feeds and input mapping
+            feeds = []
+            _input_mapping = {}
+            for input_colname, tnsr_or_sig in input_mapping.items():
+                if sig_def:
+                    tnsr = sig_def.inputs[tnsr_or_sig].name
+                else:
+                    tnsr = tnsr_or_sig
+                _input_mapping[input_colname] = tfx.op_name(issn.graph, tnsr)
+                feeds.append(tfx.get_tensor(issn.graph, tnsr))
+            input_mapping = _input_mapping
+
+            # Append fetches and output mapping
+            fetches = []
+            _output_mapping = {}
+            # By default the output columns will have the name of their
+            # corresponding `tf.Graph` operation names.
+            # We have to convert them to the user specified output names
+            for tnsr_or_sig, requested_colname in output_mapping.items():
+                if sig_def:
+                    tnsr = sig_def.outputs[tnsr_or_sig].name
+                else:
+                    tnsr = tnsr_or_sig
+                fetches.append(tfx.get_tensor(issn.graph, tnsr))
+                tf_output_colname = tfx.op_name(issn.graph, tnsr)
+                _output_mapping[tf_output_colname] = requested_colname
+            output_mapping = _output_mapping
+
+            gfn = issn.asGraphFunction(feeds, fetches, strip_and_freeze=True)
+
+        return TFInputGraph(gfn, input_mapping, output_mapping)
+
+    @classmethod
+    def fromGraph(cls, graph):
+        assert isinstance(graph, tf.Graph), \
+            ('expect tf.Graph type but got', type(graph))
+
+        def import_graph_fn(sess):
+            #graph.finalize()
+            gdef = graph.as_graph_def(add_shapes=True)
+            tf.import_graph_def(gdef, name='')
+            return None  # no meta_graph_def
+
+        return cls(import_graph_fn)
+
+    @classmethod
+    def fromGraphDef(cls, graph_def):
+        assert isinstance(graph_def, tf.GraphDef), \
+            ('expect tf.GraphDef type but got', type(graph_def))
+
+        def import_graph_fn(sess):
+            tf.import_graph_def(graph_def, name='')
+            return None
+
+        return cls(import_graph_fn)
+
+    @classmethod
+    def fromCheckpointDir(cls, checkpoint_dir, signature_def_key=None):
+
+        def import_graph_fn(sess):
+            # Load checkpoint and import the graph
+            ckpt_path = tf.train.latest_checkpoint(checkpoint_dir)
+            saver = tf.train.import_meta_graph("{}.meta".format(ckpt_path), clear_devices=True)
+            saver.restore(sess, ckpt_path)
+            meta_graph_def = saver.export_meta_graph(clear_devices=True)
+
+            sig_def = None
+            if signature_def_key is not None:
+                sig_def = tf.contrib.saved_model.get_signature_def_by_key(
+                    meta_graph_def, signature_def_key)
+
+            return sig_def
+
+        return cls(import_graph_fn)
+
+    @classmethod
+    def fromSavedModelDir(cls, saved_model_dir, tag_set, signature_def_key=None):
+
+        def import_graph_fn(sess):
+            tag_sets = tag_set.split(',')
+            meta_graph_def = tf.saved_model.loader.load(sess, tag_sets, saved_model_dir)
+
+            sig_def = None
+            if signature_def_key is not None:
+                sig_def = tf.contrib.saved_model.get_signature_def_by_key(
+                    meta_graph_def, signature_def_key)
+
+            return sig_def
+
+        return cls(import_graph_fn)
+
+
+class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping, HasOutputMapping):
     """
     Applies the TensorFlow graph to the array column in DataFrame.
 
@@ -48,110 +166,39 @@ class TFTransformer(Transformer, HasTFCheckpointDir, HasTFGraph,
     """
 
     @keyword_only
-    def __init__(self, tfCheckpointDir=None, tfGraph=None,
-                 exportDir=None, tagSet=None, signatureDefKey=None,
-                 inputMapping=None, outputMapping=None, tfHParms=None):
+    def __init__(self, tfInputGraph=None, inputMapping=None, outputMapping=None, tfHParms=None):
         """
-        __init__(self, tfCheckpointDir=None, tfGraph=None,
-                 exportDir=None, tagSet=None, signatureDefKey=None,
-                 inputMapping=None, outputMapping=None, tfHParms=None)
+        __init__(self, tfInputGraph=None, inputMapping=None, outputMapping=None, tfHParms=None)
         """
         super(TFTransformer, self).__init__()
         kwargs = self._input_kwargs
+        gin = tfInputGraph.build(inputMapping, outputMapping)
+        kwargs['tfInputGraph'] = gin
         self.setParams(**kwargs)
 
-
     @keyword_only
-    def setParams(self, tfCheckpointDir=None, tfGraph=None,
-                  exportDir=None, tagSet=None, signatureDefKey=None,
-                  inputMapping=None, outputMapping=None, tfHParms=None):
+    def setParams(self, tfInputGraph=None, inputMapping=None, outputMapping=None, tfHParms=None):
         """
-        setParams(self, tfCheckpointDir=None, tfGraph=None,
-                  exportDir=None, tagSet=None, signatureDefKey=None,
-                  inputMapping=None, outputMapping=None, tfHParms=None)
+        setParams(self, tfInputGraph=None, inputMapping=None, outputMapping=None, tfHParms=None)
         """
         super(TFTransformer, self).__init__()
         kwargs = self._input_kwargs
         return self._set(**kwargs)
 
-
-    def _convertInternal(self):
-        assert self.isDefined(self.inputMapping) and self.isDefined(self.outputMapping), \
-            "inputMapping and outputMapping must be defined"
-
-        _maybe_graph = self.getTFGraph()
-        _maybe_meta_graph_def = None
-        with IsolatedSession(graph=_maybe_graph) as issn:
-            if self.isDefined(self.exportDir):
-                assert _maybe_graph is None
-                assert not self.isDefined(self.tfCheckpointDir)
-                tag_set = self.getTagSet().split(',')
-                _maybe_meta_graph_def = tf.saved_model.loader.load(
-                    issn.sess, tag_set, self.getExportDir())
-            elif self.isDefined(self.tfCheckpointDir):
-                assert _maybe_graph is None
-                ckpt_dir = self.getTFCheckpointDir()
-                ckpt_path = tf.train.latest_checkpoint(ckpt_dir)
-                print('using checkpoint path from {} as {}'.format(ckpt_dir, ckpt_path))
-                saver = tf.train.import_meta_graph("{}.meta".format(ckpt_path), clear_devices=True)
-                saver.restore(issn.sess, ckpt_path)
-                _maybe_meta_graph_def = saver.export_meta_graph(clear_devices=True)
-            else:
-                assert _maybe_graph is not None
-
-            sig_def = None
-            if self.isDefined(self.signatureDefKey):
-                sig_def_key = self.getSignatureDefKey()
-                if sig_def_key is not None:
-                    meta_graph_def = _maybe_meta_graph_def
-                    assert meta_graph_def is not None
-                    #print('sigdef:', meta_graph_def.signature_def)
-                    sig_def = tf.contrib.saved_model.get_signature_def_by_key(
-                        meta_graph_def, sig_def_key)
-                    assert sig_def is not None
-
-            feeds = []
-            _input_mapping = {}
-            for input_colname, tnsr_or_sig in self.getInputMapping():
-                if sig_def:
-                    tnsr = sig_def.inputs[tnsr_or_sig].name
-                    _input_mapping[input_colname] = tfx.op_name(issn.graph, tnsr)
-                else:
-                    tnsr = tnsr_or_sig
-                feeds.append(tfx.get_tensor(issn.graph, tnsr))
-
-            if sig_def:
-                self.setInputMapping(_input_mapping)
-
-            fetches = []
-            # By default the output columns will have the name of their
-            # corresponding `tf.Graph` operation names.
-            # We have to convert them to the user specified output names
-            self.output_renaming = {}
-            for tnsr_or_sig, output_colname in self.getOutputMapping():
-                if sig_def:
-                    tnsr = sig_def.outputs[tnsr_or_sig].name
-                else:
-                    tnsr = tnsr_or_sig
-                fetches.append(tfx.get_tensor(issn.graph, tnsr))
-                tf_expected_colname = tfx.op_name(issn.graph, tnsr)
-                self.output_renaming[tf_expected_colname] = output_colname
-
-            # Consolidate the input format into a serialized format
-            self.gfn = issn.asGraphFunction(feeds, fetches, strip_and_freeze=True)
-
-
     def _transform(self, dataset):
-        self._convertInternal()
+        gin = self.getTFInputGraph()
+        input_mapping = gin.input_mapping
+        output_mapping = gin.output_mapping
 
         with IsolatedSession() as issn:
             analyzed_df = tfs.analyze(dataset)
-            _, fetches = issn.importGraphFunction(self.gfn, prefix='')
-            feed_dict = dict([(tnsr_name, col_name) for col_name, tnsr_name in self.getInputMapping()])
+            _, fetches = issn.importGraphFunction(gin.graph_function, prefix='')
+            feed_dict = dict([(tnsr_name, col_name) for col_name, tnsr_name in input_mapping])
+
             out_df = tfs.map_blocks(fetches, analyzed_df, feed_dict=feed_dict)
 
             # We still have to rename output columns
-            for old_colname, new_colname in self.output_renaming.items():
+            for old_colname, new_colname in output_mapping:
                 if old_colname != new_colname:
                     out_df = out_df.withColumnRenamed(old_colname, new_colname)
 
