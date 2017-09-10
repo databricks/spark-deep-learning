@@ -29,6 +29,7 @@ from pyspark.ml.param import Param, Params, TypeConverters
 
 from sparkdl.graph.builder import GraphFunction, IsolatedSession
 import sparkdl.graph.utils as tfx
+from sparkdl.transformers.utils import TFInputGraph, TFInputGraphBuilder
 
 """
 Copied from PySpark for backward compatibility. First in Apache Spark version 2.1.1.
@@ -115,13 +116,16 @@ class SparkDLTypeConverters(object):
 
     @staticmethod
     def toTFInputGraph(value):
-        return value
-        # if isinstance(value, tf.Graph):
-        #     return value.as_graph_def(add_shapes=True)
-        # elif isinstance(value, tf.GraphDef):
-        #     return value
-        # else:
-        #     raise TypeError("Could not convert %s to TFInputGraph" % type(value))
+        if isinstance(value, TFInputGraph):
+            return value
+        elif isinstance(value, TFInputGraphBuilder):
+            return value
+        elif isinstance(value, tf.Graph):
+            return TFInputGraphBuilder.fromGraph(value)
+        elif isinstance(value, tf.GraphDef):
+            return TFInputGraphBuilder.fromGraphDef(value)
+        else:
+            raise TypeError("Could not convert %s to TFInputGraph" % type(value))
 
     @staticmethod
     def asColumnToTensorMap(value):

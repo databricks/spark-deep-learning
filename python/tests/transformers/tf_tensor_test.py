@@ -65,18 +65,19 @@ class TFTransformerTest(SparkDLTestCase):
             out_ref = np.hstack(_results)
 
         # Apply the transform
-        transfomer = TFTransformer(
-            tfInputGraph=TFInputGraphBuilder.fromGraph(graph),
-            inputMapping={
-                'vec': x
-            },
-            outputMapping={
-                z: 'outCol'
-            })
-        final_df = transfomer.transform(analyzed_df)
-        out_tgt = grab_df_arr(final_df, 'outCol')
-
-        self.assertTrue(np.allclose(out_ref, out_tgt))
+        gin_from_graph = TFInputGraphBuilder.fromGraph(graph)
+        for gin in [gin_from_graph, graph]:
+            transfomer = TFTransformer(
+                tfInputGraph=TFInputGraphBuilder.fromGraph(graph),
+                inputMapping={
+                    'vec': x
+                },
+                outputMapping={
+                    z: 'outCol'
+                })
+            final_df = transfomer.transform(analyzed_df)
+            out_tgt = grab_df_arr(final_df, 'outCol')
+            self.assertTrue(np.allclose(out_ref, out_tgt))
 
 
     def test_build_from_saved_model(self):
@@ -258,7 +259,7 @@ class TFTransformerTest(SparkDLTestCase):
         self.assertTrue(np.allclose(p_out_ref, p_out_tgt))
         self.assertTrue(np.allclose(q_out_ref, q_out_tgt))
 
-    def test_map_blocks_graph(self):
+    def test_mixed_keras_graph(self):
 
         vec_size = 17
         num_vecs = 137
@@ -306,16 +307,17 @@ class TFTransformerTest(SparkDLTestCase):
         arr_ref = grab_df_arr(final_df, output_col)
 
         # Using the Transformer
-        transformer = TFTransformer(
-            tfInputGraph=TFInputGraphBuilder.fromGraphDef(gfn.graph_def),
-            inputMapping={
-                input_col: gfn.input_names[0]
-            },
-            outputMapping={
-                gfn.output_names[0]: output_col
-            })
-        transformed_df = transformer.transform(analyzed_df)
+        gin_from_gdef = TFInputGraphBuilder.fromGraphDef(gfn.graph_def)
+        for gin in [gin_from_gdef, gfn.graph_def]:
+            transformer = TFTransformer(
+                tfInputGraph=gin,
+                inputMapping={
+                    input_col: gfn.input_names[0]
+                },
+                outputMapping={
+                    gfn.output_names[0]: output_col
+                })
 
-        arr_tgt = grab_df_arr(transformed_df, output_col)
-
-        self.assertTrue(np.allclose(arr_ref, arr_tgt))
+            transformed_df = transformer.transform(analyzed_df)
+            arr_tgt = grab_df_arr(transformed_df, output_col)
+            self.assertTrue(np.allclose(arr_ref, arr_tgt))
