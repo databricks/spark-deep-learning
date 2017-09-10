@@ -20,10 +20,7 @@ import tensorflow as tf
 import tensorframes as tfs
 
 from pyspark.ml import Transformer
-from pyspark.ml.param import Param, Params
-from pyspark.sql.functions import udf
 
-from sparkdl.graph.builder import GraphFunction, IsolatedSession
 import sparkdl.graph.utils as tfx
 from sparkdl.transformers.param import (
     keyword_only, SparkDLTypeConverters, HasInputMapping,
@@ -33,29 +30,21 @@ __all__ = ['TFTransformer', 'TFInputGraphBuilder']
 
 logger = logging.getLogger('sparkdl')
 
-def _assert_set_incl(seq_small, seq_large, msg):
-    set_small = set(seq_small)
-    set_large = set(seq_large)
-    assert set_small <= set_large, \
-        'set not inclusive: {} => diff items {}'.format(msg, set_small - set_large)
-
 class TFInputGraph(object):
     """
     An opaque serializable object containing TensorFlow graph.
     """
     # TODO: for (de-)serialization, the class should correspond to a ProtocolBuffer definition.
-    def __init__(self, graph_function, input_mapping, output_mapping):
-        # GraphFunction
-        self.graph_function = graph_function
+    def __init__(self, graph_def, input_mapping, output_mapping):
+        # tf.GraphDef
+        self.graph_def = graph_def
 
-        _assert_set_incl(input_mapping.values(), graph_function.input_names, 'input names')
         if isinstance(input_mapping, dict):
             input_mapping = list(input_mapping.items())
         assert isinstance(input_mapping, list), \
             "output mapping must be a list of strings, found type {}".format(type(input_mapping))
         self.input_mapping = sorted(input_mapping)
 
-        _assert_set_incl(output_mapping.keys(), graph_function.output_names, 'output names')
         if isinstance(output_mapping, dict):
             output_mapping = list(output_mapping.items())
         assert isinstance(output_mapping, list), \
@@ -79,19 +68,18 @@ class TFInputGraphBuilder(object):
         Create a serializable TensorFlow graph representation
         :param input_mapping: dict, from input DataFrame column name to internal graph name.
         """
-        with IsolatedSession() as issn:
-            sig_def = self.graph_import_fn(issn.sess)
+        graph = tf.Graph()
+        with tf.Session(graph=graph) as sess:
+            sig_def = self.graph_import_fn(sess)
 
             # Append feeds and input mapping
-            feeds = []
             _input_mapping = {}
             for input_colname, tnsr_or_sig in input_mapping.items():
                 if sig_def:
                     tnsr = sig_def.inputs[tnsr_or_sig].name
                 else:
                     tnsr = tnsr_or_sig
-                _input_mapping[input_colname] = tfx.op_name(issn.graph, tnsr)
-                feeds.append(tfx.get_tensor(issn.graph, tnsr))
+                _input_mapping[input_colname] = tfx.op_name(graph, tnsr)
             input_mapping = _input_mapping
 
             # Append fetches and output mapping
@@ -105,14 +93,14 @@ class TFInputGraphBuilder(object):
                     tnsr = sig_def.outputs[tnsr_or_sig].name
                 else:
                     tnsr = tnsr_or_sig
-                fetches.append(tfx.get_tensor(issn.graph, tnsr))
-                tf_output_colname = tfx.op_name(issn.graph, tnsr)
+                fetches.append(tfx.get_tensor(graph, tnsr))
+                tf_output_colname = tfx.op_name(graph, tnsr)
                 _output_mapping[tf_output_colname] = requested_colname
             output_mapping = _output_mapping
 
-            gfn = issn.asGraphFunction(feeds, fetches, strip_and_freeze=True)
+            gdef = tfx.strip_and_freeze_until(fetches, graph, sess)
 
-        return TFInputGraph(gfn, input_mapping, output_mapping)
+        return TFInputGraph(gdef, input_mapping, output_mapping)
 
     @classmethod
     def fromGraph(cls, graph):
@@ -221,10 +209,19 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         input_mapping = gin.input_mapping
         output_mapping = gin.output_mapping
 
-        with IsolatedSession() as issn:
+        graph = tf.Graph()
+        with tf.Session(graph=graph):
             analyzed_df = tfs.analyze(dataset)
-            _, fetches = issn.importGraphFunction(gin.graph_function, prefix='')
-            feed_dict = dict([(tnsr_name, col_name) for col_name, tnsr_name in input_mapping])
+
+            out_tnsr_op_names = [tfx.as_op_name(tnsr_op_name)
+                                 for tnsr_op_name, _ in output_mapping]
+            tf.import_graph_def(graph_def=gin.graph_def,
+                                name='',
+                                return_elements=out_tnsr_op_names)
+
+            feed_dict = dict((tfx.op_name(graph, tnsr_op_name), col_name)
+                             for col_name, tnsr_op_name in input_mapping)
+            fetches = [tfx.get_tensor(graph, tnsr_op_name) for tnsr_op_name in out_tnsr_op_names]
 
             out_df = tfs.map_blocks(fetches, analyzed_df, feed_dict=feed_dict)
 
