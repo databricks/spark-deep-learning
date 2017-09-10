@@ -26,7 +26,7 @@ from sparkdl.transformers.param import (
     keyword_only, SparkDLTypeConverters, HasInputMapping,
     HasOutputMapping, HasTFInputGraph, HasTFHParams)
 
-__all__ = ['TFTransformer', 'TFInputGraphBuilder']
+__all__ = ['TFTransformer']
 
 logger = logging.getLogger('sparkdl')
 
