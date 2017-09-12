@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 """
 Some parts are copied from pyspark.ml.param.shared and some are complementary
 to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being
@@ -29,11 +28,11 @@ from pyspark.ml.param import Param, Params, TypeConverters
 
 from sparkdl.graph.builder import GraphFunction, IsolatedSession
 import sparkdl.graph.utils as tfx
-from sparkdl.transformers.utils import TFInputGraph, TFInputGraphBuilder
-
+from sparkdl.graph.input import TFInputGraph, TFInputGraphBuilder
 """
 Copied from PySpark for backward compatibility. First in Apache Spark version 2.1.1.
 """
+
 
 def keyword_only(func):
     """
@@ -42,12 +41,14 @@ def keyword_only(func):
 
     .. note:: Should only be used to wrap a method where first arg is `self`
     """
+
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         if len(args) > 0:
             raise TypeError("Method %s forces keyword arguments." % func.__name__)
         self._input_kwargs = kwargs
         return func(self, **kwargs)
+
     return wrapper
 
 
@@ -56,8 +57,8 @@ class HasInputCol(Params):
     Mixin for param inputCol: input column name.
     """
 
-    inputCol = Param(Params._dummy(), "inputCol", "input column name.",
-                     typeConverter=TypeConverters.toString)
+    inputCol = Param(
+        Params._dummy(), "inputCol", "input column name.", typeConverter=TypeConverters.toString)
 
     def setInputCol(self, value):
         """
@@ -77,8 +78,8 @@ class HasOutputCol(Params):
     Mixin for param outputCol: output column name.
     """
 
-    outputCol = Param(Params._dummy(), "outputCol", "output column name.",
-                      typeConverter=TypeConverters.toString)
+    outputCol = Param(
+        Params._dummy(), "outputCol", "output column name.", typeConverter=TypeConverters.toString)
 
     def __init__(self):
         super(HasOutputCol, self).__init__()
@@ -100,8 +101,9 @@ class HasOutputCol(Params):
 """
 TensorFlow Specific Parameters
 """
-class SparkDLTypeConverters(object):
 
+
+class SparkDLTypeConverters(object):
     @staticmethod
     def toTFGraph(value):
         if isinstance(value, tf.Graph):
@@ -165,17 +167,22 @@ class SparkDLTypeConverters(object):
                 return value
             else:
                 raise TypeError("%s %s is not in the supported list." % type(value), str(value))
+
         return converter
+
 
 # New in sparkdl
 
+
 class HasOutputMapping(Params):
     """
-    Mixin for param outputMapping: ordered list of ('outputTensorName', 'outputColName') pairs
+    Mixin for param outputMapping: ordered list of ('outputTensorOpName', 'outputColName') pairs
     """
-    outputMapping = Param(Params._dummy(), "outputMapping",
-                          "Mapping output :class:`tf.Tensor` objects to DataFrame column names",
-                          typeConverter=SparkDLTypeConverters.asTensorToColumnMap)
+    outputMapping = Param(
+        Params._dummy(),
+        "outputMapping",
+        "Mapping output :class:`tf.Operation` names to DataFrame column names",
+        typeConverter=SparkDLTypeConverters.asTensorToColumnMap)
 
     def setOutputMapping(self, value):
         return self._set(outputMapping=value)
@@ -186,11 +193,13 @@ class HasOutputMapping(Params):
 
 class HasInputMapping(Params):
     """
-    Mixin for param inputMapping: ordered list of ('inputColName', 'inputTensorName') pairs
+    Mixin for param inputMapping: ordered list of ('inputColName', 'inputTensorOpName') pairs
     """
-    inputMapping = Param(Params._dummy(), "inputMapping",
-                         "Mapping input DataFrame column names to :class:`tf.Tensor` objects",
-                         typeConverter=SparkDLTypeConverters.asColumnToTensorMap)
+    inputMapping = Param(
+        Params._dummy(),
+        "inputMapping",
+        "Mapping input DataFrame column names to :class:`tf.Operation` names",
+        typeConverter=SparkDLTypeConverters.asColumnToTensorMap)
 
     def setInputMapping(self, value):
         return self._set(inputMapping=value)
@@ -203,9 +212,11 @@ class HasTFInputGraph(Params):
     """
     Mixin for param tfGraph: the :class:`tf.Graph` object that represents a TensorFlow computation.
     """
-    tfInputGraph = Param(Params._dummy(), "tfInputGraph",
-                         "TensorFlow Graph object",
-                         typeConverter=SparkDLTypeConverters.toTFInputGraph)
+    tfInputGraph = Param(
+        Params._dummy(),
+        "tfInputGraph",
+        "TensorFlow Graph object",
+        typeConverter=SparkDLTypeConverters.toTFInputGraph)
 
     def __init__(self):
         super(HasTFInputGraph, self).__init__()
@@ -222,8 +233,11 @@ class HasTFHParams(Params):
     """
     Mixin for TensorFlow model hyper-parameters
     """
-    tfHParams = Param(Params._dummy(), "hparams", "instance of :class:`tf.contrib.training.HParams`",
-                     typeConverter=SparkDLTypeConverters.toTFHParams)
+    tfHParams = Param(
+        Params._dummy(),
+        "hparams",
+        "instance of :class:`tf.contrib.training.HParams`",
+        typeConverter=SparkDLTypeConverters.toTFHParams)
 
     def setTFHParams(self, value):
         return self._set(tfHParam=value)

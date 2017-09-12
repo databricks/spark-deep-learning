@@ -14,13 +14,18 @@
 #
 
 import tensorflow as tf
+from tensorflow.core.protobuf import meta_graph_pb2
 
 import sparkdl.graph.utils as tfx
+
+__all__ = ["TFInputGraphBuilder", "get_params_from_checkpoint", "get_params_from_saved_model"]
 
 
 class TFInputGraph(object):
     """
     An opaque serializable object containing TensorFlow graph.
+
+    [WARNING] This class should not be called by any user code.
     """
 
     # TODO: for (de-)serialization, the class should correspond to a ProtocolBuffer definition.
@@ -39,6 +44,28 @@ class TFInputGraph(object):
         assert isinstance(output_mapping, list), \
             "output mapping must be a list of strings, found type {}".format(type(output_mapping))
         self.output_mapping = sorted(output_mapping)
+
+
+def _get_params_from(gin_builder, input_mapping, output_mapping):
+    gin = gin_builder.build(input_mapping, output_mapping)
+    imap = dict(gin.input_mapping)
+    assert len(imap) == len(gin.input_mapping)
+    omap = dict(gin.output_mapping)
+    assert len(omap) == len(gin.output_mapping)
+    return gin.graph_def, imap, omap
+
+
+def get_params_from_checkpoint(checkpoint_dir, signature_def_key, input_mapping, output_mapping):
+    assert signature_def_key is not None
+    gin_builder = TFInputGraphBuilder.fromCheckpoint(checkpoint_dir, signature_def_key)
+    return _get_params_from(gin_builder, input_mapping, output_mapping)
+
+
+def get_params_from_saved_model(saved_model_dir, tag_set, signature_def_key, input_mapping,
+                                output_mapping):
+    assert signature_def_key is not None
+    gin_builder = TFInputGraphBuilder.fromSavedModel(saved_model_dir, tag_set, signature_def_key)
+    return _get_params_from(gin_builder, input_mapping, output_mapping)
 
 
 class TFInputGraphBuilder(object):
@@ -65,7 +92,9 @@ class TFInputGraphBuilder(object):
 
             # Append feeds and input mapping
             _input_mapping = {}
-            for input_colname, tnsr_or_sig in input_mapping.items():
+            if isinstance(input_mapping, dict):
+                input_mapping = input_mapping.items()
+            for input_colname, tnsr_or_sig in input_mapping:
                 if sig_def:
                     tnsr = sig_def.inputs[tnsr_or_sig].name
                 else:
@@ -79,7 +108,9 @@ class TFInputGraphBuilder(object):
             # By default the output columns will have the name of their
             # corresponding `tf.Graph` operation names.
             # We have to convert them to the user specified output names
-            for tnsr_or_sig, requested_colname in output_mapping.items():
+            if isinstance(output_mapping, dict):
+                output_mapping = output_mapping.items()
+            for tnsr_or_sig, requested_colname in output_mapping:
                 if sig_def:
                     tnsr = sig_def.outputs[tnsr_or_sig].name
                 else:
@@ -132,15 +163,21 @@ class TFInputGraphBuilder(object):
 
         def import_graph_fn(sess):
             # Load checkpoint and import the graph
-            ckpt_path = tf.train.latest_checkpoint(checkpoint_dir)
-            saver = tf.train.import_meta_graph("{}.meta".format(ckpt_path), clear_devices=True)
-            saver.restore(sess, ckpt_path)
-            meta_graph_def = saver.export_meta_graph(clear_devices=True)
+            with sess.as_default():
+                ckpt_path = tf.train.latest_checkpoint(checkpoint_dir)
 
-            sig_def = None
-            if signature_def_key is not None:
-                sig_def = tf.contrib.saved_model.get_signature_def_by_key(
-                    meta_graph_def, signature_def_key)
+                # NOTE(phi-dbq): we must manually load meta_graph_def to get the signature_def
+                meta_graph_def = meta_graph_pb2.MetaGraphDef()
+                with open("{}.meta".format(ckpt_path), 'rb') as fin:
+                    meta_graph_def.ParseFromString(fin.read())
+
+                saver = tf.train.import_meta_graph(meta_graph_def, clear_devices=True)
+                saver.restore(sess, ckpt_path)
+
+                sig_def = None
+                if signature_def_key is not None:
+                    sig_def = meta_graph_def.signature_def[signature_def_key]
+                    # TODO: check if sig_def is valid
 
             return sig_def
 

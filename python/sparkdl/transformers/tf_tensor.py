@@ -21,10 +21,9 @@ import tensorframes as tfs
 from pyspark.ml import Transformer
 
 import sparkdl.graph.utils as tfx
-from sparkdl.transformers.utils import TFInputGraphBuilder
-from sparkdl.transformers.param import (
-    keyword_only, SparkDLTypeConverters, HasInputMapping,
-    HasOutputMapping, HasTFInputGraph, HasTFHParams)
+from sparkdl.graph.input import TFInputGraphBuilder
+from sparkdl.transformers.param import (keyword_only, SparkDLTypeConverters, HasInputMapping,
+                                        HasOutputMapping, HasTFInputGraph, HasTFHParams)
 
 __all__ = ['TFTransformer']
 
@@ -72,11 +71,8 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         with tf.Session(graph=graph):
             analyzed_df = tfs.analyze(dataset)
 
-            out_tnsr_op_names = [tfx.as_op_name(tnsr_op_name)
-                                 for tnsr_op_name, _ in output_mapping]
-            tf.import_graph_def(graph_def=gin.graph_def,
-                                name='',
-                                return_elements=out_tnsr_op_names)
+            out_tnsr_op_names = [tfx.as_op_name(tnsr_op_name) for tnsr_op_name, _ in output_mapping]
+            tf.import_graph_def(graph_def=gin.graph_def, name='', return_elements=out_tnsr_op_names)
 
             feed_dict = dict((tfx.op_name(graph, tnsr_op_name), col_name)
                              for col_name, tnsr_op_name in input_mapping)

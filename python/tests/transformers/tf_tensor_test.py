@@ -14,6 +14,7 @@
 #
 from __future__ import absolute_import, division, print_function
 
+from glob import glob
 import os
 import shutil
 import tempfile
@@ -26,8 +27,9 @@ import tensorframes as tfs
 from pyspark.sql.types import Row
 
 from sparkdl.graph.builder import IsolatedSession
+from sparkdl.graph.input import *
 import sparkdl.graph.utils as tfx
-from sparkdl.transformers.tf_tensor import TFTransformer, TFInputGraphBuilder
+from sparkdl.transformers.tf_tensor import TFTransformer
 
 from ..tests import SparkDLTestCase
 
@@ -133,15 +135,15 @@ class TFTransformerTest(SparkDLTestCase):
 
         # Build the transformer from exported serving model
         # We are using signaures, thus must provide the keys
-        trans_with_sig = TFTransformer(
-            tfInputGraph=TFInputGraphBuilder.fromSavedModel(
-                saved_model_dir, tag_set=serving_tag, signature_def_key=serving_sigdef_key),
-            inputMapping={
-                input_col: 'input_sig'
-            },
-            outputMapping={
-                'output_sig': output_col
-            })
+        tfInputGraph, inputMapping, outputMapping = get_params_from_saved_model(
+            saved_model_dir, serving_tag, serving_sigdef_key,
+            input_mapping={
+                input_col: 'input_sig'},
+            output_mapping={
+                'output_sig': output_col})
+        trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
+                                       inputMapping=inputMapping,
+                                       outputMapping=outputMapping)
 
         # Build the transformer from exported serving model
         # We are not using signatures, thus must provide tensor/operation names
@@ -186,7 +188,31 @@ class TFTransformerTest(SparkDLTestCase):
             z = tf.reduce_mean(x * w, axis=1, name='tnsrOut')
             sess.run(w.initializer)
             saver = tf.train.Saver(var_list=[w])
-            _ = saver.save(sess, ckpt_path_prefix, global_step=2702)
+            ckpt_path = saver.save(sess, ckpt_path_prefix, global_step=2702)
+
+            # Prepare the signature_def
+            serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
+                inputs={
+                    'input_sig': tf.saved_model.utils.build_tensor_info(x)
+                },
+                outputs={
+                    'output_sig': tf.saved_model.utils.build_tensor_info(z)
+                })
+
+            # A rather contrived way to add signature def to a meta_graph
+            serving_sigdef_key = 'prediction_signature'
+            meta_graph_def = tf.train.export_meta_graph()
+
+            # Find the meta_graph file (there should be only one)
+            _ckpt_meta_fpaths = glob('{}/*.meta'.format(model_ckpt_dir))
+            self.assertEqual(len(_ckpt_meta_fpaths), 1, msg=','.join(_ckpt_meta_fpaths))
+            ckpt_meta_fpath = _ckpt_meta_fpaths[0]
+
+            # Add signature_def to the meta_graph and serialize it
+            # This will overwrite the existing meta_graph_def file
+            meta_graph_def.signature_def[serving_sigdef_key].CopyFrom(serving_sigdef)
+            with open(ckpt_meta_fpath, mode='wb') as fout:
+                fout.write(meta_graph_def.SerializeToString())
 
             # Get the reference data
             _results = []
@@ -195,7 +221,24 @@ class TFTransformerTest(SparkDLTestCase):
                 _results.append(sess.run(z, {x: arr}))
             out_ref = np.hstack(_results)
 
-        transformer = TFTransformer(
+        test_results = []
+        def _add_test(transformer, msg, trs=test_results):
+            final_df = transformer.transform(analyzed_df)
+            out_tgt = grab_df_arr(final_df, output_col)
+            trs.append((np.allclose(out_ref, out_tgt), msg))
+
+        tfInputGraph, inputMapping, outputMapping = get_params_from_checkpoint(
+            model_ckpt_dir, serving_sigdef_key,
+            input_mapping={
+                input_col: 'input_sig'},
+            output_mapping={
+                'output_sig': output_col})
+        trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
+                                       inputMapping=inputMapping,
+                                       outputMapping=outputMapping)
+        _add_test(trans_with_sig, 'transformer built with signature_def')
+
+        trans_no_sig = TFTransformer(
             tfInputGraph=TFInputGraphBuilder.fromCheckpoint(model_ckpt_dir),
             inputMapping={
                 input_col: 'tnsrIn'
@@ -203,11 +246,13 @@ class TFTransformerTest(SparkDLTestCase):
             outputMapping={
                 'tnsrOut': output_col
             })
-        final_df = transformer.transform(analyzed_df)
-        out_tgt = grab_df_arr(final_df, output_col)
+        _add_test(trans_no_sig, 'transformer built WITHOUT signature_def')
 
+        # First delete the resource
         shutil.rmtree(model_ckpt_dir, ignore_errors=True)
-        self.assertTrue(np.allclose(out_ref, out_tgt))
+        # Then check each test result
+        for test_result, test_msg in test_results:
+            self.assertTrue(test_result, msg=test_msg)
 
 
     def test_multi_io(self):
