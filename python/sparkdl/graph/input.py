@@ -29,43 +29,20 @@ class TFInputGraph(object):
     """
 
     # TODO: for (de-)serialization, the class should correspond to a ProtocolBuffer definition.
-    def __init__(self, graph_def, input_mapping, output_mapping):
+    def __init__(self, graph_def):
         # tf.GraphDef
         self.graph_def = graph_def
-
-        if isinstance(input_mapping, dict):
-            input_mapping = list(input_mapping.items())
-        assert isinstance(input_mapping, list), \
-            "output mapping must be a list of strings, found type {}".format(type(input_mapping))
-        self.input_mapping = sorted(input_mapping)
-
-        if isinstance(output_mapping, dict):
-            output_mapping = list(output_mapping.items())
-        assert isinstance(output_mapping, list), \
-            "output mapping must be a list of strings, found type {}".format(type(output_mapping))
-        self.output_mapping = sorted(output_mapping)
-
-
-def _get_params_from(gin_builder, input_mapping, output_mapping):
-    gin = gin_builder.build(input_mapping, output_mapping)
-    imap = dict(gin.input_mapping)
-    assert len(imap) == len(gin.input_mapping)
-    omap = dict(gin.output_mapping)
-    assert len(omap) == len(gin.output_mapping)
-    return gin.graph_def, imap, omap
-
 
 def get_params_from_checkpoint(checkpoint_dir, signature_def_key, input_mapping, output_mapping):
     assert signature_def_key is not None
     gin_builder = TFInputGraphBuilder.fromCheckpoint(checkpoint_dir, signature_def_key)
-    return _get_params_from(gin_builder, input_mapping, output_mapping)
-
+    return gin_builder.build(input_mapping, output_mapping)
 
 def get_params_from_saved_model(saved_model_dir, tag_set, signature_def_key, input_mapping,
                                 output_mapping):
     assert signature_def_key is not None
     gin_builder = TFInputGraphBuilder.fromSavedModel(saved_model_dir, tag_set, signature_def_key)
-    return _get_params_from(gin_builder, input_mapping, output_mapping)
+    return gin_builder.build(input_mapping, output_mapping)
 
 
 class TFInputGraphBuilder(object):
@@ -117,12 +94,19 @@ class TFInputGraphBuilder(object):
                     tnsr = tnsr_or_sig
                 fetches.append(tfx.get_tensor(graph, tnsr))
                 tf_output_colname = tfx.op_name(graph, tnsr)
+                # NOTE(phi-dbq): put the check here as it will be the entry point to construct
+                #                a `TFInputGraph` object.
+                assert tf_output_colname not in _output_mapping, \
+                    "operation {} has multiple output tensors and ".format(tf_output_colname) + \
+                    "at least two of them are used in the output DataFrame. " + \
+                    "Operation names are used to name columns which leads to conflicts. "  + \
+                    "You can apply `tf.identity` ops to each to avoid name conflicts."
                 _output_mapping[tf_output_colname] = requested_colname
             output_mapping = _output_mapping
 
             gdef = tfx.strip_and_freeze_until(fetches, graph, sess)
 
-        return TFInputGraph(gdef, input_mapping, output_mapping)
+        return TFInputGraph(gdef), input_mapping, output_mapping
 
     @classmethod
     def fromGraph(cls, graph):
@@ -167,6 +151,8 @@ class TFInputGraphBuilder(object):
                 ckpt_path = tf.train.latest_checkpoint(checkpoint_dir)
 
                 # NOTE(phi-dbq): we must manually load meta_graph_def to get the signature_def
+                #                the current `import_graph_def` function seems to ignore
+                #                any signature_def fields in a checkpoint's meta_graph_def.
                 meta_graph_def = meta_graph_pb2.MetaGraphDef()
                 with open("{}.meta".format(ckpt_path), 'rb') as fin:
                     meta_graph_def.ParseFromString(fin.read())
@@ -177,7 +163,9 @@ class TFInputGraphBuilder(object):
                 sig_def = None
                 if signature_def_key is not None:
                     sig_def = meta_graph_def.signature_def[signature_def_key]
-                    # TODO: check if sig_def is valid
+                    assert sig_def, 'singnature_def_key {} provided, '.format(signature_def_key) + \
+                        'but failed to find it from the meta_graph_def ' + \
+                        'from checkpoint {}'.format(checkpoint_dir)
 
             return sig_def
 

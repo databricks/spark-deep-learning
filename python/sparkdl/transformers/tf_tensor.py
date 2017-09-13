@@ -21,7 +21,7 @@ import tensorframes as tfs
 from pyspark.ml import Transformer
 
 import sparkdl.graph.utils as tfx
-from sparkdl.graph.input import TFInputGraphBuilder
+from sparkdl.graph.input import TFInputGraph, TFInputGraphBuilder
 from sparkdl.transformers.param import (keyword_only, SparkDLTypeConverters, HasInputMapping,
                                         HasOutputMapping, HasTFInputGraph, HasTFHParams)
 
@@ -57,15 +57,38 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         """
         super(TFTransformer, self).__init__()
         kwargs = self._input_kwargs
-        _maybe_gin = SparkDLTypeConverters.toTFInputGraph(tfInputGraph)
+        # The set of parameters either come from some helper functions,
+        # in which case type(_maybe_gin) is already TFInputGraph.
+        _maybe_gin = tfInputGraph
+        if isinstance(_maybe_gin, TFInputGraph):
+            return self._set(**kwargs)
+
+        # Otherwise, `_maybe_gin` needs to be converted to TFInputGraph
+        # We put all the conversion logic here rather than in SparkDLTypeConverters
         if isinstance(_maybe_gin, TFInputGraphBuilder):
-            kwargs['tfInputGraph'] = _maybe_gin.build(inputMapping, outputMapping)
+            gin = _maybe_gin
+        elif isinstance(_maybe_gin, tf.Graph):
+            gin = TFInputGraphBuilder.fromGraph(_maybe_gin)
+        elif isinstance(_maybe_gin, tf.GraphDef):
+            gin = TFInputGraphBuilder.fromGraphDef(_maybe_gin)
+        else:
+            raise TypeError("TFTransformer expect tfInputGraph convertible to TFInputGraph, " + \
+                            "but the given type {} cannot be converted, ".format(type(tfInputGraph)) + \
+                            "please provide `tf.Graph`, `tf.GraphDef` or use one of the " + \
+                            "`get_params_from_*` helper functions to build parameters")
+
+        gin, input_mapping, output_mapping = gin.build(inputMapping, outputMapping)
+        kwargs['tfInputGraph'] = gin
+        kwargs['inputMapping'] = input_mapping
+        kwargs['outputMapping'] = output_mapping
+
+        # Further conanonicalization, e.g. converting dict to sorted str pairs happens here
         return self._set(**kwargs)
 
     def _transform(self, dataset):
         gin = self.getTFInputGraph()
-        input_mapping = gin.input_mapping
-        output_mapping = gin.output_mapping
+        input_mapping = self.getInputMapping()
+        output_mapping = self.getOutputMapping()
 
         graph = tf.Graph()
         with tf.Session(graph=graph):

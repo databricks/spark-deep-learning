@@ -29,10 +29,10 @@ from pyspark.ml.param import Param, Params, TypeConverters
 from sparkdl.graph.builder import GraphFunction, IsolatedSession
 import sparkdl.graph.utils as tfx
 from sparkdl.graph.input import TFInputGraph, TFInputGraphBuilder
-"""
-Copied from PySpark for backward compatibility. First in Apache Spark version 2.1.1.
-"""
 
+########################################################
+# Copied from PySpark for backward compatibility. First in Apache Spark version 2.1.1.
+########################################################
 
 def keyword_only(func):
     """
@@ -98,21 +98,15 @@ class HasOutputCol(Params):
         return self.getOrDefault(self.outputCol)
 
 
-"""
-TensorFlow Specific Parameters
-"""
-
+########################################################
+# New in sparkdl: TensorFlow Specific Parameters
+########################################################
 
 class SparkDLTypeConverters(object):
     @staticmethod
     def toTFGraph(value):
         if isinstance(value, tf.Graph):
             return value
-        elif isinstance(value, GraphFunction):
-            with IsolatedSession() as issn:
-                issn.importGraphFunction(value, prefix='')
-                g = issn.graph
-            return g
         else:
             raise TypeError("Could not convert %s to TensorFlow Graph" % type(value))
 
@@ -120,12 +114,6 @@ class SparkDLTypeConverters(object):
     def toTFInputGraph(value):
         if isinstance(value, TFInputGraph):
             return value
-        elif isinstance(value, TFInputGraphBuilder):
-            return value
-        elif isinstance(value, tf.Graph):
-            return TFInputGraphBuilder.fromGraph(value)
-        elif isinstance(value, tf.GraphDef):
-            return TFInputGraphBuilder.fromGraphDef(value)
         else:
             raise TypeError("Could not convert %s to TFInputGraph" % type(value))
 
@@ -171,9 +159,6 @@ class SparkDLTypeConverters(object):
         return converter
 
 
-# New in sparkdl
-
-
 class HasOutputMapping(Params):
     """
     Mixin for param outputMapping: ordered list of ('outputTensorOpName', 'outputColName') pairs
@@ -185,7 +170,11 @@ class HasOutputMapping(Params):
         typeConverter=SparkDLTypeConverters.asTensorToColumnMap)
 
     def setOutputMapping(self, value):
-        return self._set(outputMapping=value)
+        # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
+        #                serializable TFInputGraph object once the inputMapping and outputMapping
+        #                parameters are provided.
+        raise NotImplementedError(
+            "Please use the Transformer's constructor to assign `outputMapping` field.")
 
     def getOutputMapping(self):
         return self.getOrDefault(self.outputMapping)
@@ -202,7 +191,11 @@ class HasInputMapping(Params):
         typeConverter=SparkDLTypeConverters.asColumnToTensorMap)
 
     def setInputMapping(self, value):
-        return self._set(inputMapping=value)
+        # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
+        #                serializable TFInputGraph object once the inputMapping and outputMapping
+        #                parameters are provided.
+        raise NotImplementedError(
+            "Please use the Transformer's constructor to assigne `inputMapping` field.")
 
     def getInputMapping(self):
         return self.getOrDefault(self.inputMapping)
@@ -210,12 +203,12 @@ class HasInputMapping(Params):
 
 class HasTFInputGraph(Params):
     """
-    Mixin for param tfGraph: the :class:`tf.Graph` object that represents a TensorFlow computation.
+    Mixin for param tfInputGraph: a serializable object derived from a TensorFlow computation graph.
     """
     tfInputGraph = Param(
         Params._dummy(),
         "tfInputGraph",
-        "TensorFlow Graph object",
+        "A serializable object derived from a TensorFlow computation graph",
         typeConverter=SparkDLTypeConverters.toTFInputGraph)
 
     def __init__(self):
@@ -223,7 +216,11 @@ class HasTFInputGraph(Params):
         self._setDefault(tfInputGraph=None)
 
     def setTFInputGraph(self, value):
-        return self._set(tfInputGraph=value)
+        # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
+        #                serializable TFInputGraph object once the inputMapping and outputMapping
+        #                parameters are provided.
+        raise NotImplementedError(
+            "Please use the Transformer's constructor to assign `tfInputGraph` field.")
 
     def getTFInputGraph(self):
         return self.getOrDefault(self.tfInputGraph)
@@ -236,7 +233,7 @@ class HasTFHParams(Params):
     tfHParams = Param(
         Params._dummy(),
         "hparams",
-        "instance of :class:`tf.contrib.training.HParams`",
+        "instance of :class:`tf.contrib.training.HParams`, a key-value map-like object",
         typeConverter=SparkDLTypeConverters.toTFHParams)
 
     def setTFHParams(self, value):

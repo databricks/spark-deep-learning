@@ -54,7 +54,6 @@ class TFTransformerTest(SparkDLTestCase):
 
         # Build the TensorFlow graph
         with tf.Session() as sess:
-            #x = tf.placeholder(tf.float64, shape=[None, vec_size])
             x = tfs.block(analyzed_df, 'vec')
             z = tf.reduce_mean(x, axis=1)
             graph = sess.graph
@@ -68,9 +67,9 @@ class TFTransformerTest(SparkDLTestCase):
 
         # Apply the transform
         gin_from_graph = TFInputGraphBuilder.fromGraph(graph)
-        for gin in [gin_from_graph, graph]:
+        for gin_or_graph in [gin_from_graph, graph]:
             transfomer = TFTransformer(
-                tfInputGraph=TFInputGraphBuilder.fromGraph(graph),
+                tfInputGraph=gin_or_graph,
                 inputMapping={
                     'vec': x
                 },
