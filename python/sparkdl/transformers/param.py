@@ -31,7 +31,8 @@ import sparkdl.graph.utils as tfx
 from sparkdl.graph.input import TFInputGraph, TFInputGraphBuilder
 
 ########################################################
-# Copied from PySpark for backward compatibility. First in Apache Spark version 2.1.1.
+# Copied from PySpark for backward compatibility.
+# They first appeared in Apache Spark version 2.1.1.
 ########################################################
 
 def keyword_only(func):
@@ -99,7 +100,7 @@ class HasOutputCol(Params):
 
 
 ########################################################
-# New in sparkdl: TensorFlow Specific Parameters
+# New in sparkdl
 ########################################################
 
 class SparkDLTypeConverters(object):

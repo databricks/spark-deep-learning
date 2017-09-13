@@ -14,6 +14,7 @@
 #
 from __future__ import absolute_import, division, print_function
 
+from contextlib import contextmanager
 from glob import glob
 import os
 import shutil
@@ -33,77 +34,142 @@ from sparkdl.transformers.tf_tensor import TFTransformer
 
 from ..tests import SparkDLTestCase
 
-def grab_df_arr(df, output_col):
-    """ Stack the numpy array from a DataFrame column """
-    return np.array([row.asDict()[output_col]
-                     for row in df.select(output_col).collect()])
 
 class TFTransformerTest(SparkDLTestCase):
 
-    def _get_rand_vec_df(self, num_rows, vec_size):
-        return self.session.createDataFrame(
-            Row(idx=idx, vec=np.random.randn(vec_size).tolist())
-            for idx in range(num_rows))
+    def setUp(self):
+        self.vec_size = 17
+        self.num_vecs = 31
 
-    def test_build_from_tf_graph(self):
-        # Build a simple input DataFrame
-        vec_size = 17
-        num_vecs = 31
-        df = self._get_rand_vec_df(num_vecs, vec_size)
+        self.input_col = 'vec'
+        self.input_op_name = 'tnsrOpIn'
+        self.output_col = 'outputCol'
+        self.output_op_name = 'tnsrOpOut'
+
+        self.input_mapping = {}
+        self.output_mapping = {}
+
+        self.transformers = []
+        self.test_case_results = []
+        # Build a temporary directory, which might or might not be used by the test
+        self.model_output_root = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.model_output_root, ignore_errors=True)
+
+    def build_standard_transformers(self, sess, gin_builder_convertible):
+        def _add_transformer(imap, omap):
+            trnsfmr = TFTransformer(
+                tfInputGraph=gin_builder_convertible, inputMapping=imap, outputMapping=omap)
+            self.transformers.append(trnsfmr)
+
+        _add_transformer(self.input_mapping, self.output_mapping)
+
+        imap = [(col, tfx.get_tensor(sess.graph, op_name))
+                for col, op_name in self.input_mapping.items()]
+        omap = [(tfx.get_tensor(sess.graph, op_name), col)
+                for op_name, col in self.output_mapping.items()]
+        _add_transformer(imap, omap)
+
+    @contextmanager
+    def run_test_in_tf_session(self, replica=1):
+        """ [THIS IS NOT A TEST]: encapsulate general test workflow """
+
+        if replica > 1:
+            for i in range(replica):
+                colname = '{}_replica{:03d}'.format(self.input_col, i)
+                tnsr_op_name = '{}_replica{:03d}'.format(self.input_op_name, i)
+                self.input_mapping[colname] = tnsr_op_name
+
+                colname = '{}_replica{:03d}'.format(self.output_col, i)
+                tnsr_op_name = '{}_replica{:03d}'.format(self.output_op_name, i)
+                self.output_mapping[tnsr_op_name] = colname
+        else:
+            self.input_mapping = {self.input_col: self.input_op_name}
+            self.output_mapping = {self.output_op_name: self.output_col}
+
+        # Build local features and DataFrame from it
+        local_features = []
+        for idx in range(self.num_vecs):
+            _dict = {'idx': idx}
+            for colname, _ in self.input_mapping.items():
+                _dict[colname] = np.random.randn(self.vec_size).tolist()
+
+            local_features.append(Row(**_dict))
+
+        df = self.session.createDataFrame(local_features)
         analyzed_df = tfs.analyze(df)
 
         # Build the TensorFlow graph
-        with tf.Session() as sess:
-            x = tfs.block(analyzed_df, 'vec')
-            z = tf.reduce_mean(x, axis=1)
-            graph = sess.graph
+        graph = tf.Graph()
+        with tf.Session(graph=graph) as sess:
+            # Build test graph and transformers from here
+            yield sess
 
             # Get the reference data
             _results = []
-            for row in df.collect():
-                arr = np.array(row.vec)[np.newaxis, :]
-                _results.append(sess.run(z, {x: arr}))
+            for row in local_features:
+                fetches = [tfx.get_tensor(graph, tnsr_op_name)
+                           for tnsr_op_name in self.output_mapping.keys()]
+                feed_dict = {}
+                for colname, tnsr_op_name in self.input_mapping.items():
+                    tnsr = tfx.get_tensor(graph, tnsr_op_name)
+                    feed_dict[tnsr] = np.array(row[colname])[np.newaxis, :]
+
+                curr_res = sess.run(fetches, feed_dict=feed_dict)
+                _results.append(np.ravel(curr_res))
+
             out_ref = np.hstack(_results)
 
         # Apply the transform
-        gin_from_graph = TFInputGraphBuilder.fromGraph(graph)
-        for gin_or_graph in [gin_from_graph, graph]:
-            transfomer = TFTransformer(
-                tfInputGraph=gin_or_graph,
-                inputMapping={
-                    'vec': x
-                },
-                outputMapping={
-                    z: 'outCol'
-                })
-            final_df = transfomer.transform(analyzed_df)
-            out_tgt = grab_df_arr(final_df, 'outCol')
-            self.assertTrue(np.allclose(out_ref, out_tgt))
+        for transfomer in self.transformers:
+            out_df = transfomer.transform(analyzed_df)
+            out_colnames = []
+            for old_colname, new_colname in self.output_mapping.items():
+                out_colnames.append(new_colname)
+                if old_colname != new_colname:
+                    out_df = out_df.withColumnRenamed(old_colname, new_colname)
+
+            _results = []
+            for row in out_df.select(out_colnames).collect():
+                curr_res = [row[colname] for colname in out_colnames]
+                _results.append(np.ravel(curr_res))
+            out_tgt = np.hstack(_results)
+
+            self.assertTrue(np.allclose(out_ref, out_tgt),
+                            msg=repr(transfomer))
+
+
+    def test_build_from_tf_graph(self):
+        with self.run_test_in_tf_session() as sess:
+            # Begin building graph
+            x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
+            _ = tf.reduce_mean(x, axis=1, name=self.output_op_name)
+            # End building graph
+
+            # Begin building transformers
+            self.build_standard_transformers(sess, sess.graph)
+            self.build_standard_transformers(sess, TFInputGraphBuilder.fromGraph(sess.graph))
+            gdef = sess.graph.as_graph_def()
+            self.build_standard_transformers(sess, gdef)
+            self.build_standard_transformers(sess, TFInputGraphBuilder.fromGraphDef(gdef))
+            # End building transformers
 
 
     def test_build_from_saved_model(self):
-        # Setup dataset
-        vec_size = 17
-        num_vecs = 31
-        df = self._get_rand_vec_df(num_vecs, vec_size)
-        analyzed_df = tfs.analyze(df)
-        input_col = 'vec'
-        output_col = 'outputCol'
-
         # Setup saved model export directory
-        saved_model_root = tempfile.mkdtemp()
+        saved_model_root = self.model_output_root
         saved_model_dir = os.path.join(saved_model_root, 'saved_model')
         serving_tag = "serving_tag"
         serving_sigdef_key = 'prediction_signature'
-
         builder = tf.saved_model.builder.SavedModelBuilder(saved_model_dir)
-        with tf.Session(graph=tf.Graph()) as sess:
+
+        with self.run_test_in_tf_session() as sess:
             # Model definition: begin
-            x = tf.placeholder(tf.float64, shape=[None, vec_size], name='tnsrIn')
-            #x = tf.placeholder(tf.float64, shape=[None, vec_size], name=input_col)
-            w = tf.Variable(tf.random_normal([vec_size], dtype=tf.float64),
+            x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
+            w = tf.Variable(tf.random_normal([self.vec_size], dtype=tf.float64),
                             dtype=tf.float64, name='varW')
-            z = tf.reduce_mean(x * w, axis=1, name='tnsrOut')
+            z = tf.reduce_mean(x * w, axis=1, name=self.output_op_name)
             # Model definition ends
 
             sess.run(w.initializer)
@@ -120,74 +186,48 @@ class TFTransformerTest(SparkDLTestCase):
             builder.add_meta_graph_and_variables(sess,
                                                  [serving_tag],
                                                  signature_def_map={
-                                                     serving_sigdef_key: serving_sigdef
-                                                 })
-            # Get the reference data
-            _results = []
-            for row in df.collect():
-                arr = np.array(row.vec)[np.newaxis, :]
-                _results.append(sess.run(z, {x: arr}))
-            out_ref = np.hstack(_results)
+                                                     serving_sigdef_key: serving_sigdef})
+            builder.save()
 
-        # Save the model
-        builder.save()
+            # Build the transformer from exported serving model
+            # We are using signaures, thus must provide the keys
+            tfInputGraph, inputMapping, outputMapping = get_params_from_saved_model(
+                saved_model_dir, serving_tag, serving_sigdef_key,
+                input_mapping={
+                    self.input_col: 'input_sig'},
+                output_mapping={
+                    'output_sig': self.output_col})
+            trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
+                                           inputMapping=inputMapping,
+                                           outputMapping=outputMapping)
+            self.transformers.append(trans_with_sig)
 
-        # Build the transformer from exported serving model
-        # We are using signaures, thus must provide the keys
-        tfInputGraph, inputMapping, outputMapping = get_params_from_saved_model(
-            saved_model_dir, serving_tag, serving_sigdef_key,
-            input_mapping={
-                input_col: 'input_sig'},
-            output_mapping={
-                'output_sig': output_col})
-        trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
-                                       inputMapping=inputMapping,
-                                       outputMapping=outputMapping)
-
-        # Build the transformer from exported serving model
-        # We are not using signatures, thus must provide tensor/operation names
-        trans_no_sig = TFTransformer(
-            tfInputGraph=TFInputGraphBuilder.fromSavedModel(
-                saved_model_dir, tag_set=serving_tag, signature_def_key=None),
-            inputMapping={
-                input_col: 'tnsrIn'
-            },
-            outputMapping={
-                'tnsrOut': output_col
-            })
-
-        df_trans_with_sig = trans_with_sig.transform(analyzed_df)
-        df_trans_no_sig = trans_no_sig.transform(analyzed_df)
-        out_with_sig_tgt = grab_df_arr(df_trans_with_sig, output_col)
-        out_no_sig_tgt = grab_df_arr(df_trans_no_sig, output_col)
-        # Cleanup the resources
-        shutil.rmtree(saved_model_root, ignore_errors=True)
-        self.assertTrue(np.allclose(out_ref, out_with_sig_tgt))
-        self.assertTrue(np.allclose(out_ref, out_no_sig_tgt))
+            # Build the transformer from exported serving model
+            # We are not using signatures, thus must provide tensor/operation names
+            gin_builder = TFInputGraphBuilder.fromSavedModel(
+                saved_model_dir, tag_set=serving_tag, signature_def_key=None)
+            self.build_standard_transformers(sess, gin_builder)
 
 
     def test_build_from_checkpoint(self):
-        vec_size = 17
-        num_vecs = 31
-        df = self._get_rand_vec_df(num_vecs, vec_size)
-        analyzed_df = tfs.analyze(df)
-        input_col = 'vec'
-        output_col = 'outputCol'
-
+        """
+        Test constructing a Transformer from a TensorFlow training checkpoint
+        """
         # Build the TensorFlow graph
-        model_ckpt_dir = tempfile.mkdtemp()
+        model_ckpt_dir = self.model_output_root
         ckpt_path_prefix = os.path.join(model_ckpt_dir, 'model_ckpt')
+        serving_sigdef_key = 'prediction_signature'
         # Warning: please use a new graph for each test cases
         #          or the tests could affect one another
-        with tf.Session(graph=tf.Graph()) as sess:
-            x = tf.placeholder(tf.float64, shape=[None, vec_size], name='tnsrIn')
+        with self.run_test_in_tf_session() as sess:
+            x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
             #x = tf.placeholder(tf.float64, shape=[None, vec_size], name=input_col)
-            w = tf.Variable(tf.random_normal([vec_size], dtype=tf.float64),
+            w = tf.Variable(tf.random_normal([self.vec_size], dtype=tf.float64),
                             dtype=tf.float64, name='varW')
-            z = tf.reduce_mean(x * w, axis=1, name='tnsrOut')
+            z = tf.reduce_mean(x * w, axis=1, name=self.output_op_name)
             sess.run(w.initializer)
             saver = tf.train.Saver(var_list=[w])
-            ckpt_path = saver.save(sess, ckpt_path_prefix, global_step=2702)
+            _ = saver.save(sess, ckpt_path_prefix, global_step=2702)
 
             # Prepare the signature_def
             serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
@@ -199,7 +239,6 @@ class TFTransformerTest(SparkDLTestCase):
                 })
 
             # A rather contrived way to add signature def to a meta_graph
-            serving_sigdef_key = 'prediction_signature'
             meta_graph_def = tf.train.export_meta_graph()
 
             # Find the meta_graph file (there should be only one)
@@ -213,109 +252,42 @@ class TFTransformerTest(SparkDLTestCase):
             with open(ckpt_meta_fpath, mode='wb') as fout:
                 fout.write(meta_graph_def.SerializeToString())
 
-            # Get the reference data
-            _results = []
-            for row in df.collect():
-                arr = np.array(row.vec)[np.newaxis, :]
-                _results.append(sess.run(z, {x: arr}))
-            out_ref = np.hstack(_results)
+            tfInputGraph, inputMapping, outputMapping = get_params_from_checkpoint(
+                model_ckpt_dir, serving_sigdef_key,
+                input_mapping={
+                    self.input_col: 'input_sig'},
+                output_mapping={
+                    'output_sig': self.output_col})
+            trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
+                                           inputMapping=inputMapping,
+                                           outputMapping=outputMapping)
+            self.transformers.append(trans_with_sig)
 
-        test_results = []
-        def _add_test(transformer, msg, trs=test_results):
-            final_df = transformer.transform(analyzed_df)
-            out_tgt = grab_df_arr(final_df, output_col)
-            trs.append((np.allclose(out_ref, out_tgt), msg))
-
-        tfInputGraph, inputMapping, outputMapping = get_params_from_checkpoint(
-            model_ckpt_dir, serving_sigdef_key,
-            input_mapping={
-                input_col: 'input_sig'},
-            output_mapping={
-                'output_sig': output_col})
-        trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
-                                       inputMapping=inputMapping,
-                                       outputMapping=outputMapping)
-        _add_test(trans_with_sig, 'transformer built with signature_def')
-
-        trans_no_sig = TFTransformer(
-            tfInputGraph=TFInputGraphBuilder.fromCheckpoint(model_ckpt_dir),
-            inputMapping={
-                input_col: 'tnsrIn'
-            },
-            outputMapping={
-                'tnsrOut': output_col
-            })
-        _add_test(trans_no_sig, 'transformer built WITHOUT signature_def')
-
-        # First delete the resource
-        shutil.rmtree(model_ckpt_dir, ignore_errors=True)
-        # Then check each test result
-        for test_result, test_msg in test_results:
-            self.assertTrue(test_result, msg=test_msg)
+            gin_builder = TFInputGraphBuilder.fromCheckpoint(model_ckpt_dir)
+            self.build_standard_transformers(sess, gin_builder)
 
 
     def test_multi_io(self):
-        # Build a simple input DataFrame
-        vec_size = 17
-        num_vecs = 31
-        _df = self._get_rand_vec_df(num_vecs, vec_size)
-        df_x = _df.withColumnRenamed('vec', 'vec_x')
-        _df = self._get_rand_vec_df(num_vecs, vec_size)
-        df_y = _df.withColumnRenamed('vec', 'vec_y')
-        df = df_x.join(df_y, on='idx', how='inner')
-        analyzed_df = tfs.analyze(df)
-
         # Build the TensorFlow graph
-        with tf.Session() as sess:
-            x = tfs.block(analyzed_df, 'vec_x')
-            y = tfs.block(analyzed_df, 'vec_y')
-            p = tf.reduce_mean(x + y, axis=1)
-            q = tf.reduce_mean(x - y, axis=1)
-            graph = sess.graph
+        with self.run_test_in_tf_session(replica=2) as sess:
+            xs = []
+            for tnsr_op_name in self.input_mapping.values():
+                x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=tnsr_op_name)
+                xs.append(x)
 
-            # Get the reference data
-            p_out_ref = []
-            q_out_ref = []
-            for row in df.collect():
-                arr_x = np.array(row['vec_x'])[np.newaxis, :]
-                arr_y = np.array(row['vec_y'])[np.newaxis, :]
-                p_val, q_val = sess.run([p, q], {x: arr_x, y: arr_y})
-                p_out_ref.append(p_val)
-                q_out_ref.append(q_val)
-            p_out_ref = np.hstack(p_out_ref)
-            q_out_ref = np.hstack(q_out_ref)
+            zs = []
+            for i, tnsr_op_name in enumerate(self.output_mapping.keys()):
+                z = tf.reduce_mean(xs[i], axis=1, name=tnsr_op_name)
+                zs.append(z)
 
-        # Apply the transform
-        transfomer = TFTransformer(
-            tfInputGraph=TFInputGraphBuilder.fromGraph(graph),
-            inputMapping={
-                'vec_x': x,
-                'vec_y': y
-            },
-            outputMapping={
-                p: 'outcol_p',
-                q: 'outcol_q'
-            })
-        final_df = transfomer.transform(analyzed_df)
-        p_out_tgt = grab_df_arr(final_df, 'outcol_p')
-        q_out_tgt = grab_df_arr(final_df, 'outcol_q')
-
-        self.assertTrue(np.allclose(p_out_ref, p_out_tgt))
-        self.assertTrue(np.allclose(q_out_ref, q_out_tgt))
+            self.build_standard_transformers(sess, sess.graph)
+            self.build_standard_transformers(sess, TFInputGraphBuilder.fromGraph(sess.graph))
 
     def test_mixed_keras_graph(self):
-
-        vec_size = 17
-        num_vecs = 137
-        df = self._get_rand_vec_df(num_vecs, vec_size)
-        analyzed_df = tfs.analyze(df)
-
-        input_col = 'vec'
-        output_col = 'outCol'
-
         # Build the graph: the output should have the same leading/batch dimension
         with IsolatedSession(using_keras=True) as issn:
-            tnsr_in = tfs.block(analyzed_df, input_col)
+            tnsr_in = tf.placeholder(
+                tf.double, shape=[None, self.vec_size], name=self.input_op_name)
             inp = tf.expand_dims(tnsr_in, axis=2)
             # Keras layers does not take tf.double
             inp = tf.cast(inp, tf.float32)
@@ -325,7 +297,7 @@ class TFTransformerTest(SparkDLTestCase):
             dense = Dense(1)(flat)
             # We must keep the leading dimension of the output
             redsum = tf.reduce_sum(dense, axis=1)
-            tnsr_out = tf.cast(redsum, tf.double, name='TnsrOut')
+            tnsr_out = tf.cast(redsum, tf.double, name=self.output_op_name)
 
             # Initialize the variables
             init_op = tf.global_variables_initializer()
@@ -333,35 +305,10 @@ class TFTransformerTest(SparkDLTestCase):
             # We could train the model ... but skip it here
             gfn = issn.asGraphFunction([tnsr_in], [tnsr_out])
 
-        with IsolatedSession() as issn:
-            # Import the graph function object
-            feeds, fetches = issn.importGraphFunction(gfn, prefix='')
+        with self.run_test_in_tf_session() as sess:
+            tf.import_graph_def(gfn.graph_def, name='')
 
-            # Rename the input column name to the feed op's name
-            orig_in_name = tfx.op_name(issn.graph, feeds[0])
-            input_df = analyzed_df.withColumnRenamed(input_col, orig_in_name)
-
-            # Do the actual computation
-            output_df = tfs.map_blocks(fetches, input_df)
-
-            # Rename the output column (by default, the name of the fetch op's name)
-            orig_out_name = tfx.op_name(issn.graph, fetches[0])
-            final_df = output_df.withColumnRenamed(orig_out_name, output_col)
-
-        arr_ref = grab_df_arr(final_df, output_col)
-
-        # Using the Transformer
-        gin_from_gdef = TFInputGraphBuilder.fromGraphDef(gfn.graph_def)
-        for gin in [gin_from_gdef, gfn.graph_def]:
-            transformer = TFTransformer(
-                tfInputGraph=gin,
-                inputMapping={
-                    input_col: gfn.input_names[0]
-                },
-                outputMapping={
-                    gfn.output_names[0]: output_col
-                })
-
-            transformed_df = transformer.transform(analyzed_df)
-            arr_tgt = grab_df_arr(transformed_df, output_col)
-            self.assertTrue(np.allclose(arr_ref, arr_tgt))
+            self.build_standard_transformers(sess, sess.graph)
+            self.build_standard_transformers(sess, TFInputGraphBuilder.fromGraph(sess.graph))
+            self.build_standard_transformers(sess, gfn.graph_def)
+            self.build_standard_transformers(sess, TFInputGraphBuilder.fromGraphDef(gfn.graph_def))
