@@ -61,7 +61,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
             from keras.applications.imagenet_utils import preprocess_input
 
             original_image = PIL.Image.open(uri).convert('RGB')
-            resized_image = original_image.resize((299, 299), PIL.Image.ANTIALIAS)
+            resized_image = original_image.resize((224, 224), PIL.Image.ANTIALIAS)
             image_array = np.array(resized_image).astype(np.float32)
             image_tensor = preprocess_input(image_array[np.newaxis, :])
             return image_tensor
@@ -71,12 +71,15 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
 
     .. code-block:: python
 
-        image_dataset = spark.createDataFrame([
-            Row(imageUri="image1_uri", imageLabel="panda"),
-            Row(imageUri="image2_uri", imageLabel="cat"),
+        original_dataset = spark.createDataFrame([
+            Row(imageUri="image1_uri", imageLabel="image1_label"),
+            Row(imageUri="image2_uri", imageLabel="image2_label"),
             # and more rows ...
         ])
-
+        stringIndexer = StringIndexer(inputCol="imageLabel", outputCol="categoryIndex")
+        indexed_dateset = stringIndexer.fit(original_dataset).transform(original_dataset)
+        encoder = OneHotEncoder(inputCol="categoryIndex", outputCol="categoryVec")
+        image_dataset = encoder.transform(indexed_dateset)
 
     We can then create a Keras estimator that takes our saved model file and
     train it using Spark.
@@ -85,7 +88,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
 
         estimator = KerasImageFileEstimator(inputCol="imageUri",
                                             outputCol="name_of_result_column",
-                                            labelCol="imageLabel",
+                                            labelCol="categoryVec",
                                             imageLoader=load_image_and_process,
                                             kerasOptimizer="adam",
                                             kerasLoss="categorical_crossentropy",
