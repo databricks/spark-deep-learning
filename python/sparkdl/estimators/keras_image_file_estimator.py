@@ -26,9 +26,8 @@ from pyspark.ml.param import Param, Params, TypeConverters
 
 from sparkdl.image.imageIO import imageStructToArray
 from sparkdl.param import (
-    keyword_only, CanLoadImage, HasKerasModel,
-    HasInputCol, HasInputImageNodeName, HasLabelCol,
-    HasOutputNodeName, HasOutputCol, HasOutputMode)
+    keyword_only, CanLoadImage, HasKerasModel, HasKerasOptimizer, HasKerasLoss, HasOutputMode,
+    HasInputCol, HasInputImageNodeName, HasLabelCol, HasOutputNodeName, HasOutputCol)
 from sparkdl.transformers.keras_image import KerasImageFileTransformer
 import sparkdl.utils.jvmapi as JVMAPI
 import sparkdl.utils.keras_model as kmutil
@@ -39,10 +38,12 @@ logger = logging.getLogger('sparkdl')
 
 class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
                               HasOutputCol, HasOutputNodeName, HasLabelCol,
-                              CanLoadImage, HasKerasModel, HasOutputMode):
+                              HasKerasModel, HasKerasOptimizer, HasKerasLoss,
+                              CanLoadImage, HasOutputMode):
     """
     Build a Estimator from a Keras model.
     """
+    # TODO(phi-dbq): add more detailed docs
 
     # TODO(phi-dbq): allow users to pass a Keras optimizer object
     #                so that they can configure learning rate, momentum, etc.
@@ -57,13 +58,16 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
     @keyword_only
     def __init__(self, inputCol=None, inputImageNodeName=None, outputCol=None,
                  outputNodeName=None, outputMode="vector", labelCol=None,
-                 modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None):
+                 modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,
+                 kerasFitParams=None):
         """
         __init__(self, inputCol=None, inputImageNodeName=None, outputCol=None,
                  outputNodeName=None, outputMode="vector", labelCol=None,
-                 modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None)
+                 modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,
+                 kerasFitParams=None)
         """
-        # TODO: currently, we ignore output mode
+        # NOTE(phi-dbq): currently we ignore output mode, as the actual output are the
+        #                trained models and the Transformers built from them.
         super(KerasImageFileEstimator, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
@@ -71,47 +75,22 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
     @keyword_only
     def setParams(self, inputCol=None, inputImageNodeName=None, outputCol=None,
                   outputNodeName=None, outputMode="vector", labelCol=None,
-                  modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None):
+                  modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,
+                  kerasFitParams=None):
         """
         setParams(self, inputCol=None, inputImageNodeName=None, outputCol=None,
                   outputNodeName=None, outputMode="vector", labelCol=None,
-                  modelFile=None, imageLoader=None, optimizer=None, loss=None, kerasFitParams=None)
+                  modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,
+                  kerasFitParams=None)
         """
         kwargs = self._input_kwargs
-        self._set(**kwargs)
-        return self
-
-    def setLabelCol(self, value):
-        return self._set(labelCol=value)
-
-    def getLabelCol(self):
-        return self.getOrDefault(self.labelCol)
-
-    def setOptimizer(self, value):
-        return self._set(optimizer=value)
-
-    def getOptimizer(self):
-        return self.getOrDefault(self.optimizer)
-
-    def setLoss(self, value):
-        return self._set(loss=value)
-
-    def getLoss(self):
-        return self.getOrDefault(self.loss)
+        return self._set(**kwargs)
 
     def _validateParams(self):
         """
         Check Param values so we can throw errors on the driver, rather than workers.
         :return: True if parameters are valid
         """
-        if not self.isDefined(self.optimizer):
-            raise ValueError("Required Param optimizer must be specified but was not.")
-        if not kmutil.is_valid_optimizer(self.getOptimizer()):
-            raise ValueError("Named optimizer not supported in Keras: %s" % self.getOptimizer())
-        if not self.isDefined(self.loss):
-            raise ValueError("Required Param loss must be specified but was not.")
-        if not kmutil.is_valid_loss_function(self.getLoss()):
-            raise ValueError("Named loss not supported in Keras: %s" % self.getLoss())
         if not self.isDefined(self.inputCol):
             raise ValueError("Input column must be defined")
         if not self.isDefined(self.outputCol):
@@ -131,37 +110,41 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         tmp_image_col = self._loadedImageCol()
         image_df = self.loadImagesInternal(dataset, image_uri_col).dropna(subset=[tmp_image_col])
 
+        # Extract features
         localFeatures = []
-        localLabels = []
-        is_with_labels = label_col is not None
-
-        if is_with_labels:
-            label_schema = image_df.schema[label_col]
-            assert isinstance(label_schema.dataType, spla.VectorUDT), \
-                "must encode labels in one-hot vector format"
-
-        for row in image_df.collect():
+        rows = image_df.collect()
+        for row in rows:
             spimg = row[tmp_image_col]
             features = imageStructToArray(spimg)
             localFeatures.append(features)
-            if is_with_labels:
+
+        if not localFeatures:  # NOTE(phi-dbq): pep-8 recommended against testing 0 == len(array)
+            raise ValueError("Cannot extract any feature from dataset!")
+        X = np.stack(localFeatures, axis=0)
+
+        # Extract labels
+        y = None
+        if label_col is not None:
+            label_schema = image_df.schema[label_col]
+            label_dtype = label_schema.dataType
+            assert isinstance(label_dtype, spla.VectorUDT), \
+                "must encode labels in one-hot vector format, but got {}".format(label_dtype)
+
+            localLabels = []
+            for row in rows:
                 try:
                     _keras_label = row[label_col].array
                 except ValueError:
                     raise ValueError("Cannot extract encoded label array")
                 localLabels.append(_keras_label)
 
-        if len(localFeatures) == 0:
-            raise ValueError("Given empty dataset!")
-
-        # We must reshape input data to form to the same size so as to be stacked
-        X = np.stack(localFeatures, axis=0)
-        y = None
-        if is_with_labels:
             if not localLabels:
                 raise ValueError("Failed to load any labels from dataset, but labels are required")
+
             y = np.stack(localLabels, axis=0)
-            assert y.shape[0] == X.shape[0], "must have same amount of features and labels"
+            assert y.shape[0] == X.shape[0], \
+                "number of features {} != number of labels {}".format(X.shape[0], y.shape[0])
+
         return X, y
 
     def _collectModels(self, kerasModelsBytesRDD):
@@ -220,7 +203,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
 
             # Create Keras model
             model = kmutil.bytes_to_model(modelBytesBc.value)
-            model.compile(optimizer=params['optimizer'], loss=params['loss'])
+            model.compile(optimizer=params['kerasOptimizer'], loss=params['kerasLoss'])
 
             # Retrieve features and labels and fit Keras model
             features = localFeaturesBc.value
@@ -245,7 +228,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
 
     def _fit(self, dataset):  # pylint: disable=unused-argument
         err_msgs = ["This function should not have been called",
-                    "Please contact library mantainers to file a bug"]
+                    "Please contact library maintainers to file a bug"]
         raise NotImplementedError('\n'.join(err_msgs))
 
     def _validateFitParams(self, params):
@@ -257,13 +240,19 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
     def fit(self, dataset, params=None):
         """
         Fits a model to the input dataset with optional parameters.
+
+        .. warning:: This returns the byte serialized HDF5 file for each model to the driver.
+                     If the model file is way too large, the driver might go out-of-memory.
+                     As we cannot assume the existence of a sufficiently large (and writable)
+                     file system, users are advised to not train too many models in a single
+                     Spark job.
+
         :param dataset: input dataset, which is an instance of :py:class:`pyspark.sql.DataFrame`.
-                        The column `inputCol` should be of type
-                        `sparkdl.image.imageIO.imgSchema`.
+                        The column `inputCol` should be of type `sparkdl.image.imageIO.imgSchema`.
         :param params: An optional param map that overrides embedded params. If a list/tuple of
                        param maps is given, this calls fit on each param map and returns a list of
                        models.
-        :returns: fitted model(s).  If params includes a list of param maps, the order of these
+        :return: fitted model(s). If params includes a list of param maps, the order of these
                   models matches the order of the param maps.
         """
         self._validateParams()

@@ -25,6 +25,7 @@ import tensorflow as tf
 
 from pyspark.ml.param import Param, Params, TypeConverters
 
+import sparkdl.utils.keras_model as kmutil
 
 # From pyspark
 
@@ -91,8 +92,9 @@ class HasOutputCol(Params):
         """
         return self.getOrDefault(self.outputCol)
 
-
+############################################
 # New in sparkdl
+############################################
 
 class SparkDLTypeConverters(object):
 
@@ -122,3 +124,112 @@ class SparkDLTypeConverters(object):
                 return value
             else:
                 raise TypeError("%s %s is not in the supported list." % type(value), str(value))
+
+        return converter
+
+    @staticmethod
+    def toKerasLoss(value):
+        if kmutil.is_valid_loss_function(value):
+            return value
+        raise ValueError(
+            "Named loss not supported in Keras: {} type({})".format(value, type(value)))
+
+    @staticmethod
+    def toKerasOptimizer(value):
+        if kmutil.is_valid_optimizer(value):
+            return value
+        raise TypeError(
+            "Named optimizer not supported in Keras: {} type({})".format(value, type(value)))
+
+
+class HasOutputNodeName(Params):
+    # TODO: docs
+    outputNodeName = Param(Params._dummy(), "outputNodeName",
+                           "name of the graph element/node corresponding to the output",
+                           typeConverter=TypeConverters.toString)
+
+    def setOutputNodeName(self, value):
+        return self._set(outputNodeName=value)
+
+    def getOutputNodeName(self):
+        return self.getOrDefault(self.outputNodeName)
+
+
+class HasLabelCol(Params):
+    """
+    When training Keras image models in a supervised learning setting,
+    users will provide a :py:obj:`DataFrame` column with the labels.
+
+    .. note:: The Estimator expect this columnd to contain data directly usable for the Keras model.
+              This usually means that the labels are already encoded in one-hot format.
+              Please consider adding a :py:obj:`OneHotEncoder` to transform the label column.
+    """
+    labelCol = Param(Params._dummy(), "labelCol",
+                     "name of the column storing the training data labels",
+                     typeConverter=TypeConverters.toString)
+
+    def setLabelCol(self, value):
+        return self._set(labelCol=value)
+
+    def getLabelCol(self):
+        return self.getOrDefault(self.labelCol)
+
+
+class HasKerasModel(Params):
+    """
+    This parameter allows users to provide Keras model file
+    """
+    # TODO: add an option to allow user to use Keras Model object
+    modelFile = Param(Params._dummy(), "modelFile",
+                      "HDF5 file containing the Keras model (architecture and weights)",
+                      typeConverter=TypeConverters.toString)
+
+    kerasFitParams = Param(Params._dummy(), "kerasFitParams",
+                           "dict with parameters passed to Keras model fit method")
+
+    def __init__(self):
+        super(HasKerasModel, self).__init__()
+        self._setDefault(kerasFitParams={'verbose': 1})
+
+    def setModelFile(self, value):
+        return self._set(modelFile=value)
+
+    def getModelFile(self):
+        return self.getOrDefault(self.modelFile)
+
+    def setKerasFitParams(self, value):
+        return self._set(kerasFitParams=value)
+
+    def getKerasFitParams(self):
+        return self.getOrDefault(self.kerasFitParams)
+
+
+class HasKerasOptimizer(Params):
+    # TODO: docs
+    kerasOptimizer = Param(Params._dummy(), "kerasOptimizer",
+                           "Name of the optimizer for training a Keras model",
+                           typeConverter=SparkDLTypeConverters.toKerasOptimizer)
+
+    def __init__(self):
+        super(HasKerasOptimizer, self).__init__()
+        # NOTE(phi-dbq): This is the recommended optimizer as of September 2017.
+        self._setDefault(kerasOptimizer='adam')
+
+    def setKerasOptimizer(self, value):
+        return self._set(kerasOptimizer=value)
+
+    def getKerasOptimizer(self):
+        return self.getOrDefault(self.kerasOptimizer)
+
+
+class HasKerasLoss(Params):
+    # TODO: docs
+    kerasLoss = Param(Params._dummy(), "kerasLoss",
+                      "Name of the loss (objective function) for training a Keras model",
+                      typeConverter=SparkDLTypeConverters.toKerasLoss)
+
+    def seKerasLoss(self, value):
+        return self._set(kerasLoss=value)
+
+    def getKerasLoss(self):
+        return self.getOrDefault(self.kerasLoss)

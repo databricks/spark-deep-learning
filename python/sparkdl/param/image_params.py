@@ -28,7 +28,7 @@ from sparkdl.param import SparkDLTypeConverters
 OUTPUT_MODES = ["vector", "image"]
 
 class HasInputImageNodeName(Params):
-
+    # TODO: docs
     inputImageNodeName = Param(Params._dummy(), "inputImageNodeName",
                                "name of the graph element/node corresponding to the input",
                                typeConverter=TypeConverters.toString)
@@ -38,83 +38,6 @@ class HasInputImageNodeName(Params):
 
     def getInputImageNodeName(self):
         return self.getOrDefault(self.inputImageNodeName)
-
-
-class HasOutputNodeName(Params):
-
-    outputNodeName = Param(Params._dummy(), "outputImageNodeName",
-                           "name of the graph element/node corresponding to the output",
-                           typeConverter=TypeConverters.toString)
-
-    def setOutputNodeName(self, value):
-        return self._set(outputNodeName=value)
-
-    def getOutputNodeName(self):
-        return self.getOrDefault(self.outputNodeName)
-
-
-class HasOutputMode(Params):
-
-    outputMode = Param(Params._dummy(), "outputMode",
-                       "How the output column should be formatted. 'vector' for a 1-d MLlib " +
-                       "Vector of floats. 'image' to format the output to work with the image " +
-                       "tools in this package.",
-                       typeConverter=SparkDLTypeConverters.supportedNameConverter(OUTPUT_MODES))
-
-    def setOutputMode(self, value):
-        return self._set(outputMode=value)
-
-    def getOutputMode(self):
-        return self.getOrDefault(self.outputMode)
-
-
-class HasLabelCol(Params):
-    """
-    When training Keras image models in a supervised learning setting,
-    users will provide a :py:obj:`DataFrame` column with the labels.
-
-    .. note:: The Estimator expect this columnd to contain data directly usable for the Keras model.
-              This usually means that the labels are already encoded in one-hot format.
-              Please consider adding a :py:obj:`OneHotEncoder` to transform the label column.
-    """
-    labelCol = Param(Params._dummy(), "labelCol",
-                     "name of the column storing the training data labels",
-                     typeConverter=TypeConverters.toString)
-
-    def setLabelCol(self, value):
-        return self._set(labelCol=value)
-
-    def getLabelCol(self):
-        return self.getOrDefault(self.labelCol)
-
-class HasKerasModel(Params):
-    """
-    This parameter allows users to provide Keras model file
-    """
-    # TODO: add an option to allow user to use Keras Model object
-    modelFile = Param(Params._dummy(), "modelFile",
-                      "HDF5 file containing the Keras model (architecture and weights)",
-                      typeConverter=TypeConverters.toString)
-
-    kerasFitParams = Param(Params._dummy(), "kerasFitParams",
-                           "dict with parameters passed to Keras model fit method")
-
-    def __init__(self):
-        super(HasKerasModel, self).__init__()
-        self._setDefault(kerasFitParams={'verbose': 1})
-
-    def setModelFile(self, value):
-        return self._set(modelFile=value)
-
-    def getModelFile(self):
-        return self.getOrDefault(self.modelFile)
-
-    def setKerasFitParams(self, value):
-        return self._set(kerasFitParams=value)
-
-    def getKerasFitParams(self):
-        return self.getOrDefault(self.kerasFitParams)
-
 
 class CanLoadImage(Params):
     """
@@ -176,3 +99,18 @@ class CanLoadImage(Params):
 
         load_udf = udf(load_image_uri_impl, imageSchema)
         return dataframe.withColumn(self._loadedImageCol(), load_udf(dataframe[inputCol]))
+
+
+class HasOutputMode(Params):
+    # TODO: docs
+    outputMode = Param(Params._dummy(), "outputMode",
+                       "How the output column should be formatted. 'vector' for a 1-d MLlib " +
+                       "Vector of floats. 'image' to format the output to work with the image " +
+                       "tools in this package.",
+                       typeConverter=SparkDLTypeConverters.supportedNameConverter(OUTPUT_MODES))
+
+    def setOutputMode(self, value):
+        return self._set(outputMode=value)
+
+    def getOutputMode(self):
+        return self.getOrDefault(self.outputMode)

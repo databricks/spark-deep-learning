@@ -79,8 +79,8 @@ class KerasEstimatorsTest(SparkDLTestCase):
                                        outputCol=self.output_col,
                                        labelCol=self.label_col,
                                        imageLoader=_load_image_from_uri,
-                                       optimizer=optimizer,
-                                       loss=loss,
+                                       kerasOptimizer=optimizer,
+                                       kerasLoss=loss,
                                        kerasFitParams=keras_fit_params,
                                        modelFile=model_filename)
         return estm
