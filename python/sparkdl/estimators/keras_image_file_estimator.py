@@ -42,18 +42,59 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
                               CanLoadImage, HasOutputMode):
     """
     Build a Estimator from a Keras model.
+
+    First, create a model and save it to file system
+
+    .. code-block:: python
+
+        from keras.applications.resnet50 import ResNet50
+        model = ResNet50(weights=None)
+        model.save("path_to_my_model.h5")
+
+    Then, create a image loading function that reads image data from URI,
+    preprocess them, and returns the numerical tensor.
+
+    .. code-block:: python
+
+        def load_image_and_process(uri):
+            import PIL.Image
+            from keras.applications.imagenet_utils import preprocess_input
+
+            original_image = PIL.Image.open(uri).convert('RGB')
+            resized_image = original_image.resize((299, 299), PIL.Image.ANTIALIAS)
+            image_array = np.array(resized_image).astype(np.float32)
+            image_tensor = preprocess_input(image_array[np.newaxis, :])
+            return image_tensor
+
+
+    Assume the image URIs live in the following DataFrame.
+
+    .. code-block:: python
+
+        image_dataset = spark.createDataFrame([
+            Row(imageUri="image1_uri", imageLabel="panda"),
+            Row(imageUri="image2_uri", imageLabel="cat"),
+            # and more rows ...
+        ])
+
+
+    We can then create a Keras estimator that takes our saved model file and
+    train it using Spark.
+
+    .. code-block:: python
+
+        estimator = KerasImageFileEstimator(inputCol="imageUri",
+                                            outputCol="name_of_result_column",
+                                            labelCol="imageLabel",
+                                            imageLoader=load_image_and_process,
+                                            kerasOptimizer="adam",
+                                            kerasLoss="categorical_crossentropy",
+                                            kerasFitParams={"epochs": 5, "batch_size": 64},
+                                            modelFile="path_to_my_model.h5")
+
+        transformers = estimator.fit(image_dataset)
+
     """
-    # TODO(phi-dbq): add more detailed docs
-
-    # TODO(phi-dbq): allow users to pass a Keras optimizer object
-    #                so that they can configure learning rate, momentum, etc.
-    optimizer = Param(Params._dummy(), "optimizer",
-                      "named Keras optimizer (str), please refer to https://keras.io/optimizers",
-                      typeConverter=TypeConverters.toString)
-
-    loss = Param(Params._dummy(), "loss",
-                 "named Keras loss (str), please refer to https://keras.io/losses",
-                 typeConverter=TypeConverters.toString)
 
     @keyword_only
     def __init__(self, inputCol=None, inputImageNodeName=None, outputCol=None,
@@ -86,6 +127,41 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         kwargs = self._input_kwargs
         return self._set(**kwargs)
 
+    def fit(self, dataset, params=None):
+        """
+        Fits a model to the input dataset with optional parameters.
+
+        .. warning:: This returns the byte serialized HDF5 file for each model to the driver.
+                     If the model file is way too large, the driver might go out-of-memory.
+                     As we cannot assume the existence of a sufficiently large (and writable)
+                     file system, users are advised to not train too many models in a single
+                     Spark job.
+
+        :param dataset: input dataset, which is an instance of :py:class:`pyspark.sql.DataFrame`.
+                        The column `inputCol` should be of type `sparkdl.image.imageIO.imgSchema`.
+        :param params: An optional param map that overrides embedded params. If a list/tuple of
+                       param maps is given, this calls fit on each param map and returns a list of
+                       models.
+        :return: fitted model(s). If params includes a list of param maps, the order of these
+                  models matches the order of the param maps.
+        """
+        self._validateParams()
+        if params is None:
+            paramMaps = [dict()]
+        elif isinstance(params, (list, tuple)):
+            if len(params) == 0:
+                paramMaps = [dict()]
+            else:
+                self._validateFitParams(params)
+                paramMaps = params
+        elif isinstance(params, dict):
+            self._validateFitParams(params)
+            paramMaps = [params]
+        else:
+            raise ValueError("Params must be either a param map or a list/tuple of param maps, "
+                             "but got %s." % type(params))
+        return self._fitInParallel(dataset, paramMaps)
+
     def _validateParams(self):
         """
         Check Param values so we can throw errors on the driver, rather than workers.
@@ -95,6 +171,13 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
             raise ValueError("Input column must be defined")
         if not self.isDefined(self.outputCol):
             raise ValueError("Output column must be defined")
+        return True
+
+    def _validateFitParams(self, params):
+        """ Check if an input parameter set is valid """
+        if isinstance(params, (list, tuple, dict)):
+            assert self.getInputCol() not in params, \
+                "params {} cannot contain input column name {}".format(params, self.getInputCol())
         return True
 
     def _getNumpyFeaturesAndLabels(self, dataset):
@@ -186,14 +269,13 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         baseParamDict = dict([(param.name, val) for param, val in baseParamMap.items()])
         baseParamDictBc = sc.broadcast(baseParamDict)
 
-        # Create useful parameters from paramMap
         def _local_fit(override_param_map):
             """
-            Fit locally a model with a combination of this estimator's param plus
-            with additional parameters provided by the input.
+            Fit locally a model with a combination of this estimator's param,
+            with overriding parameters provided by the input.
             :param override_param_map: dict, key type is MLllib Param
                                        They are meant to override the base estimator's params.
-            :return: serialized Keras model bytes
+            :return: serialized Keras HDF5 file bytes
             """
             # Update params
             params = baseParamDictBc.value
@@ -230,44 +312,3 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         err_msgs = ["This function should not have been called",
                     "Please contact library maintainers to file a bug"]
         raise NotImplementedError('\n'.join(err_msgs))
-
-    def _validateFitParams(self, params):
-        """ Check if an input parameter set is valid """
-        if isinstance(params, (list, tuple, dict)):
-            assert self.getInputCol() not in params, \
-                "params {} cannot contain input column {}".format(params, self.getInputCol())
-
-    def fit(self, dataset, params=None):
-        """
-        Fits a model to the input dataset with optional parameters.
-
-        .. warning:: This returns the byte serialized HDF5 file for each model to the driver.
-                     If the model file is way too large, the driver might go out-of-memory.
-                     As we cannot assume the existence of a sufficiently large (and writable)
-                     file system, users are advised to not train too many models in a single
-                     Spark job.
-
-        :param dataset: input dataset, which is an instance of :py:class:`pyspark.sql.DataFrame`.
-                        The column `inputCol` should be of type `sparkdl.image.imageIO.imgSchema`.
-        :param params: An optional param map that overrides embedded params. If a list/tuple of
-                       param maps is given, this calls fit on each param map and returns a list of
-                       models.
-        :return: fitted model(s). If params includes a list of param maps, the order of these
-                  models matches the order of the param maps.
-        """
-        self._validateParams()
-        if params is None:
-            paramMaps = [dict()]
-        elif isinstance(params, (list, tuple)):
-            if len(params) == 0:
-                paramMaps = [dict()]
-            else:
-                self._validateFitParams(params)
-                paramMaps = params
-        elif isinstance(params, dict):
-            self._validateFitParams(params)
-            paramMaps = [params]
-        else:
-            raise ValueError("Params must be either a param map or a list/tuple of param maps, "
-                             "but got %s." % type(params))
-        return self._fitInParallel(dataset, paramMaps)
