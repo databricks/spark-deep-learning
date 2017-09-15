@@ -38,16 +38,18 @@ def _getSampleJPEGDir():
     cur_dir = os.path.dirname(__file__)
     return os.path.join(cur_dir, "../resources/images")
 
-
 def getSampleImageDF():
     return imageIO.readImages(_getSampleJPEGDir())
 
-def getSampleImagePathsDF(sqlContext, colName):
+def getSampleImagePaths():
     dirpath = _getSampleJPEGDir()
     files = [os.path.abspath(os.path.join(dirpath, f)) for f in os.listdir(dirpath)
              if f.endswith('.jpg')]
-    return sqlContext.createDataFrame(files, StringType()).toDF(colName)
+    return files
 
+def getSampleImagePathsDF(sqlContext, colName):
+    files = getSampleImagePaths()
+    return sqlContext.createDataFrame(files, StringType()).toDF(colName)
 
 # Methods for making comparisons between outputs of using different frameworks.
 # For ImageNet.

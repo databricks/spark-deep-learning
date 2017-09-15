@@ -24,7 +24,7 @@ from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, St
 import sparkdl.graph.utils as tfx
 from sparkdl.image.imageIO import resizeImage
 import sparkdl.transformers.keras_applications as keras_apps
-from sparkdl.transformers.param import (
+from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.transformers.tf_image import TFImageTransformer
 
@@ -125,7 +125,7 @@ class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
     """
 
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-        typeConverter=SparkDLTypeConverters.supportedNameConverter(SUPPORTED_MODELS))
+                      typeConverter=SparkDLTypeConverters.supportedNameConverter(SUPPORTED_MODELS))
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelName=None):
