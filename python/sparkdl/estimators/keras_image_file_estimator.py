@@ -135,7 +135,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         Fits a model to the input dataset with optional parameters.
 
         .. warning:: This returns the byte serialized HDF5 file for each model to the driver.
-                     If the model file is way too large, the driver might go out-of-memory.
+                     If the model file is large, the driver might go out-of-memory.
                      As we cannot assume the existence of a sufficiently large (and writable)
                      file system, users are advised to not train too many models in a single
                      Spark job.
