@@ -22,8 +22,8 @@ from pyspark.ml import Transformer
 
 import sparkdl.graph.utils as tfx
 from sparkdl.graph.input import TFInputGraph, TFInputGraphBuilder
-from sparkdl.transformers.param import (keyword_only, SparkDLTypeConverters, HasInputMapping,
-                                        HasOutputMapping, HasTFInputGraph, HasTFHParams)
+from sparkdl.param import (keyword_only, SparkDLTypeConverters, HasInputMapping,
+                           HasOutputMapping, HasTFInputGraph, HasTFHParams)
 
 __all__ = ['TFTransformer']
 
