@@ -19,6 +19,8 @@ import six
 import keras
 import tensorflow as tf
 
+from pyspark.ml.param import TypeConverters
+
 from sparkdl.graph.builder import GraphFunction, IsolatedSession
 import sparkdl.graph.utils as tfx
 from sparkdl.graph.input import TFInputGraph, TFInputGraphBuilder
