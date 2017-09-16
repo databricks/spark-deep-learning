@@ -13,21 +13,8 @@
 # limitations under the License.
 #
 
-import tensorflow as tf
-
-# image stuff
-
-IMAGE_INPUT_PLACEHOLDER_NAME = "sparkdl_image_input"
-
-def imageInputPlaceholder(nChannels=None):
-    return tf.placeholder(tf.float32, [None, None, None, nChannels],
-                          name=IMAGE_INPUT_PLACEHOLDER_NAME)
-
-class ImageNetConstants:
-    NUM_CLASSES = 1000
-
-# InceptionV3 is used in a lot of tests, so we'll make this shortcut available
-# For other networks, see the keras_applications module.
-class InceptionV3Constants:
-    INPUT_SHAPE = (299, 299)
-    NUM_OUTPUT_FEATURES = 131072
+from sparkdl.param.shared_params import (
+    keyword_only, HasInputCol, HasOutputCol, HasLabelCol, HasKerasModel,
+    HasKerasLoss, HasKerasOptimizer, HasOutputNodeName, SparkDLTypeConverters)
+from sparkdl.param.image_params import (
+    CanLoadImage, HasInputImageNodeName, HasOutputMode, OUTPUT_MODES)

@@ -28,13 +28,12 @@ class KerasImageFileTransformerTest(SparkDLTestCase):
         output_col = "preds"
 
         model_path = image_utils.prepInceptionV3KerasModelFile("inceptionV3.h5")
-        transformer = KerasImageFileTransformer(inputCol=input_col, outputCol=output_col,
-                                                modelFile=model_path,
-                                                imageLoader=image_utils.loadAndPreprocessKerasInceptionV3,
-                                                outputMode="vector")
+        transformer = KerasImageFileTransformer(
+            inputCol=input_col, outputCol=output_col, modelFile=model_path,
+            imageLoader=image_utils.loadAndPreprocessKerasInceptionV3, outputMode="vector")
 
         uri_df = image_utils.getSampleImagePathsDF(self.sql, input_col)
-        image_df = transformer._loadImages(uri_df)
+        image_df = transformer.loadImagesInternal(uri_df, input_col)
         self.assertEqual(len(image_df.columns), 2)
 
         img_col = transformer._loadedImageCol()
@@ -51,10 +50,9 @@ class KerasImageFileTransformerExamplesTest(SparkDLTestCase, ImageNetOutputCompa
         output_col = "preds"
 
         model_path = image_utils.prepInceptionV3KerasModelFile("inceptionV3.h5")
-        transformer = KerasImageFileTransformer(inputCol=input_col, outputCol=output_col,
-                                                modelFile=model_path,
-                                                imageLoader=image_utils.loadAndPreprocessKerasInceptionV3,
-                                                outputMode="vector")
+        transformer = KerasImageFileTransformer(
+            inputCol=input_col, outputCol=output_col, modelFile=model_path,
+            imageLoader=image_utils.loadAndPreprocessKerasInceptionV3, outputMode="vector")
 
         uri_df = image_utils.getSampleImagePathsDF(self.sql, input_col)
         final_df = transformer.transform(uri_df)
