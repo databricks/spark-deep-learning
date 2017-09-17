@@ -49,11 +49,13 @@ class TFTransformerTest(SparkDLTestCase):
         self.fetch_names = []
         self.input_mapping = {}
         self.output_mapping = {}
+        self.setup_iomap(replica=1)
 
         self.transformers = []
         self.test_case_results = []
         # Build a temporary directory, which might or might not be used by the test
         self.model_output_root = tempfile.mkdtemp()
+
 
     def tearDown(self):
         shutil.rmtree(self.model_output_root, ignore_errors=True)
@@ -71,6 +73,11 @@ class TFTransformerTest(SparkDLTestCase):
         _add_transformer(imap, omap)
 
     def setup_iomap(self, replica=1):
+        self.input_mapping = {}
+        self.feed_names = []
+        self.output_mapping = {}
+        self.fetch_names = []
+
         if replica > 1:
             for i in range(replica):
                 colname = '{}_replica{:03d}'.format(self.input_col, i)
@@ -145,7 +152,7 @@ class TFTransformerTest(SparkDLTestCase):
 
 
     def test_build_from_tf_graph(self):
-        self.setup_iomap(replica=1)
+        """ Build TFTransformer from tf.Graph """
         with self._run_test_in_tf_session() as sess:
             # Begin building graph
             x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
@@ -162,7 +169,7 @@ class TFTransformerTest(SparkDLTestCase):
 
 
     def test_build_from_saved_model(self):
-        self.setup_iomap(replica=1)
+        """ Build TFTransformer from saved model """
         # Setup saved model export directory
         saved_model_root = self.model_output_root
         saved_model_dir = os.path.join(saved_model_root, 'saved_model')
@@ -213,67 +220,70 @@ class TFTransformerTest(SparkDLTestCase):
 
             # Build the transformer from exported serving model
             # We are not using signatures, thus must provide tensor/operation names
-            gin_builder = TFInputGraph.fromSavedModel(
+            gin = TFInputGraph.fromSavedModel(
                 saved_model_dir, serving_tag, self.feed_names, self.fetch_names)
-            self.build_standard_transformers(sess, gin_builder)
+            self.build_standard_transformers(sess, gin)
 
 
-    # def test_build_from_checkpoint(self):
-    #     """
-    #     Test constructing a Transformer from a TensorFlow training checkpoint
-    #     """
-    #     # Build the TensorFlow graph
-    #     model_ckpt_dir = self.model_output_root
-    #     ckpt_path_prefix = os.path.join(model_ckpt_dir, 'model_ckpt')
-    #     serving_sigdef_key = 'prediction_signature'
-    #     # Warning: please use a new graph for each test cases
-    #     #          or the tests could affect one another
-    #     with self.run_test_in_tf_session() as sess:
-    #         x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
-    #         #x = tf.placeholder(tf.float64, shape=[None, vec_size], name=input_col)
-    #         w = tf.Variable(tf.random_normal([self.vec_size], dtype=tf.float64),
-    #                         dtype=tf.float64, name='varW')
-    #         z = tf.reduce_mean(x * w, axis=1, name=self.output_op_name)
-    #         sess.run(w.initializer)
-    #         saver = tf.train.Saver(var_list=[w])
-    #         _ = saver.save(sess, ckpt_path_prefix, global_step=2702)
+    def test_build_from_checkpoint(self):
+        """ Build TFTransformer from a model checkpoint """
+        # Build the TensorFlow graph
+        model_ckpt_dir = self.model_output_root
+        ckpt_path_prefix = os.path.join(model_ckpt_dir, 'model_ckpt')
+        serving_sigdef_key = 'prediction_signature'
 
-    #         # Prepare the signature_def
-    #         serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
-    #             inputs={
-    #                 'input_sig': tf.saved_model.utils.build_tensor_info(x)
-    #             },
-    #             outputs={
-    #                 'output_sig': tf.saved_model.utils.build_tensor_info(z)
-    #             })
+        with self._run_test_in_tf_session() as sess:
+            x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
+            #x = tf.placeholder(tf.float64, shape=[None, vec_size], name=input_col)
+            w = tf.Variable(tf.random_normal([self.vec_size], dtype=tf.float64),
+                            dtype=tf.float64, name='varW')
+            z = tf.reduce_mean(x * w, axis=1, name=self.output_op_name)
+            sess.run(w.initializer)
+            saver = tf.train.Saver(var_list=[w])
+            _ = saver.save(sess, ckpt_path_prefix, global_step=2702)
 
-    #         # A rather contrived way to add signature def to a meta_graph
-    #         meta_graph_def = tf.train.export_meta_graph()
+            # Prepare the signature_def
+            serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
+                inputs={
+                    'input_sig': tf.saved_model.utils.build_tensor_info(x)
+                },
+                outputs={
+                    'output_sig': tf.saved_model.utils.build_tensor_info(z)
+                })
 
-    #         # Find the meta_graph file (there should be only one)
-    #         _ckpt_meta_fpaths = glob('{}/*.meta'.format(model_ckpt_dir))
-    #         self.assertEqual(len(_ckpt_meta_fpaths), 1, msg=','.join(_ckpt_meta_fpaths))
-    #         ckpt_meta_fpath = _ckpt_meta_fpaths[0]
+            # A rather contrived way to add signature def to a meta_graph
+            meta_graph_def = tf.train.export_meta_graph()
 
-    #         # Add signature_def to the meta_graph and serialize it
-    #         # This will overwrite the existing meta_graph_def file
-    #         meta_graph_def.signature_def[serving_sigdef_key].CopyFrom(serving_sigdef)
-    #         with open(ckpt_meta_fpath, mode='wb') as fout:
-    #             fout.write(meta_graph_def.SerializeToString())
+            # Find the meta_graph file (there should be only one)
+            _ckpt_meta_fpaths = glob('{}/*.meta'.format(model_ckpt_dir))
+            self.assertEqual(len(_ckpt_meta_fpaths), 1, msg=','.join(_ckpt_meta_fpaths))
+            ckpt_meta_fpath = _ckpt_meta_fpaths[0]
 
-    #         tfInputGraph, inputMapping, outputMapping = get_params_from_checkpoint(
-    #             model_ckpt_dir, serving_sigdef_key,
-    #             input_mapping={
-    #                 self.input_col: 'input_sig'},
-    #             output_mapping={
-    #                 'output_sig': self.output_col})
-    #         trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
-    #                                        inputMapping=inputMapping,
-    #                                        outputMapping=outputMapping)
-    #         self.transformers.append(trans_with_sig)
+            # Add signature_def to the meta_graph and serialize it
+            # This will overwrite the existing meta_graph_def file
+            meta_graph_def.signature_def[serving_sigdef_key].CopyFrom(serving_sigdef)
+            with open(ckpt_meta_fpath, mode='wb') as fout:
+                fout.write(meta_graph_def.SerializeToString())
 
-    #         gin_builder = TFInputGraphBuilder.fromCheckpoint(model_ckpt_dir)
-    #         self.build_standard_transformers(sess, gin_builder)
+            # Build the transformer from exported serving model
+            # We are using signaures, thus must provide the keys
+            tfInputGraph = TFInputGraph.fromCheckpointWithSignature(
+                model_ckpt_dir, serving_sigdef_key)
+
+            inputMapping = tfInputGraph.translateInputMapping({
+                self.input_col: 'input_sig'
+            })
+            outputMapping = tfInputGraph.translateOutputMapping({
+                'output_sig': self.output_col
+            })
+            trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
+                                           inputMapping=inputMapping,
+                                           outputMapping=outputMapping)
+            self.transformers.append(trans_with_sig)
+
+            # Transformer without using signature_def
+            gin = TFInputGraph.fromCheckpoint(model_ckpt_dir, self.feed_names, self.fetch_names)
+            self.build_standard_transformers(sess, gin)
 
 
     # def test_multi_io(self):
