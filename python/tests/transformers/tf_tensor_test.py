@@ -161,57 +161,61 @@ class TFTransformerTest(SparkDLTestCase):
             # End building transformers
 
 
-    # def test_build_from_saved_model(self):
-    #     # Setup saved model export directory
-    #     saved_model_root = self.model_output_root
-    #     saved_model_dir = os.path.join(saved_model_root, 'saved_model')
-    #     serving_tag = "serving_tag"
-    #     serving_sigdef_key = 'prediction_signature'
-    #     builder = tf.saved_model.builder.SavedModelBuilder(saved_model_dir)
+    def test_build_from_saved_model(self):
+        self.setup_iomap(replica=1)
+        # Setup saved model export directory
+        saved_model_root = self.model_output_root
+        saved_model_dir = os.path.join(saved_model_root, 'saved_model')
+        serving_tag = "serving_tag"
+        serving_sigdef_key = 'prediction_signature'
+        builder = tf.saved_model.builder.SavedModelBuilder(saved_model_dir)
 
-    #     with self.run_test_in_tf_session() as sess:
-    #         # Model definition: begin
-    #         x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
-    #         w = tf.Variable(tf.random_normal([self.vec_size], dtype=tf.float64),
-    #                         dtype=tf.float64, name='varW')
-    #         z = tf.reduce_mean(x * w, axis=1, name=self.output_op_name)
-    #         # Model definition ends
+        with self._run_test_in_tf_session() as sess:
+            # Model definition: begin
+            x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
+            w = tf.Variable(tf.random_normal([self.vec_size], dtype=tf.float64),
+                            dtype=tf.float64, name='varW')
+            z = tf.reduce_mean(x * w, axis=1, name=self.output_op_name)
+            # Model definition ends
 
-    #         sess.run(w.initializer)
+            sess.run(w.initializer)
 
-    #         sig_inputs = {
-    #             'input_sig': tf.saved_model.utils.build_tensor_info(x)}
-    #         sig_outputs = {
-    #             'output_sig': tf.saved_model.utils.build_tensor_info(z)}
+            sig_inputs = {
+                'input_sig': tf.saved_model.utils.build_tensor_info(x)}
+            sig_outputs = {
+                'output_sig': tf.saved_model.utils.build_tensor_info(z)}
 
-    #         serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
-    #             inputs=sig_inputs,
-    #             outputs=sig_outputs)
+            serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
+                inputs=sig_inputs,
+                outputs=sig_outputs)
 
-    #         builder.add_meta_graph_and_variables(sess,
-    #                                              [serving_tag],
-    #                                              signature_def_map={
-    #                                                  serving_sigdef_key: serving_sigdef})
-    #         builder.save()
+            builder.add_meta_graph_and_variables(sess,
+                                                 [serving_tag],
+                                                 signature_def_map={
+                                                     serving_sigdef_key: serving_sigdef})
+            builder.save()
 
-    #         # Build the transformer from exported serving model
-    #         # We are using signaures, thus must provide the keys
-    #         tfInputGraph, inputMapping, outputMapping = get_params_from_saved_model(
-    #             saved_model_dir, serving_tag, serving_sigdef_key,
-    #             input_mapping={
-    #                 self.input_col: 'input_sig'},
-    #             output_mapping={
-    #                 'output_sig': self.output_col})
-    #         trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
-    #                                        inputMapping=inputMapping,
-    #                                        outputMapping=outputMapping)
-    #         self.transformers.append(trans_with_sig)
+            # Build the transformer from exported serving model
+            # We are using signaures, thus must provide the keys
+            tfInputGraph = TFInputGraph.fromSavedModelWithSignature(
+                saved_model_dir, serving_tag, serving_sigdef_key)
 
-    #         # Build the transformer from exported serving model
-    #         # We are not using signatures, thus must provide tensor/operation names
-    #         gin_builder = TFInputGraphBuilder.fromSavedModel(
-    #             saved_model_dir, tag_set=serving_tag, signature_def_key=None)
-    #         self.build_standard_transformers(sess, gin_builder)
+            inputMapping = tfInputGraph.translateInputMapping({
+                self.input_col: 'input_sig'
+            })
+            outputMapping = tfInputGraph.translateOutputMapping({
+                'output_sig': self.output_col
+            })
+            trans_with_sig = TFTransformer(tfInputGraph=tfInputGraph,
+                                           inputMapping=inputMapping,
+                                           outputMapping=outputMapping)
+            self.transformers.append(trans_with_sig)
+
+            # Build the transformer from exported serving model
+            # We are not using signatures, thus must provide tensor/operation names
+            gin_builder = TFInputGraph.fromSavedModel(
+                saved_model_dir, serving_tag, self.feed_names, self.fetch_names)
+            self.build_standard_transformers(sess, gin_builder)
 
 
     # def test_build_from_checkpoint(self):

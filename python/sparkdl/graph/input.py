@@ -41,6 +41,28 @@ class TFInputGraph(object):
         obj.output_tensor_name_from_signature = None
         return obj
 
+    def translateInputMapping(self, input_mapping):
+        assert self.input_tensor_name_from_signature is not None
+        _input_mapping = {}
+        if isinstance(input_mapping, dict):
+            input_mapping = list(input_mapping.items())
+        assert isinstance(input_mapping, list)
+        for col_name, sig_key in input_mapping:
+            tnsr_name = self.input_tensor_name_from_signature[sig_key]
+            _input_mapping[col_name] = tnsr_name
+        return _input_mapping
+
+    def translateOutputMapping(self, output_mapping):
+        assert self.output_tensor_name_from_signature is not None
+        _output_mapping = {}
+        if isinstance(output_mapping, dict):
+            output_mapping = list(output_mapping.items())
+        assert isinstance(output_mapping, list)
+        for sig_key, col_name in output_mapping:
+            tnsr_name = self.output_tensor_name_from_signature[sig_key]
+            _output_mapping[tnsr_name] = col_name
+        return _output_mapping
+
     @classmethod
     def fromGraph(cls, graph, sess, feed_names, fetch_names):
         """
@@ -71,28 +93,43 @@ class TFInputGraph(object):
         return _GinBuilder(import_graph_fn).build(feed_names, fetch_names)
 
     @classmethod
-    def fromCheckpoint(cls, checkpoint_dir):
-        return cls._from_checkpoint_impl(checkpoint_dir, signature_def_key=None)
+    def fromCheckpoint(cls, checkpoint_dir, feed_names, fetch_names):
+        return cls._from_checkpoint_impl(checkpoint_dir,
+                                         signature_def_key=None,
+                                         feed_names=feed_names, fetch_names=fetch_names)
 
     @classmethod
     def fromCheckpointWithSignature(cls, checkpoint_dir, signature_def_key):
         assert signature_def_key is not None
-        return cls._from_checkpoint_impl(checkpoint_dir, signature_def_key)
+        return cls._from_checkpoint_impl(checkpoint_dir,
+                                         signature_def_key,
+                                         feed_names=None, fetch_names=None)
 
     @classmethod
-    def fromSavedModel(cls, saved_model_dir, tag_set):
-        return cls._from_saved_model_impl(saved_model_dir, tag_set, signature_def_key=None)
+    def fromSavedModel(cls, saved_model_dir, tag_set, feed_names, fetch_names):
+        return cls._from_saved_model_impl(saved_model_dir, tag_set,
+                                          signature_def_key=None,
+                                          feed_names=feed_names, fetch_names=fetch_names)
 
     @classmethod
     def fromSavedModelWithSignature(cls, saved_model_dir, tag_set, signature_def_key):
         assert signature_def_key is not None
-        return cls._from_saved_model_impl(saved_model_dir, tag_set, signature_def_key)
+        return cls._from_saved_model_impl(saved_model_dir, tag_set,
+                                          signature_def_key=signature_def_key,
+                                          feed_names=None, fetch_names=None)
 
     @classmethod
-    def _from_checkpoint_impl(cls, checkpoint_dir, signature_def_key=None):
+    def _from_checkpoint_impl(cls,
+                              checkpoint_dir,
+                              signature_def_key=None,
+                              feed_names=None,
+                              fetch_names=None):
         """
         Construct a TFInputGraphBuilder from a model checkpoint
         """
+        assert (feed_names is None) == (fetch_names is None)
+        assert (feed_names is None) or (signature_def_key is None)
+
         def import_graph_fn(sess):
             # Load checkpoint and import the graph
             with sess.as_default():
@@ -117,13 +154,19 @@ class TFInputGraph(object):
 
             return _GinBuilderInfo(sig_def=sig_def)
 
-        return _GinBuilder(import_graph_fn).build()
+        return _GinBuilder(import_graph_fn).build(feed_names, fetch_names)
 
     @classmethod
-    def _from_saved_model_impl(cls, saved_model_dir, tag_set, signature_def_key=None):
+    def _from_saved_model_impl(cls, saved_model_dir, tag_set,
+                               signature_def_key=None,
+                               feed_names=None,
+                               fetch_names=None):
         """
         Construct a TFInputGraphBuilder from a SavedModel
         """
+        assert (feed_names is None) == (fetch_names is None)
+        assert (feed_names is None) or (signature_def_key is None)
+
         def import_graph_fn(sess):
             tag_sets = tag_set.split(',')
             meta_graph_def = tf.saved_model.loader.load(sess, tag_sets, saved_model_dir)
@@ -135,7 +178,7 @@ class TFInputGraph(object):
 
             return _GinBuilderInfo(sig_def=sig_def)
 
-        return _GinBuilder(import_graph_fn).build()
+        return _GinBuilder(import_graph_fn).build(feed_names, fetch_names)
 
 
 class _GinBuilderInfo(object):
@@ -152,16 +195,16 @@ class _GinBuilderInfo(object):
 
         self.feed_mapping = {}
         self.feed_names = []
-        for sigdef_key, tnsr_info in self.sig_def.inputs:
+        for sigdef_key, tnsr_info in self.sig_def.inputs.items():
             tnsr_name = tnsr_info.name
             self.feed_mapping[sigdef_key] = tnsr_name
             self.feed_names.append(tnsr_name)
 
         self.fetch_mapping = {}
         self.fetch_names = []
-        for sigdef_key, tnsr_info in self.sig_def.outputs:
+        for sigdef_key, tnsr_info in self.sig_def.outputs.items():
             tnsr_name = tnsr_info.name
-            self.feed_mapping[sigdef_key] = tnsr_name
+            self.fetch_mapping[sigdef_key] = tnsr_name
             self.fetch_names.append(tnsr_name)
 
 class _GinBuilder(object):
