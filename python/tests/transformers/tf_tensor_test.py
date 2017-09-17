@@ -286,21 +286,28 @@ class TFTransformerTest(SparkDLTestCase):
             self.build_standard_transformers(sess, gin)
 
 
-    # def test_multi_io(self):
-    #     # Build the TensorFlow graph
-    #     with self.run_test_in_tf_session(replica=2) as sess:
-    #         xs = []
-    #         for tnsr_op_name in self.input_mapping.values():
-    #             x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=tnsr_op_name)
-    #             xs.append(x)
+    def test_multi_io(self):
+        """ Build TFTransformer with multiple I/O tensors """
+        self.setup_iomap(replica=3)
+        with self._run_test_in_tf_session() as sess:
+            xs = []
+            for tnsr_op_name in self.input_mapping.values():
+                x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=tnsr_op_name)
+                xs.append(x)
 
-    #         zs = []
-    #         for i, tnsr_op_name in enumerate(self.output_mapping.keys()):
-    #             z = tf.reduce_mean(xs[i], axis=1, name=tnsr_op_name)
-    #             zs.append(z)
+            zs = []
+            for i, tnsr_op_name in enumerate(self.output_mapping.keys()):
+                z = tf.reduce_mean(xs[i], axis=1, name=tnsr_op_name)
+                zs.append(z)
 
-    #         self.build_standard_transformers(sess, sess.graph)
-    #         self.build_standard_transformers(sess, TFInputGraphBuilder.fromGraph(sess.graph))
+            gin = TFInputGraph.fromGraph(
+                sess.graph, sess, self.feed_names, self.fetch_names)
+            self.build_standard_transformers(sess, gin)
+
+            gin = TFInputGraph.fromGraphDef(
+                sess.graph.as_graph_def(), self.feed_names, self.fetch_names)
+            self.build_standard_transformers(sess, gin)
+
 
     # def test_mixed_keras_graph(self):
     #     # Build the graph: the output should have the same leading/batch dimension
