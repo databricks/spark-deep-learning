@@ -27,6 +27,7 @@ import tensorframes as tfs
 
 from pyspark.sql.types import Row
 
+from sparkdl.graph.builder import IsolatedSession
 from sparkdl.graph.input import *
 import sparkdl.graph.utils as tfx
 from sparkdl.transformers.tf_tensor import TFTransformer
@@ -59,6 +60,15 @@ class TFTransformerTest(SparkDLTestCase):
 
     def tearDown(self):
         shutil.rmtree(self.model_output_root, ignore_errors=True)
+
+    def _build_default_session_tests(self, sess):
+        gin = TFInputGraph.fromGraph(
+            sess.graph, sess, self.feed_names, self.fetch_names)
+        self.build_standard_transformers(sess, gin)
+
+        gin = TFInputGraph.fromGraphDef(
+            sess.graph.as_graph_def(), self.feed_names, self.fetch_names)
+        self.build_standard_transformers(sess, gin)
 
     def build_standard_transformers(self, sess, tf_input_graph):
         def _add_transformer(imap, omap):
@@ -113,7 +123,7 @@ class TFTransformerTest(SparkDLTestCase):
 
         # Build the TensorFlow graph
         graph = tf.Graph()
-        with tf.Session(graph=graph) as sess:
+        with tf.Session(graph=graph) as sess, graph.as_default():
             # Build test graph and transformers from here
             yield sess
 
@@ -148,7 +158,7 @@ class TFTransformerTest(SparkDLTestCase):
             out_tgt = np.hstack(_results)
 
             self.assertTrue(np.allclose(out_ref, out_tgt),
-                            msg=repr(transfomer))
+                            msg='not close => {} != {}'.format(out_ref.shape, out_tgt.shape))
 
 
     def test_build_from_tf_graph(self):
@@ -159,13 +169,7 @@ class TFTransformerTest(SparkDLTestCase):
             _ = tf.reduce_mean(x, axis=1, name=self.output_op_name)
             # End building graph
 
-            # Begin building transformers
-            self.build_standard_transformers(
-                sess, TFInputGraph.fromGraph(sess.graph, sess, self.feed_names, self.fetch_names))
-            gdef = sess.graph.as_graph_def()
-            self.build_standard_transformers(
-                sess, TFInputGraph.fromGraphDef(gdef, self.feed_names, self.fetch_names))
-            # End building transformers
+            self._build_default_session_tests(sess)
 
 
     def test_build_from_saved_model(self):
@@ -222,6 +226,10 @@ class TFTransformerTest(SparkDLTestCase):
             # We are not using signatures, thus must provide tensor/operation names
             gin = TFInputGraph.fromSavedModel(
                 saved_model_dir, serving_tag, self.feed_names, self.fetch_names)
+            self.build_standard_transformers(sess, gin)
+
+            gin = TFInputGraph.fromGraph(
+                sess.graph, sess, self.feed_names, self.fetch_names)
             self.build_standard_transformers(sess, gin)
 
 
@@ -285,6 +293,10 @@ class TFTransformerTest(SparkDLTestCase):
             gin = TFInputGraph.fromCheckpoint(model_ckpt_dir, self.feed_names, self.fetch_names)
             self.build_standard_transformers(sess, gin)
 
+            gin = TFInputGraph.fromGraph(
+                sess.graph, sess, self.feed_names, self.fetch_names)
+            self.build_standard_transformers(sess, gin)
+
 
     def test_multi_io(self):
         """ Build TFTransformer with multiple I/O tensors """
@@ -300,41 +312,31 @@ class TFTransformerTest(SparkDLTestCase):
                 z = tf.reduce_mean(xs[i], axis=1, name=tnsr_op_name)
                 zs.append(z)
 
-            gin = TFInputGraph.fromGraph(
-                sess.graph, sess, self.feed_names, self.fetch_names)
-            self.build_standard_transformers(sess, gin)
-
-            gin = TFInputGraph.fromGraphDef(
-                sess.graph.as_graph_def(), self.feed_names, self.fetch_names)
-            self.build_standard_transformers(sess, gin)
+            self._build_default_session_tests(sess)
 
 
-    # def test_mixed_keras_graph(self):
-    #     # Build the graph: the output should have the same leading/batch dimension
-    #     with IsolatedSession(using_keras=True) as issn:
-    #         tnsr_in = tf.placeholder(
-    #             tf.double, shape=[None, self.vec_size], name=self.input_op_name)
-    #         inp = tf.expand_dims(tnsr_in, axis=2)
-    #         # Keras layers does not take tf.double
-    #         inp = tf.cast(inp, tf.float32)
-    #         conv = Conv1D(filters=4, kernel_size=2)(inp)
-    #         pool = MaxPool1D(pool_size=2)(conv)
-    #         flat = Flatten()(pool)
-    #         dense = Dense(1)(flat)
-    #         # We must keep the leading dimension of the output
-    #         redsum = tf.reduce_sum(dense, axis=1)
-    #         tnsr_out = tf.cast(redsum, tf.double, name=self.output_op_name)
+    def test_mixed_keras_graph(self):
+        """ Build mixed keras graph """
+        with IsolatedSession(using_keras=True) as issn:
+            tnsr_in = tf.placeholder(
+                tf.double, shape=[None, self.vec_size], name=self.input_op_name)
+            inp = tf.expand_dims(tnsr_in, axis=2)
+            # Keras layers does not take tf.double
+            inp = tf.cast(inp, tf.float32)
+            conv = Conv1D(filters=4, kernel_size=2)(inp)
+            pool = MaxPool1D(pool_size=2)(conv)
+            flat = Flatten()(pool)
+            dense = Dense(1)(flat)
+            # We must keep the leading dimension of the output
+            redsum = tf.reduce_logsumexp(dense, axis=1)
+            tnsr_out = tf.cast(redsum, tf.double, name=self.output_op_name)
 
-    #         # Initialize the variables
-    #         init_op = tf.global_variables_initializer()
-    #         issn.run(init_op)
-    #         # We could train the model ... but skip it here
-    #         gfn = issn.asGraphFunction([tnsr_in], [tnsr_out])
+            # Initialize the variables
+            init_op = tf.global_variables_initializer()
+            issn.run(init_op)
+            # We could train the model ... but skip it here
+            gfn = issn.asGraphFunction([tnsr_in], [tnsr_out])
 
-    #     with self.run_test_in_tf_session() as sess:
-    #         tf.import_graph_def(gfn.graph_def, name='')
-
-    #         self.build_standard_transformers(sess, sess.graph)
-    #         self.build_standard_transformers(sess, TFInputGraphBuilder.fromGraph(sess.graph))
-    #         self.build_standard_transformers(sess, gfn.graph_def)
-    #         self.build_standard_transformers(sess, TFInputGraphBuilder.fromGraphDef(gfn.graph_def))
+        with self._run_test_in_tf_session() as sess:
+            tf.import_graph_def(gfn.graph_def, name='')
+            self._build_default_session_tests(sess)

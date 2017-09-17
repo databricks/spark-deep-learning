@@ -127,8 +127,10 @@ class TFInputGraph(object):
         """
         Construct a TFInputGraphBuilder from a model checkpoint
         """
-        assert (feed_names is None) == (fetch_names is None)
-        assert (feed_names is None) or (signature_def_key is None)
+        assert (feed_names is None) == (fetch_names is None), \
+            'feed_names and fetch_names, if provided must appear together'
+        assert (feed_names is None) != (signature_def_key is None), \
+            'must either provide feed_names or singnature_def_key'
 
         def import_graph_fn(sess):
             # Load checkpoint and import the graph
@@ -164,8 +166,10 @@ class TFInputGraph(object):
         """
         Construct a TFInputGraphBuilder from a SavedModel
         """
-        assert (feed_names is None) == (fetch_names is None)
-        assert (feed_names is None) or (signature_def_key is None)
+        assert (feed_names is None) == (fetch_names is None), \
+            'feed_names and fetch_names, if provided must appear together'
+        assert (feed_names is None) != (signature_def_key is None), \
+            'must either provide feed_names or singnature_def_key'
 
         def import_graph_fn(sess):
             tag_sets = tag_set.split(',')
@@ -225,7 +229,6 @@ class _GinBuilder(object):
         gin = TFInputGraph._new_obj_internal()
         assert (feed_names is None) == (fetch_names is None)
         must_have_sig_def = fetch_names is None
-        print('builder-session', repr(self.sess))
         # NOTE(phi-dbq): both have to be set to default
         with self.sess.as_default(), self.graph.as_default():
             _ginfo = self.import_graph_fn(self.sess)
@@ -249,47 +252,3 @@ class _GinBuilder(object):
             if self._should_clean:
                 self.sess.close()
         return gin
-
-# def the_rest(input_mapping, output_mapping):
-#     graph = tf.Graph()
-#     with tf.Session(graph=graph) as sess:
-#         # Append feeds and input mapping
-#         _input_mapping = {}
-#         if isinstance(input_mapping, dict):
-#             input_mapping = input_mapping.items()
-#         for input_colname, tnsr_or_sig in input_mapping:
-#             if sig_def:
-#                 tnsr = sig_def.inputs[tnsr_or_sig].name
-#             else:
-#                 tnsr = tnsr_or_sig
-#             _input_mapping[input_colname] = tfx.op_name(graph, tnsr)
-#         input_mapping = _input_mapping
-
-#         # Append fetches and output mapping
-#         fetches = []
-#         _output_mapping = {}
-#         # By default the output columns will have the name of their
-#         # corresponding `tf.Graph` operation names.
-#         # We have to convert them to the user specified output names
-#         if isinstance(output_mapping, dict):
-#             output_mapping = output_mapping.items()
-#         for tnsr_or_sig, requested_colname in output_mapping:
-#             if sig_def:
-#                 tnsr = sig_def.outputs[tnsr_or_sig].name
-#             else:
-#                 tnsr = tnsr_or_sig
-#             fetches.append(tfx.get_tensor(graph, tnsr))
-#             tf_output_colname = tfx.op_name(graph, tnsr)
-#             # NOTE(phi-dbq): put the check here as it will be the entry point to construct
-#             #                a `TFInputGraph` object.
-#             assert tf_output_colname not in _output_mapping, \
-#                 "operation {} has multiple output tensors and ".format(tf_output_colname) + \
-#                 "at least two of them are used in the output DataFrame. " + \
-#                 "Operation names are used to name columns which leads to conflicts. "  + \
-#                 "You can apply `tf.identity` ops to each to avoid name conflicts."
-#             _output_mapping[tf_output_colname] = requested_colname
-#         output_mapping = _output_mapping
-
-#         gdef = tfx.strip_and_freeze_until(fetches, graph, sess)
-
-#     return TFInputGraph(gdef), input_mapping, output_mapping
