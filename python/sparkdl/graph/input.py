@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
 from tensorflow.core.protobuf import meta_graph_pb2
@@ -19,7 +20,6 @@ from tensorflow.core.protobuf import meta_graph_pb2
 import sparkdl.graph.utils as tfx
 
 __all__ = ["TFInputGraph"]
-
 
 class TFInputGraph(object):
     """
@@ -141,30 +141,58 @@ class TFInputGraph(object):
 class _GinBuilderInfo(object):
     def __init__(self, sig_def=None):
         self.sig_def = sig_def
+        self.feed_names = None
+        self.feed_mapping = None
+        self.fetch_names = None
+        self.fetch_mapping = None
 
+    def extract_signatures(self):
+        assert self.sig_def is not None, \
+            "ask to find sigdef mapping, but not found any"
+
+        self.feed_mapping = {}
+        self.feed_names = []
+        for sigdef_key, tnsr_info in self.sig_def.inputs:
+            tnsr_name = tnsr_info.name
+            self.feed_mapping[sigdef_key] = tnsr_name
+            self.feed_names.append(tnsr_name)
+
+        self.fetch_mapping = {}
+        self.fetch_names = []
+        for sigdef_key, tnsr_info in self.sig_def.outputs:
+            tnsr_name = tnsr_info.name
+            self.feed_mapping[sigdef_key] = tnsr_name
+            self.fetch_names.append(tnsr_name)
 
 class _GinBuilder(object):
     def __init__(self, import_graph_fn, sess=None, graph=None):
         self.import_graph_fn = import_graph_fn
         assert (sess is None) == (graph is None)
-        self.graph = graph or tf.Graph()
         if sess is not None:
+            self.graph = graph
             self.sess = sess
-            self._should_clean = True
-        else:
-            self.sess = tf.Session(self.graph)
             self._should_clean = False
+        else:
+            self.graph = tf.Graph()
+            self.sess = tf.Session(graph=self.graph)
+            self._should_clean = True
 
     def _build_impl(self, feed_names, fetch_names):
         # pylint: disable=protected-access,attribute-defined-outside-init
         gin = TFInputGraph._new_obj_internal()
         assert (feed_names is None) == (fetch_names is None)
         must_have_sig_def = fetch_names is None
-        with self.sess.as_default():
+        print('builder-session', repr(self.sess))
+        # NOTE(phi-dbq): both have to be set to default
+        with self.sess.as_default(), self.graph.as_default():
             _ginfo = self.import_graph_fn(self.sess)
-            # TODO: extract signature mappings
             if must_have_sig_def:
-                raise NotImplementedError("cannot extract mappings from sig_def at the moment")
+                _ginfo.extract_signatures()
+                feed_names = _ginfo.feed_names
+                fetch_names = _ginfo.fetch_names
+                gin.input_tensor_name_from_signature = _ginfo.feed_mapping
+                gin.output_tensor_name_from_signature = _ginfo.fetch_mapping
+
             for tnsr_name in feed_names:
                 assert tfx.get_op(self.graph, tnsr_name)
             fetches = [tfx.get_tensor(self.graph, tnsr_name) for tnsr_name in fetch_names]

@@ -29,7 +29,7 @@ from pyspark.ml.param import Param, Params, TypeConverters
 
 from sparkdl.graph.builder import GraphFunction, IsolatedSession
 import sparkdl.graph.utils as tfx
-from sparkdl.graph.input import TFInputGraph, TFInputGraphBuilder
+from sparkdl.graph.input import TFInputGraph
 from sparkdl.param.converters import SparkDLTypeConverters
 import sparkdl.utils.keras_model as kmutil
 
