@@ -22,17 +22,10 @@ private APIs.
 from functools import wraps
 import six
 
-import keras
-import tensorflow as tf
-
 from pyspark.ml.param import Param, Params, TypeConverters
 
-from sparkdl.graph.builder import GraphFunction, IsolatedSession
-import sparkdl.graph.utils as tfx
 from sparkdl.graph.input import TFInputGraph
 from sparkdl.param.converters import SparkDLTypeConverters
-import sparkdl.utils.keras_model as kmutil
-
 
 ########################################################
 # Copied from PySpark for backward compatibility.
@@ -204,11 +197,10 @@ class HasOutputMapping(Params):
     """
     Mixin for param outputMapping: ordered list of ('outputTensorOpName', 'outputColName') pairs
     """
-    outputMapping = Param(
-        Params._dummy(),
-        "outputMapping",
-        "Mapping output :class:`tf.Operation` names to DataFrame column names",
-        typeConverter=SparkDLTypeConverters.asTensorToColumnMap)
+    outputMapping = Param(Params._dummy(),
+                          "outputMapping",
+                          "Mapping output :class:`tf.Tensor` names to DataFrame column names",
+                          typeConverter=SparkDLTypeConverters.asTensorNameToColumnMap)
 
     def setOutputMapping(self, value):
         # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
@@ -225,11 +217,10 @@ class HasInputMapping(Params):
     """
     Mixin for param inputMapping: ordered list of ('inputColName', 'inputTensorOpName') pairs
     """
-    inputMapping = Param(
-        Params._dummy(),
-        "inputMapping",
-        "Mapping input DataFrame column names to :class:`tf.Operation` names",
-        typeConverter=SparkDLTypeConverters.asColumnToTensorMap)
+    inputMapping = Param(Params._dummy(),
+                         "inputMapping",
+                         "Mapping input DataFrame column names to :class:`tf.Tensor` names",
+                         typeConverter=SparkDLTypeConverters.asColumnToTensorNameMap)
 
     def setInputMapping(self, value):
         # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
@@ -246,11 +237,10 @@ class HasTFInputGraph(Params):
     """
     Mixin for param tfInputGraph: a serializable object derived from a TensorFlow computation graph.
     """
-    tfInputGraph = Param(
-        Params._dummy(),
-        "tfInputGraph",
-        "A serializable object derived from a TensorFlow computation graph",
-        typeConverter=SparkDLTypeConverters.toTFInputGraph)
+    tfInputGraph = Param(Params._dummy(),
+                         "tfInputGraph",
+                         "A serializable object derived from a TensorFlow computation graph",
+                         typeConverter=SparkDLTypeConverters.toTFInputGraph)
 
     def __init__(self):
         super(HasTFInputGraph, self).__init__()
@@ -271,11 +261,10 @@ class HasTFHParams(Params):
     """
     Mixin for TensorFlow model hyper-parameters
     """
-    tfHParams = Param(
-        Params._dummy(),
-        "hparams",
-        "instance of :class:`tf.contrib.training.HParams`, a key-value map-like object",
-        typeConverter=SparkDLTypeConverters.toTFHParams)
+    tfHParams = Param(Params._dummy(),
+                      "hparams",
+                      "instance of :class:`tf.contrib.training.HParams`, a key-value map-like object",
+                      typeConverter=SparkDLTypeConverters.toTFHParams)
 
     def setTFHParams(self, value):
         return self._set(tfHParam=value)

@@ -13,6 +13,8 @@
 # limitations under the License.
 #
 
+import six
+
 import tensorflow as tf
 
 from pyspark.ml.param import TypeConverters
@@ -20,6 +22,37 @@ from pyspark.ml.param import TypeConverters
 import sparkdl.graph.utils as tfx
 from sparkdl.graph.input import TFInputGraph
 import sparkdl.utils.keras_model as kmutil
+
+__all__ = ['SparkDLTypeConverters']
+
+def _try_convert_tf_tensor_mapping(value, is_key_tf_tensor=True):
+    if isinstance(value, dict):
+        strs_pair_seq = []
+        for k, v in value.items():
+            try:
+                if is_key_tf_tensor:
+                    _pair = (tfx.as_tensor_name(k), v)
+                else:
+                    _pair = (k, tfx.as_tensor_name(v))
+            except:
+                err_msg = "Can NOT convert {} (type {}) to tf.Tensor name"
+                _not_tf_op = k if is_key_tf_tensor else v
+                raise TypeError(err_msg.format(_not_tf_op, type(_not_tf_op)))
+
+            str_val = v if is_key_tf_tensor else k
+            if not isinstance(str_val, six.string_types):
+                err_msg = 'expect string type for {}, but got {}'
+                raise TypeError(err_msg.format(str_val, type(str_val)))
+
+            strs_pair_seq.append(_pair)
+
+        return sorted(strs_pair_seq)
+
+    if is_key_tf_tensor:
+        raise TypeError("Could not convert %s to tf.Tensor name to str mapping" % type(value))
+    else:
+        raise TypeError("Could not convert %s to str to tf.Tensor name mapping" % type(value))
+
 
 class SparkDLTypeConverters(object):
     @staticmethod
@@ -37,18 +70,12 @@ class SparkDLTypeConverters(object):
             raise TypeError("Could not convert %s to TFInputGraph" % type(value))
 
     @staticmethod
-    def asColumnToTensorMap(value):
-        if isinstance(value, dict):
-            strs_pair_seq = [(k, tfx.as_op_name(v)) for k, v in value.items()]
-            return sorted(strs_pair_seq)
-        raise TypeError("Could not convert %s to TensorFlow Tensor" % type(value))
+    def asColumnToTensorNameMap(value):
+        return _try_convert_tf_tensor_mapping(value, is_key_tf_tensor=False)
 
     @staticmethod
-    def asTensorToColumnMap(value):
-        if isinstance(value, dict):
-            strs_pair_seq = [(tfx.as_op_name(k), v) for k, v in value.items()]
-            return sorted(strs_pair_seq)
-        raise TypeError("Could not convert %s to TensorFlow Tensor" % type(value))
+    def asTensorNameToColumnMap(value):
+        return _try_convert_tf_tensor_mapping(value, is_key_tf_tensor=True)
 
     @staticmethod
     def toTFHParams(value):
