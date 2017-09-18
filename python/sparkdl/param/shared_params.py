@@ -196,11 +196,10 @@ class HasOutputMapping(Params):
     """
     Mixin for param outputMapping: ordered list of ('outputTensorOpName', 'outputColName') pairs
     """
-    outputMapping = Param(
-        Params._dummy(),
-        "outputMapping",
-        "Mapping output :class:`tf.Operation` names to DataFrame column names",
-        typeConverter=SparkDLTypeConverters.asTensorToColumnMap)
+    outputMapping = Param(Params._dummy(),
+                          "outputMapping",
+                          "Mapping output :class:`tf.Operation` names to DataFrame column names",
+                          typeConverter=SparkDLTypeConverters.asTensorNameToColumnMap)
 
     def setOutputMapping(self, value):
         # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
@@ -217,11 +216,10 @@ class HasInputMapping(Params):
     """
     Mixin for param inputMapping: ordered list of ('inputColName', 'inputTensorOpName') pairs
     """
-    inputMapping = Param(
-        Params._dummy(),
-        "inputMapping",
-        "Mapping input DataFrame column names to :class:`tf.Operation` names",
-        typeConverter=SparkDLTypeConverters.asColumnToTensorMap)
+    inputMapping = Param(Params._dummy(),
+                         "inputMapping",
+                         "Mapping input DataFrame column names to :class:`tf.Operation` names",
+                         typeConverter=SparkDLTypeConverters.asColumnToTensorNameMap)
 
     def setInputMapping(self, value):
         # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
@@ -238,11 +236,10 @@ class HasTFHParams(Params):
     """
     Mixin for TensorFlow model hyper-parameters
     """
-    tfHParams = Param(
-        Params._dummy(),
-        "hparams",
-        "instance of :class:`tf.contrib.training.HParams`, a key-value map-like object",
-        typeConverter=SparkDLTypeConverters.toTFHParams)
+    tfHParams = Param(Params._dummy(),
+                      "hparams",
+                      "instance of :class:`tf.contrib.training.HParams`, a key-value map-like object",
+                      typeConverter=SparkDLTypeConverters.toTFHParams)
 
     def setTFHParams(self, value):
         return self._set(tfHParam=value)
