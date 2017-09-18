@@ -47,19 +47,20 @@ class IsolatedSession(object):
         self.graph = graph or tf.Graph()
         self.sess = tf.Session(graph=self.graph)
         if using_keras:
+            self.using_keras = True
             self.keras_prev_sess = K.get_session()
         else:
+            self.using_keras = False
             self.keras_prev_sess = None
 
     def __enter__(self):
-        self.sess.as_default()
         self.sess.__enter__()
-        if self.keras_prev_sess is not None:
+        if self.using_keras:
             K.set_session(self.sess)
         return self
 
     def __exit__(self, *args):
-        if self.keras_prev_sess is not None:
+        if self.using_keras:
             K.set_session(self.keras_prev_sess)
         self.sess.__exit__(*args)
 
@@ -268,4 +269,3 @@ class GraphFunction(object):
             gfn = issn.asGraphFunction(first_inputs, last_outputs)
 
         return gfn
-

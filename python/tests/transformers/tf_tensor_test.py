@@ -157,8 +157,10 @@ class TFTransformerTest(SparkDLTestCase):
                 _results.append(np.ravel(curr_res))
             out_tgt = np.hstack(_results)
 
+            err_msg = 'not close => {} != {}, max_diff {}'
             self.assertTrue(np.allclose(out_ref, out_tgt),
-                            msg='not close => {} != {}'.format(out_ref.shape, out_tgt.shape))
+                            msg=err_msg.format(out_ref.shape, out_tgt.shape,
+                                               np.max(np.abs(out_ref - out_tgt))))
 
 
     def test_build_from_tf_graph(self):

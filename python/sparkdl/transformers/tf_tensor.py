@@ -16,6 +16,7 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 import tensorflow as tf
+from tensorflow.python.tools import optimize_for_inference_lib as infr_opt
 import tensorframes as tfs
 
 from pyspark.ml import Transformer
@@ -60,8 +61,23 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         # Further conanonicalization, e.g. converting dict to sorted str pairs happens here
         return self._set(**kwargs)
 
-    def _transform(self, dataset):
+    def _optimize_for_inference(self):
+        """ Optimize the graph for inference """
         gin = self.getTFInputGraph()
+        input_mapping = self.getInputMapping()
+        output_mapping = self.getOutputMapping()
+        input_node_names = [tfx.as_op_name(tnsr_name) for _, tnsr_name in input_mapping]
+        output_node_names = [tfx.as_op_name(tnsr_name) for tnsr_name, _ in output_mapping]
+
+        # NOTE(phi-dbq): Spark DataFrame assumes float64 as default floating point type
+        opt_gdef = infr_opt.optimize_for_inference(gin.graph_def,
+                                                   input_node_names,
+                                                   output_node_names,
+                                                   tf.float64.as_datatype_enum)
+        return opt_gdef
+
+    def _transform(self, dataset):
+        graph_def = self._optimize_for_inference()
         input_mapping = self.getInputMapping()
         output_mapping = self.getOutputMapping()
 
@@ -70,7 +86,7 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
             analyzed_df = tfs.analyze(dataset)
 
             out_tnsr_op_names = [tfx.as_op_name(tnsr_name) for tnsr_name, _ in output_mapping]
-            tf.import_graph_def(graph_def=gin.graph_def, name='', return_elements=out_tnsr_op_names)
+            tf.import_graph_def(graph_def=graph_def, name='', return_elements=out_tnsr_op_names)
 
             feed_dict = dict((tfx.op_name(graph, tnsr_name), col_name)
                              for col_name, tnsr_name in input_mapping)
