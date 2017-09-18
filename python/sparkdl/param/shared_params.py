@@ -21,13 +21,15 @@ private APIs.
 
 from functools import wraps
 
-import tensorflow as tf
-
 from pyspark.ml.param import Param, Params, TypeConverters
 
-import sparkdl.utils.keras_model as kmutil
+from sparkdl.param.converters import SparkDLTypeConverters
 
-# From pyspark
+
+########################################################
+# Copied from PySpark for backward compatibility.
+# They first appeared in Apache Spark version 2.1.1.
+########################################################
 
 def keyword_only(func):
     """
@@ -36,12 +38,14 @@ def keyword_only(func):
 
     .. note:: Should only be used to wrap a method where first arg is `self`
     """
+
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         if len(args) > 0:
             raise TypeError("Method %s forces keyword arguments." % func.__name__)
         self._input_kwargs = kwargs
         return func(self, **kwargs)
+
     return wrapper
 
 
@@ -50,10 +54,8 @@ class HasInputCol(Params):
     Mixin for param inputCol: input column name.
     """
 
-    inputCol = Param(Params._dummy(), "inputCol", "input column name.", typeConverter=TypeConverters.toString)
-
-    def __init__(self):
-        super(HasInputCol, self).__init__()
+    inputCol = Param(
+        Params._dummy(), "inputCol", "input column name.", typeConverter=TypeConverters.toString)
 
     def setInputCol(self, value):
         """
@@ -73,8 +75,8 @@ class HasOutputCol(Params):
     Mixin for param outputCol: output column name.
     """
 
-    outputCol = Param(Params._dummy(),
-                      "outputCol", "output column name.", typeConverter=TypeConverters.toString)
+    outputCol = Param(
+        Params._dummy(), "outputCol", "output column name.", typeConverter=TypeConverters.toString)
 
     def __init__(self):
         super(HasOutputCol, self).__init__()
@@ -92,54 +94,9 @@ class HasOutputCol(Params):
         """
         return self.getOrDefault(self.outputCol)
 
-############################################
+########################################################
 # New in sparkdl
-############################################
-
-class SparkDLTypeConverters(object):
-
-    @staticmethod
-    def toStringOrTFTensor(value):
-        if isinstance(value, tf.Tensor):
-            return value
-        else:
-            try:
-                return TypeConverters.toString(value)
-            except TypeError:
-                raise TypeError("Could not convert %s to tensorflow.Tensor or str" % type(value))
-
-    @staticmethod
-    def toTFGraph(value):
-        # TODO: we may want to support tf.GraphDef in the future instead of tf.Graph since user
-        # is less likely to mess up using GraphDef vs Graph (e.g. constants vs variables).
-        if isinstance(value, tf.Graph):
-            return value
-        else:
-            raise TypeError("Could not convert %s to tensorflow.Graph type" % type(value))
-
-    @staticmethod
-    def supportedNameConverter(supportedList):
-        def converter(value):
-            if value in supportedList:
-                return value
-            else:
-                raise TypeError("%s %s is not in the supported list." % type(value), str(value))
-
-        return converter
-
-    @staticmethod
-    def toKerasLoss(value):
-        if kmutil.is_valid_loss_function(value):
-            return value
-        raise ValueError(
-            "Named loss not supported in Keras: {} type({})".format(value, type(value)))
-
-    @staticmethod
-    def toKerasOptimizer(value):
-        if kmutil.is_valid_optimizer(value):
-            return value
-        raise TypeError(
-            "Named optimizer not supported in Keras: {} type({})".format(value, type(value)))
+########################################################
 
 
 class HasOutputNodeName(Params):
@@ -233,3 +190,62 @@ class HasKerasLoss(Params):
 
     def getKerasLoss(self):
         return self.getOrDefault(self.kerasLoss)
+
+
+class HasOutputMapping(Params):
+    """
+    Mixin for param outputMapping: ordered list of ('outputTensorOpName', 'outputColName') pairs
+    """
+    outputMapping = Param(
+        Params._dummy(),
+        "outputMapping",
+        "Mapping output :class:`tf.Operation` names to DataFrame column names",
+        typeConverter=SparkDLTypeConverters.asTensorToColumnMap)
+
+    def setOutputMapping(self, value):
+        # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
+        #                serializable TFInputGraph object once the inputMapping and outputMapping
+        #                parameters are provided.
+        raise NotImplementedError(
+            "Please use the Transformer's constructor to assign `outputMapping` field.")
+
+    def getOutputMapping(self):
+        return self.getOrDefault(self.outputMapping)
+
+
+class HasInputMapping(Params):
+    """
+    Mixin for param inputMapping: ordered list of ('inputColName', 'inputTensorOpName') pairs
+    """
+    inputMapping = Param(
+        Params._dummy(),
+        "inputMapping",
+        "Mapping input DataFrame column names to :class:`tf.Operation` names",
+        typeConverter=SparkDLTypeConverters.asColumnToTensorMap)
+
+    def setInputMapping(self, value):
+        # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
+        #                serializable TFInputGraph object once the inputMapping and outputMapping
+        #                parameters are provided.
+        raise NotImplementedError(
+            "Please use the Transformer's constructor to assigne `inputMapping` field.")
+
+    def getInputMapping(self):
+        return self.getOrDefault(self.inputMapping)
+
+
+class HasTFHParams(Params):
+    """
+    Mixin for TensorFlow model hyper-parameters
+    """
+    tfHParams = Param(
+        Params._dummy(),
+        "hparams",
+        "instance of :class:`tf.contrib.training.HParams`, a key-value map-like object",
+        typeConverter=SparkDLTypeConverters.toTFHParams)
+
+    def setTFHParams(self, value):
+        return self._set(tfHParam=value)
+
+    def getTFHParams(self):
+        return self.getOrDefault(self.tfHParams)
