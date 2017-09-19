@@ -29,6 +29,9 @@ from pyspark import SparkContext
 from pyspark.sql import SQLContext
 from pyspark.sql import SparkSession
 
+class PythonUnitTestCase(unittest.TestCase):
+    # Just the plain test unittest.TestCase, but won't have to do import check
+    pass
 
 class SparkDLTestCase(unittest.TestCase):
 
