@@ -54,16 +54,15 @@ class ParamsConverterTest(unittest.TestCase):
 
 
     def test_invalid_input_mapping(self):
-        for invalid in [['a1', 'b2'], ('c3', 'd4'), [('a', 1), ('b', 2)]]:
+        for invalid in [['a1', 'b2'], ('c3', 'd4'), [('a', 1), ('b', 2)],
+                        {1: 'a', 2.0: 'b'}, {'a': 1, 'b': 2.0}]:
             with self.assertRaises(TypeError):
                 conv.asColumnToTensorNameMap(invalid)
                 conv.asTensorNameToColumnMap(invalid)
 
         with self.assertRaises(TypeError):
-            # Wrong value type: must be string
-            conv.asTensorNameToColumnMap({1: 'a', 2.0: 'b'})
-            conv.asColumnToTensorNameMap({'a': 1, 'b': 2.0})
-
             # Wrong containter type: only accept dict
             conv.asColumnToTensorNameMap([('colA', 'tnsrA:0'), ('colB', 'tnsrB:0')])
+            conv.asTensorNameToColumnMap([('colA', 'tnsrA:0'), ('colB', 'tnsrB:0')])
+            conv.asColumnToTensorNameMap([('tnsrA:0', 'colA'), ('tnsrB:0', 'colB')])
             conv.asTensorNameToColumnMap([('tnsrA:0', 'colA'), ('tnsrB:0', 'colB')])
