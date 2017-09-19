@@ -16,8 +16,6 @@
 
 import logging
 import six
-import webbrowser
-from tempfile import NamedTemporaryFile
 
 import tensorflow as tf
 
@@ -95,31 +93,49 @@ def get_tensor(graph, tfobj_or_name):
         'cannot locate tensor {} in current graph'.format(_tensor_name)
     return tnsr
 
-def as_tensor_name(name):
+def as_tensor_name(tfobj_or_name):
     """
     Derive tf.Tensor name from an op/tensor name.
-    We do not check if the tensor exist (as no graph parameter is passed in).
+    If the input is a name, we do not check if the tensor exist
+    (as no graph parameter is passed in).
 
-    :param name: op name or tensor name
+    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
-    assert isinstance(name, six.string_types)
-    name_parts = name.split(":")
-    assert len(name_parts) <= 2, name_parts
-    if len(name_parts) < 2:
-        name += ":0"
-    return name
+    if isinstance(tfobj_or_name, six.string_types):
+        # If input is a string, assume it is a name and infer the corresponding tensor name.
+        # WARNING: this depends on TensorFlow's tensor naming convention
+        name = tfobj_or_name
+        name_parts = name.split(":")
+        assert len(name_parts) <= 2, name_parts
+        if len(name_parts) < 2:
+            name += ":0"
+        return name
+    elif hasattr(tfobj_or_name, 'graph'):
+        tfobj = tfobj_or_name
+        return get_tensor(tfobj.graph, tfobj).name
+    else:
+        raise TypeError('invalid tf.Tensor name query type {}'.format(type(tfobj_or_name)))
 
-def as_op_name(name):
+def as_op_name(tfobj_or_name):
     """
-    Derive tf.Operation name from an op/tensor name
-    We do not check if the operation exist (as no graph parameter is passed in).
+    Derive tf.Operation name from an op/tensor name.
+    If the input is a name, we do not check if the operation exist
+    (as no graph parameter is passed in).
 
-    :param name: op name or tensor name
+    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
-    assert isinstance(name, six.string_types)
-    name_parts = name.split(":")
-    assert len(name_parts) <= 2, name_parts
-    return name_parts[0]
+    if isinstance(tfobj_or_name, six.string_types):
+        # If input is a string, assume it is a name and infer the corresponding operation name.
+        # WARNING: this depends on TensorFlow's operation naming convention
+        name = tfobj_or_name
+        name_parts = name.split(":")
+        assert len(name_parts) <= 2, name_parts
+        return name_parts[0]
+    elif hasattr(tfobj_or_name, 'graph'):
+        tfobj = tfobj_or_name
+        return get_op(tfobj.graph, tfobj).name
+    else:
+        raise TypeError('invalid tf.Operation name query type {}'.format(type(tfobj_or_name)))
 
 def op_name(graph, tfobj_or_name):
     """
