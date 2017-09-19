@@ -41,28 +41,6 @@ class TFInputGraph(object):
         obj.output_tensor_name_from_signature = None
         return obj
 
-    def translateInputMapping(self, input_mapping):
-        assert self.input_tensor_name_from_signature is not None
-        _input_mapping = {}
-        if isinstance(input_mapping, dict):
-            input_mapping = list(input_mapping.items())
-        assert isinstance(input_mapping, list)
-        for col_name, sig_key in input_mapping:
-            tnsr_name = self.input_tensor_name_from_signature[sig_key]
-            _input_mapping[col_name] = tnsr_name
-        return _input_mapping
-
-    def translateOutputMapping(self, output_mapping):
-        assert self.output_tensor_name_from_signature is not None
-        _output_mapping = {}
-        if isinstance(output_mapping, dict):
-            output_mapping = list(output_mapping.items())
-        assert isinstance(output_mapping, list)
-        for sig_key, col_name in output_mapping:
-            tnsr_name = self.output_tensor_name_from_signature[sig_key]
-            _output_mapping[tnsr_name] = col_name
-        return _output_mapping
-
     @classmethod
     def fromGraph(cls, graph, sess, feed_names, fetch_names):
         """
