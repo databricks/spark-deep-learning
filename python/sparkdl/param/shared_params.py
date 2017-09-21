@@ -233,8 +233,7 @@ class HasTFHParams(Params):
                       TensorFlow graph for the Transformer.
 
                       Currently accepted values are:
-                      - `batch_size`: number of samples provided to the inference graph
-                                      during each evaluation function call.""",
+                      - `batch_size`: number of samples evaluated together in inference steps"""),
                       typeConverter=SparkDLTypeConverters.toTFHParams)
 
     def setTFHParams(self, value):
