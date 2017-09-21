@@ -36,14 +36,23 @@ class TFInputGraphTest(PythonUnitTestCase):
         self.num_samples = 107
 
         self.input_col = 'dfInputCol'
-        self.input_op_name = 'tnsrOpIn'
         self.output_col = 'dfOutputCol'
+
+        self.input_op_name = 'tnsrOpIn'
         self.output_op_name = 'tnsrOpOut'
+
+        self.input_graph_with_signature = set()
+        self.input_sigkey = 'well_known_input_sig'
+        self.output_sigkey = 'well_known_output_sig'
+        self.serving_tag = "serving_tag"
+        self.serving_sigdef_key = 'prediction_signature'
 
         self.feed_names = []
         self.fetch_names = []
         self.input_mapping = {}
         self.output_mapping = {}
+        self.sig_input_mapping = {}
+        self.sig_output_mapping = {}
         self.setup_iomap(replica=1)
 
         self.input_graphs = []
@@ -64,17 +73,23 @@ class TFInputGraphTest(PythonUnitTestCase):
             for i in range(replica):
                 colname = '{}_replica{:03d}'.format(self.input_col, i)
                 tnsr_op_name = '{}_replica{:03d}'.format(self.input_op_name, i)
+                sig_name = '{}_replica{:03d}'.format(self.input_sigkey, i)
                 self.input_mapping[colname] = tnsr_op_name
+                self.sig_input_mapping[colname] = sig_name
                 self.feed_names.append(tnsr_op_name + ':0')
 
                 colname = '{}_replica{:03d}'.format(self.output_col, i)
                 tnsr_op_name = '{}_replica{:03d}'.format(self.output_op_name, i)
+                sig_name = '{}_replica{:03d}'.format(self.output_sigkey, i)
                 self.output_mapping[tnsr_op_name] = colname
+                self.sig_output_mapping[sig_name] = colname
                 self.fetch_names.append(tnsr_op_name + ':0')
         else:
             self.input_mapping = {self.input_col: self.input_op_name}
+            self.sig_input_mapping = {self.input_col: self.input_sigkey}
             self.feed_names = [self.input_op_name + ':0']
             self.output_mapping = {self.output_op_name: self.output_col}
+            self.sig_output_mapping = {self.output_sigkey: self.output_col}
             self.fetch_names = [self.output_op_name + ':0']
 
     @contextmanager
@@ -122,8 +137,6 @@ class TFInputGraphTest(PythonUnitTestCase):
         # Setup saved model export directory
         saved_model_root = self.model_output_root
         saved_model_dir = os.path.join(saved_model_root, 'saved_model')
-        serving_tag = "serving_tag"
-        serving_sigdef_key = 'prediction_signature'
         builder = tf.saved_model.builder.SavedModelBuilder(saved_model_dir)
 
         with self._run_test_in_tf_session() as sess:
@@ -137,30 +150,31 @@ class TFInputGraphTest(PythonUnitTestCase):
             sess.run(w.initializer)
 
             sig_inputs = {
-                'input_sig': tf.saved_model.utils.build_tensor_info(x)}
+                self.input_sigkey: tf.saved_model.utils.build_tensor_info(x)}
             sig_outputs = {
-                'output_sig': tf.saved_model.utils.build_tensor_info(z)}
+                self.output_sigkey: tf.saved_model.utils.build_tensor_info(z)}
 
             serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
                 inputs=sig_inputs,
                 outputs=sig_outputs)
 
             builder.add_meta_graph_and_variables(sess,
-                                                 [serving_tag],
+                                                 [self.serving_tag],
                                                  signature_def_map={
-                                                     serving_sigdef_key: serving_sigdef})
+                                                     self.serving_sigdef_key: serving_sigdef})
             builder.save()
 
             # Build the transformer from exported serving model
             # We are using signaures, thus must provide the keys
             gin = TFInputGraph.fromSavedModelWithSignature(
-                saved_model_dir, serving_tag, serving_sigdef_key)
+                saved_model_dir, self.serving_tag, self.serving_sigdef_key)
             self.input_graphs.append(gin)
+            self.input_graph_with_signature.add(gin)
 
             # Build the transformer from exported serving model
             # We are not using signatures, thus must provide tensor/operation names
             gin = TFInputGraph.fromSavedModel(
-                saved_model_dir, serving_tag, self.feed_names, self.fetch_names)
+                saved_model_dir, self.serving_tag, self.feed_names, self.fetch_names)
             self.input_graphs.append(gin)
 
             gin = TFInputGraph.fromGraph(
@@ -173,7 +187,6 @@ class TFInputGraphTest(PythonUnitTestCase):
         # Build the TensorFlow graph
         model_ckpt_dir = self.model_output_root
         ckpt_path_prefix = os.path.join(model_ckpt_dir, 'model_ckpt')
-        serving_sigdef_key = 'prediction_signature'
 
         with self._run_test_in_tf_session() as sess:
             x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
@@ -188,10 +201,10 @@ class TFInputGraphTest(PythonUnitTestCase):
             # Prepare the signature_def
             serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
                 inputs={
-                    'input_sig': tf.saved_model.utils.build_tensor_info(x)
+                    self.input_sigkey: tf.saved_model.utils.build_tensor_info(x)
                 },
                 outputs={
-                    'output_sig': tf.saved_model.utils.build_tensor_info(z)
+                    self.output_sigkey: tf.saved_model.utils.build_tensor_info(z)
                 })
 
             # A rather contrived way to add signature def to a meta_graph
@@ -204,15 +217,16 @@ class TFInputGraphTest(PythonUnitTestCase):
 
             # Add signature_def to the meta_graph and serialize it
             # This will overwrite the existing meta_graph_def file
-            meta_graph_def.signature_def[serving_sigdef_key].CopyFrom(serving_sigdef)
+            meta_graph_def.signature_def[self.serving_sigdef_key].CopyFrom(serving_sigdef)
             with open(ckpt_meta_fpath, mode='wb') as fout:
                 fout.write(meta_graph_def.SerializeToString())
 
             # Build the transformer from exported serving model
             # We are using signaures, thus must provide the keys
             gin = TFInputGraph.fromCheckpointWithSignature(
-                model_ckpt_dir, serving_sigdef_key)
+                model_ckpt_dir, self.serving_sigdef_key)
             self.input_graphs.append(gin)
+            self.input_graph_with_signature.add(gin)
 
             # Transformer without using signature_def
             gin = TFInputGraph.fromCheckpoint(model_ckpt_dir, self.feed_names, self.fetch_names)

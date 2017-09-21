@@ -38,33 +38,15 @@ from ..graph.test_input_graph import TFInputGraphTest
 
 class TFTransformerTest(TFInputGraphTest, SparkDLTestCase):
 
-    def _build_default_session_tests(self, sess):
-        gin = TFInputGraph.fromGraph(
-            sess.graph, sess, self.feed_names, self.fetch_names)
-        self.build_standard_transformers(sess, gin)
-
-        gin = TFInputGraph.fromGraphDef(
-            sess.graph.as_graph_def(), self.feed_names, self.fetch_names)
-        self.build_standard_transformers(sess, gin)
-
-    def build_standard_transformers(self, sess, tf_input_graph):
-        def _add_transformer(imap, omap):
-            trnsfmr = TFTransformer(
-                tfInputGraph=tf_input_graph, inputMapping=imap, outputMapping=omap)
-            self.transformers.append(trnsfmr)
-
-        imap = dict((col, tfx.tensor_name(sess.graph, op_name))
-                    for col, op_name in self.input_mapping.items())
-        omap = dict((tfx.tensor_name(sess.graph, op_name), col)
-                    for op_name, col in self.output_mapping.items())
-        _add_transformer(imap, omap)
+    def setUp(self):
+        super(TFTransformerTest, self).setUp()
+        self.all_close_tol = 1e-8
 
     @contextmanager
     def _run_test_in_tf_session(self):
         """ [THIS IS NOT A TEST]: encapsulate general test workflow """
 
         # Build local features and DataFrame from it
-        print("OVERRIDING default", repr(self.__class__))
         local_features = []
         for idx in range(self.num_samples):
             _dict = {'idx': idx}
@@ -98,14 +80,7 @@ class TFTransformerTest(TFInputGraphTest, SparkDLTestCase):
             out_ref = np.hstack(_results)
 
         # We have sessions, now create transformers out of them
-
-        # Apply the transform
-        for input_graph in self.input_graphs:
-            transformer = TFTransformer(tfInputGraph=input_graph,
-                                        inputMapping=self.input_mapping,
-                                        outputMapping=self.output_mapping)
-            print('built transformer', repr(transformer))
-
+        def check_transformer(transformer):
             out_df = transformer.transform(analyzed_df)
             out_colnames = []
             for old_colname, new_colname in self.output_mapping.items():
@@ -119,51 +94,73 @@ class TFTransformerTest(TFInputGraphTest, SparkDLTestCase):
                 _results.append(np.ravel(curr_res))
             out_tgt = np.hstack(_results)
 
-            err_msg = 'not close => {} != {}, max_diff {}'
-            self.assertTrue(np.allclose(out_ref, out_tgt),
-                            msg=err_msg.format(out_ref.shape, out_tgt.shape,
-                                               np.max(np.abs(out_ref - out_tgt))))
+            err_msg = 'not close => shape {} != {}, max_diff {} > {}'
+            self.assertTrue(np.allclose(out_ref, out_tgt, atol=self.all_close_tol),
+                            msg=err_msg.format(out_ref.shape,
+                                               out_tgt.shape,
+                                               np.max(np.abs(out_ref - out_tgt)),
+                                               self.all_close_tol))
+
+        # Apply the transform
+        for input_graph in self.input_graphs:
+            transformer = TFTransformer(tfInputGraph=input_graph,
+                                        inputMapping=self.input_mapping,
+                                        outputMapping=self.output_mapping)
+            check_transformer(transformer)
+
+            if input_graph in self.input_graph_with_signature:
+                _imap = input_graph.translateInputMapping(self.sig_input_mapping)
+                _omap = input_graph.translateOutputMapping(self.sig_output_mapping)
+                transformer = TFTransformer(tfInputGraph=input_graph,
+                                            inputMapping=_imap,
+                                            outputMapping=_omap)
+                check_transformer(transformer)
+
+    def test_multi_io(self):
+        """ Build TFTransformer with multiple I/O tensors """
+        self.setup_iomap(replica=3)
+        with self._run_test_in_tf_session() as sess:
+            xs = []
+            for tnsr_op_name in self.input_mapping.values():
+                x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=tnsr_op_name)
+                xs.append(x)
+
+            zs = []
+            for i, tnsr_op_name in enumerate(self.output_mapping.keys()):
+                z = tf.reduce_mean(xs[i], axis=1, name=tnsr_op_name)
+                zs.append(z)
+
+            gin = TFInputGraph.fromGraph(sess.graph, sess, self.feed_names, self.fetch_names)
+            self.input_graphs.append(gin)
 
 
-    # def test_multi_io(self):
-    #     """ Build TFTransformer with multiple I/O tensors """
-    #     self.setup_iomap(replica=3)
-    #     with self._run_test_in_tf_session() as sess:
-    #         xs = []
-    #         for tnsr_op_name in self.input_mapping.values():
-    #             x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=tnsr_op_name)
-    #             xs.append(x)
+    def test_mixed_keras_graph(self):
+        """ Build TFTransformer from mixed keras graph """
+        with IsolatedSession(using_keras=True) as issn:
+            tnsr_in = tf.placeholder(
+                tf.double, shape=[None, self.vec_size], name=self.input_op_name)
+            inp = tf.expand_dims(tnsr_in, axis=2)
+            # Keras layers does not take tf.double
+            inp = tf.cast(inp, tf.float32)
+            conv = Conv1D(filters=4, kernel_size=2)(inp)
+            pool = MaxPool1D(pool_size=2)(conv)
+            flat = Flatten()(pool)
+            dense = Dense(1)(flat)
+            # We must keep the leading dimension of the output
+            redsum = tf.reduce_logsumexp(dense, axis=1)
+            tnsr_out = tf.cast(redsum, tf.double, name=self.output_op_name)
 
-    #         zs = []
-    #         for i, tnsr_op_name in enumerate(self.output_mapping.keys()):
-    #             z = tf.reduce_mean(xs[i], axis=1, name=tnsr_op_name)
-    #             zs.append(z)
+            # Initialize the variables
+            init_op = tf.global_variables_initializer()
+            issn.run(init_op)
+            # We could train the model ... but skip it here
+            gfn = issn.asGraphFunction([tnsr_in], [tnsr_out])
 
-    #         self._build_default_session_tests(sess)
+        self.all_close_tol = 1e-5
+        gin = TFInputGraph.fromGraphDef(gfn.graph_def, self.feed_names, self.fetch_names)
+        self.input_graphs.append(gin)
 
-
-    # def test_mixed_keras_graph(self):
-    #     """ Build mixed keras graph """
-    #     with IsolatedSession(using_keras=True) as issn:
-    #         tnsr_in = tf.placeholder(
-    #             tf.double, shape=[None, self.vec_size], name=self.input_op_name)
-    #         inp = tf.expand_dims(tnsr_in, axis=2)
-    #         # Keras layers does not take tf.double
-    #         inp = tf.cast(inp, tf.float32)
-    #         conv = Conv1D(filters=4, kernel_size=2)(inp)
-    #         pool = MaxPool1D(pool_size=2)(conv)
-    #         flat = Flatten()(pool)
-    #         dense = Dense(1)(flat)
-    #         # We must keep the leading dimension of the output
-    #         redsum = tf.reduce_logsumexp(dense, axis=1)
-    #         tnsr_out = tf.cast(redsum, tf.double, name=self.output_op_name)
-
-    #         # Initialize the variables
-    #         init_op = tf.global_variables_initializer()
-    #         issn.run(init_op)
-    #         # We could train the model ... but skip it here
-    #         gfn = issn.asGraphFunction([tnsr_in], [tnsr_out])
-
-    #     with self._run_test_in_tf_session() as sess:
-    #         tf.import_graph_def(gfn.graph_def, name='')
-    #         self._build_default_session_tests(sess)
+        with self._run_test_in_tf_session() as sess:
+            tf.import_graph_def(gfn.graph_def, name='')
+            gin = TFInputGraph.fromGraph(sess.graph, sess, self.feed_names, self.fetch_names)
+            self.input_graphs.append(gin)
