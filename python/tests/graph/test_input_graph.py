@@ -107,7 +107,7 @@ class TFInputGraphTest(PythonUnitTestCase):
 
 
     def test_build_from_tf_graph(self):
-        """ Build TFTransformer from tf.Graph """
+        """ Build TFInputGraph from tf.Graph """
         with self._run_test_in_tf_session() as sess:
             # Begin building graph
             x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
@@ -118,7 +118,7 @@ class TFInputGraphTest(PythonUnitTestCase):
             # End building graph
 
     def test_build_from_saved_model(self):
-        """ Build TFTransformer from saved model """
+        """ Build TFInputGraph from saved model """
         # Setup saved model export directory
         saved_model_root = self.model_output_root
         saved_model_dir = os.path.join(saved_model_root, 'saved_model')
@@ -169,7 +169,7 @@ class TFInputGraphTest(PythonUnitTestCase):
 
 
     def test_build_from_checkpoint(self):
-        """ Build TFTransformer from a model checkpoint """
+        """ Build TFInputGraph from a model checkpoint """
         # Build the TensorFlow graph
         model_ckpt_dir = self.model_output_root
         ckpt_path_prefix = os.path.join(model_ckpt_dir, 'model_ckpt')
