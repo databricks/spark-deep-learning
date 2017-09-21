@@ -203,11 +203,7 @@ class HasOutputMapping(Params):
                           typeConverter=SparkDLTypeConverters.asTensorNameToColumnMap)
 
     def setOutputMapping(self, value):
-        # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
-        #                serializable TFInputGraph object once the inputMapping and outputMapping
-        #                parameters are provided.
-        raise NotImplementedError(
-            "Please use the Transformer's constructor to assign `outputMapping` field.")
+        return self._set(outputMapping=value)
 
     def getOutputMapping(self):
         return self.getOrDefault(self.outputMapping)
@@ -223,11 +219,7 @@ class HasInputMapping(Params):
                          typeConverter=SparkDLTypeConverters.asColumnToTensorNameMap)
 
     def setInputMapping(self, value):
-        # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
-        #                serializable TFInputGraph object once the inputMapping and outputMapping
-        #                parameters are provided.
-        raise NotImplementedError(
-            "Please use the Transformer's constructor to assigne `inputMapping` field.")
+        return self._set(inputMapping=value)
 
     def getInputMapping(self):
         return self.getOrDefault(self.inputMapping)

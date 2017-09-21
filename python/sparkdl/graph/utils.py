@@ -16,8 +16,6 @@
 
 import logging
 import six
-import webbrowser
-from tempfile import NamedTemporaryFile
 
 import tensorflow as tf
 
