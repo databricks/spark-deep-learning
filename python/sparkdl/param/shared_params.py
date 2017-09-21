@@ -239,11 +239,7 @@ class HasTFInputGraph(Params):
         self._setDefault(tfInputGraph=None)
 
     def setTFInputGraph(self, value):
-        # NOTE(phi-dbq): due to the nature of TensorFlow import modes, we can only derive the
-        #                serializable TFInputGraph object once the inputMapping and outputMapping
-        #                parameters are provided.
-        raise NotImplementedError(
-            "Please use the Transformer's constructor to assign `tfInputGraph` field.")
+        return self._set(tfInputGraph=value)
 
     def getTFInputGraph(self):
         return self.getOrDefault(self.tfInputGraph)
