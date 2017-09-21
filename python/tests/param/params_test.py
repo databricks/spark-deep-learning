@@ -12,57 +12,66 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import sys
+from __future__ import absolute_import, division, print_function
 
-if sys.version_info[:2] <= (2, 6):
-    try:
-        import unittest2 as unittest
-    except ImportError:
-        sys.stderr.write('Please install unittest2 to test with Python 2.6 or earlier')
-        sys.exit(1)
-else:
-    import unittest
+from six import with_metaclass
 
 from sparkdl.param.converters import SparkDLTypeConverters as conv
 
-class ParamsConverterTest(unittest.TestCase):
+from ..tests import PythonUnitTestCase
+
+
+class TestGenInvalidMeta(type):
+    def __new__(cls, name, bases, attrs):
+        """ implement test cases here """
+        test_cases = [['a1', 'b2'], ('c3', 'd4'), [('a', 1), ('b', 2)]]
+
+        def _check_col2tnsr(case):
+            def impl(self):
+                with self.assertRaises(TypeError):
+                    conv.asColumnToTensorNameMap(case)
+            return impl
+
+        def _check_tnsr2col(case):
+            def impl(self):
+                with self.assertRaises(TypeError):
+                    conv.asTensorNameToColumnMap(case)
+            return impl
+
+        def _add_test_fn(fn_name, fn_impl):
+            fn_impl.__name__ = fn_name
+            attrs[fn_name] = fn_impl
+
+        for idx, case in enumerate(test_cases):
+            _add_test_fn('test_invalid_col2tnsr_{}'.format(idx),
+                         _check_col2tnsr(case))
+            _add_test_fn('test_invalid_tnsr2col_{}'.format(idx),
+                         _check_tnsr2col(case))
+
+        return super(TestGenInvalidMeta, cls).__new__(cls, name, bases, attrs)
+
+
+class ParamsConverterTest(with_metaclass(TestGenInvalidMeta, PythonUnitTestCase)):
     # pylint: disable=protected-access
 
+    @classmethod
+    def setUpClass(cls):
+        print(repr(cls), cls)
+
     def test_tf_input_mapping_converter(self):
-        valid_tnsr_input = {'colA': 'tnsrOpA:0',
-                            'colB': 'tnsrOpB:0'}
-        valid_op_input = {'colA': 'tnsrOpA',
-                          'colB': 'tnsrOpB'}
-        valid_input_mapping_result = [('colA', 'tnsrOpA:0'),
-                                      ('colB', 'tnsrOpB:0')]
+        valid_tnsr_input = {'colA': 'tnsrOpA:0', 'colB': 'tnsrOpB:0'}
+        valid_op_input = {'colA': 'tnsrOpA', 'colB': 'tnsrOpB'}
+        valid_input_mapping_result = [('colA', 'tnsrOpA:0'), ('colB', 'tnsrOpB:0')]
 
         for valid_input_mapping in [valid_op_input, valid_tnsr_input]:
             res = conv.asColumnToTensorNameMap(valid_input_mapping)
             self.assertEqual(valid_input_mapping_result, res)
 
     def test_tf_output_mapping_converter(self):
-        valid_tnsr_output = {'tnsrOpA:0': 'colA',
-                             'tnsrOpB:0': 'colB'}
-        valid_op_output = {'tnsrOpA': 'colA',
-                           'tnsrOpB': 'colB'}
-        valid_output_mapping_result = [('tnsrOpA:0', 'colA'),
-                                       ('tnsrOpB:0', 'colB')]
+        valid_tnsr_output = {'tnsrOpA:0': 'colA', 'tnsrOpB:0': 'colB'}
+        valid_op_output = {'tnsrOpA': 'colA', 'tnsrOpB': 'colB'}
+        valid_output_mapping_result = [('tnsrOpA:0', 'colA'), ('tnsrOpB:0', 'colB')]
 
         for valid_output_mapping in [valid_tnsr_output, valid_op_output]:
             res = conv.asTensorNameToColumnMap(valid_output_mapping)
             self.assertEqual(valid_output_mapping_result, res)
-
-
-    def test_invalid_input_mapping(self):
-        for invalid in [['a1', 'b2'], ('c3', 'd4'), [('a', 1), ('b', 2)],
-                        {1: 'a', 2.0: 'b'}, {'a': 1, 'b': 2.0}]:
-            with self.assertRaises(TypeError):
-                conv.asColumnToTensorNameMap(invalid)
-                conv.asTensorNameToColumnMap(invalid)
-
-        with self.assertRaises(TypeError):
-            # Wrong containter type: only accept dict
-            conv.asColumnToTensorNameMap([('colA', 'tnsrA:0'), ('colB', 'tnsrB:0')])
-            conv.asTensorNameToColumnMap([('colA', 'tnsrA:0'), ('colB', 'tnsrB:0')])
-            conv.asColumnToTensorNameMap([('tnsrA:0', 'colA'), ('tnsrB:0', 'colB')])
-            conv.asTensorNameToColumnMap([('tnsrA:0', 'colA'), ('tnsrB:0', 'colB')])
