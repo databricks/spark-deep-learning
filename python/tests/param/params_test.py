@@ -14,44 +14,73 @@
 #
 from __future__ import absolute_import, division, print_function
 
+from collections import namedtuple
 from six import with_metaclass
 
-from sparkdl.param.converters import SparkDLTypeConverters as conv
+from sparkdl.param.converters import SparkDLTypeConverters
 
 from ..tests import PythonUnitTestCase
 
 
 class TestGenInvalidMeta(type):
-    def __new__(cls, name, bases, attrs):
-        """ implement test cases here """
-        test_cases = [['a1', 'b2'], ('c3', 'd4'), [('a', 1), ('b', 2)]]
+    """
+    Generate one test function for each test case
+    """
 
-        def _check_col2tnsr(case):
-            def impl(self):
-                with self.assertRaises(TypeError):
-                    conv.asColumnToTensorNameMap(case)
-            return impl
+    def __new__(mcs, name, bases, attrs):
+        _add_invalid_col2tnsr_mapping_tests()
+        attrs.update(_TEST_FUNCTIONS_REGISTRY)
+        return super(TestGenInvalidMeta, mcs).__new__(mcs, name, bases, attrs)
 
-        def _check_tnsr2col(case):
-            def impl(self):
-                with self.assertRaises(TypeError):
-                    conv.asTensorNameToColumnMap(case)
-            return impl
 
-        def _add_test_fn(fn_name, fn_impl):
-            fn_impl.__name__ = fn_name
-            attrs[fn_name] = fn_impl
+_TEST_FUNCTIONS_REGISTRY = {}
 
-        for idx, case in enumerate(test_cases):
-            _add_test_fn('test_invalid_col2tnsr_{}'.format(idx),
-                         _check_col2tnsr(case))
-            _add_test_fn('test_invalid_tnsr2col_{}'.format(idx),
-                         _check_tnsr2col(case))
+TestCase = namedtuple('TestCase', ['data', 'reason'])
 
-        return super(TestGenInvalidMeta, cls).__new__(cls, name, bases, attrs)
+
+def _assemble_and_register_test(fn_name, fn_impl, description):
+    fn_impl.__name__ = fn_name
+    fn_impl.__doc__ = 'Auto Test: {}'.format(description)
+    _TEST_FUNCTIONS_REGISTRY[fn_name] = fn_impl
+
+
+def _add_invalid_col2tnsr_mapping_tests():
+    """ implement test cases here """
+    test_cases = [
+        TestCase(data=['a1', 'b2'], reason='required pair but get single element'),
+        TestCase(data=('c3', 'd4'), reason='required pair but get single element'),
+        TestCase(data=[('a', 1), ('b', 2)], reason='only accept dict, but get list'),
+    ]
+
+    # Add tests for `asColumnToTensorNameMap`
+    for idx, test_case in enumerate(test_cases):
+
+        def test_fn_impl(self):
+            with self.assertRaises(TypeError, msg=test_case.reason):
+                SparkDLTypeConverters.asColumnToTensorNameMap(test_case.data)
+
+        test_fn_name = 'test_invalid_col2tnsr_{}'.format(idx)
+        test_fn_impl.__name__ = test_fn_name
+        _desc = 'Test invalid column => tensor name mapping: {}'
+        test_fn_impl.__doc__ = _desc.format(test_case.reason)
+        _TEST_FUNCTIONS_REGISTRY[test_fn_name] = test_fn_impl
+
+    # Add tests for `asTensorNameToColumnMap`
+    for idx, test_case in enumerate(test_cases):
+
+        def test_fn_impl(self):  # pylint: disable=function-redefined
+            with self.assertRaises(TypeError, msg=test_case.reason):
+                SparkDLTypeConverters.asTensorNameToColumnMap(test_case.data)
+
+        test_fn_name = 'test_invalid_tnsr2col_{}'.format(idx)
+        test_fn_impl.__name__ = test_fn_name
+        _desc = 'Test invalid tensor name => column mapping: {}'
+        test_fn_impl.__doc__ = _desc.format(test_case.reason)
+        _TEST_FUNCTIONS_REGISTRY[test_fn_name] = test_fn_impl
 
 
 class ParamsConverterTest(with_metaclass(TestGenInvalidMeta, PythonUnitTestCase)):
+    """ Test MLlib Params introduced in Spark Deep Learning Pipeline """
     # pylint: disable=protected-access
 
     @classmethod
@@ -59,19 +88,21 @@ class ParamsConverterTest(with_metaclass(TestGenInvalidMeta, PythonUnitTestCase)
         print(repr(cls), cls)
 
     def test_tf_input_mapping_converter(self):
+        """ Test valid input mapping conversion """
         valid_tnsr_input = {'colA': 'tnsrOpA:0', 'colB': 'tnsrOpB:0'}
         valid_op_input = {'colA': 'tnsrOpA', 'colB': 'tnsrOpB'}
         valid_input_mapping_result = [('colA', 'tnsrOpA:0'), ('colB', 'tnsrOpB:0')]
 
         for valid_input_mapping in [valid_op_input, valid_tnsr_input]:
-            res = conv.asColumnToTensorNameMap(valid_input_mapping)
+            res = SparkDLTypeConverters.asColumnToTensorNameMap(valid_input_mapping)
             self.assertEqual(valid_input_mapping_result, res)
 
     def test_tf_output_mapping_converter(self):
+        """ Test valid output mapping conversion """
         valid_tnsr_output = {'tnsrOpA:0': 'colA', 'tnsrOpB:0': 'colB'}
         valid_op_output = {'tnsrOpA': 'colA', 'tnsrOpB': 'colB'}
         valid_output_mapping_result = [('tnsrOpA:0', 'colA'), ('tnsrOpB:0', 'colB')]
 
         for valid_output_mapping in [valid_tnsr_output, valid_op_output]:
-            res = conv.asTensorNameToColumnMap(valid_output_mapping)
+            res = SparkDLTypeConverters.asTensorNameToColumnMap(valid_output_mapping)
             self.assertEqual(valid_output_mapping_result, res)
