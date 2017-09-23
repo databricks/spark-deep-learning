@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 """
 Some parts are copied from pyspark.ml.param.shared and some are complementary
 to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being
 private APIs.
 """
-
+import textwrap
 from functools import wraps
 import six
 
@@ -31,6 +30,7 @@ from sparkdl.param.converters import SparkDLTypeConverters
 # Copied from PySpark for backward compatibility.
 # They first appeared in Apache Spark version 2.1.1.
 ########################################################
+
 
 def keyword_only(func):
     """
@@ -55,8 +55,8 @@ class HasInputCol(Params):
     Mixin for param inputCol: input column name.
     """
 
-    inputCol = Param(
-        Params._dummy(), "inputCol", "input column name.", typeConverter=TypeConverters.toString)
+    inputCol = Param(Params._dummy(), "inputCol", "input column name.",
+                     typeConverter=TypeConverters.toString)
 
     def setInputCol(self, value):
         """
@@ -76,8 +76,8 @@ class HasOutputCol(Params):
     Mixin for param outputCol: output column name.
     """
 
-    outputCol = Param(
-        Params._dummy(), "outputCol", "output column name.", typeConverter=TypeConverters.toString)
+    outputCol = Param(Params._dummy(), "outputCol", "output column name.",
+                      typeConverter=TypeConverters.toString)
 
     def __init__(self):
         super(HasOutputCol, self).__init__()
@@ -94,6 +94,7 @@ class HasOutputCol(Params):
         Gets the value of outputCol or its default value.
         """
         return self.getOrDefault(self.outputCol)
+
 
 ########################################################
 # New in sparkdl
@@ -249,9 +250,14 @@ class HasTFHParams(Params):
     """
     Mixin for TensorFlow model hyper-parameters
     """
-    tfHParams = Param(Params._dummy(),
-                      "hparams",
-                      "instance of :class:`tf.contrib.training.HParams`, a key-value map-like object",
+    tfHParams = Param(Params._dummy(), "hparams",
+                      textwrap.dedent("""\
+                      instance of :class:`tf.contrib.training.HParams`, a namespace-like
+                      key-value object, storing parameters to be used to define the final
+                      TensorFlow graph for the Transformer.
+
+                      Currently accepted values are:
+                      - `batch_size`: number of samples evaluated together in inference steps"""),
                       typeConverter=SparkDLTypeConverters.toTFHParams)
 
     def setTFHParams(self, value):
