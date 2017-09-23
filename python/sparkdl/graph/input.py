@@ -21,15 +21,18 @@ import sparkdl.graph.utils as tfx
 
 __all__ = ["TFInputGraph"]
 
+
 class TFInputGraph(object):
     """
     An opaque serializable object containing TensorFlow graph.
 
     [WARNING] This class should not be called by any user code.
     """
+
     def __init__(self):
         raise NotImplementedError(
-            "Please do NOT construct TFInputGraph directly. Instead, use one of the helper functions")
+            "Please do NOT construct TFInputGraph directly. Instead, use one of the helper functions"
+        )
 
     @classmethod
     def _new_obj_internal(cls):
@@ -72,95 +75,86 @@ class TFInputGraph(object):
 
     @classmethod
     def fromCheckpoint(cls, checkpoint_dir, feed_names, fetch_names):
-        return cls._from_checkpoint_impl(checkpoint_dir,
-                                         signature_def_key=None,
-                                         feed_names=feed_names, fetch_names=fetch_names)
+        return _from_checkpoint_impl(checkpoint_dir, signature_def_key=None, feed_names=feed_names,
+                                     fetch_names=fetch_names)
 
     @classmethod
     def fromCheckpointWithSignature(cls, checkpoint_dir, signature_def_key):
         assert signature_def_key is not None
-        return cls._from_checkpoint_impl(checkpoint_dir,
-                                         signature_def_key,
-                                         feed_names=None, fetch_names=None)
+        return _from_checkpoint_impl(checkpoint_dir, signature_def_key, feed_names=None,
+                                     fetch_names=None)
 
     @classmethod
     def fromSavedModel(cls, saved_model_dir, tag_set, feed_names, fetch_names):
-        return cls._from_saved_model_impl(saved_model_dir, tag_set,
-                                          signature_def_key=None,
-                                          feed_names=feed_names, fetch_names=fetch_names)
+        return _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key=None,
+                                      feed_names=feed_names, fetch_names=fetch_names)
 
     @classmethod
     def fromSavedModelWithSignature(cls, saved_model_dir, tag_set, signature_def_key):
         assert signature_def_key is not None
-        return cls._from_saved_model_impl(saved_model_dir, tag_set,
-                                          signature_def_key=signature_def_key,
-                                          feed_names=None, fetch_names=None)
+        return _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key=signature_def_key,
+                                      feed_names=None, fetch_names=None)
 
-    @classmethod
-    def _from_checkpoint_impl(cls,
-                              checkpoint_dir,
-                              signature_def_key=None,
-                              feed_names=None,
-                              fetch_names=None):
-        """
-        Construct a TFInputGraphBuilder from a model checkpoint
-        """
-        assert (feed_names is None) == (fetch_names is None), \
-            'feed_names and fetch_names, if provided must appear together'
-        assert (feed_names is None) != (signature_def_key is None), \
-            'must either provide feed_names or singnature_def_key'
 
-        def import_graph_fn(sess):
-            # Load checkpoint and import the graph
-            with sess.as_default():
-                ckpt_path = tf.train.latest_checkpoint(checkpoint_dir)
+def _from_checkpoint_impl(checkpoint_dir, signature_def_key=None, feed_names=None,
+                          fetch_names=None):
+    """
+    Construct a TFInputGraphBuilder from a model checkpoint
+    """
+    assert (feed_names is None) == (fetch_names is None), \
+        'feed_names and fetch_names, if provided must appear together'
+    assert (feed_names is None) != (signature_def_key is None), \
+        'must either provide feed_names or singnature_def_key'
 
-                # NOTE(phi-dbq): we must manually load meta_graph_def to get the signature_def
-                #                the current `import_graph_def` function seems to ignore
-                #                any signature_def fields in a checkpoint's meta_graph_def.
-                meta_graph_def = meta_graph_pb2.MetaGraphDef()
-                with open("{}.meta".format(ckpt_path), 'rb') as fin:
-                    meta_graph_def.ParseFromString(fin.read())
+    def import_graph_fn(sess):
+        # Load checkpoint and import the graph
+        with sess.as_default():
+            ckpt_path = tf.train.latest_checkpoint(checkpoint_dir)
 
-                saver = tf.train.import_meta_graph(meta_graph_def, clear_devices=True)
-                saver.restore(sess, ckpt_path)
+            # NOTE(phi-dbq): we must manually load meta_graph_def to get the signature_def
+            #                the current `import_graph_def` function seems to ignore
+            #                any signature_def fields in a checkpoint's meta_graph_def.
+            meta_graph_def = meta_graph_pb2.MetaGraphDef()
+            with open("{}.meta".format(ckpt_path), 'rb') as fin:
+                meta_graph_def.ParseFromString(fin.read())
 
-                sig_def = None
-                if signature_def_key is not None:
-                    sig_def = meta_graph_def.signature_def[signature_def_key]
-                    assert sig_def, 'singnature_def_key {} provided, '.format(signature_def_key) + \
-                        'but failed to find it from the meta_graph_def ' + \
-                        'from checkpoint {}'.format(checkpoint_dir)
-
-            return _GinBuilderInfo(sig_def=sig_def)
-
-        return _GinBuilder(import_graph_fn).build(feed_names, fetch_names)
-
-    @classmethod
-    def _from_saved_model_impl(cls, saved_model_dir, tag_set,
-                               signature_def_key=None,
-                               feed_names=None,
-                               fetch_names=None):
-        """
-        Construct a TFInputGraphBuilder from a SavedModel
-        """
-        assert (feed_names is None) == (fetch_names is None), \
-            'feed_names and fetch_names, if provided must appear together'
-        assert (feed_names is None) != (signature_def_key is None), \
-            'must either provide feed_names or singnature_def_key'
-
-        def import_graph_fn(sess):
-            tag_sets = tag_set.split(',')
-            meta_graph_def = tf.saved_model.loader.load(sess, tag_sets, saved_model_dir)
+            saver = tf.train.import_meta_graph(meta_graph_def, clear_devices=True)
+            saver.restore(sess, ckpt_path)
 
             sig_def = None
             if signature_def_key is not None:
-                sig_def = tf.contrib.saved_model.get_signature_def_by_key(
-                    meta_graph_def, signature_def_key)
+                sig_def = meta_graph_def.signature_def[signature_def_key]
+                assert sig_def, 'singnature_def_key {} provided, '.format(signature_def_key) + \
+                    'but failed to find it from the meta_graph_def ' + \
+                    'from checkpoint {}'.format(checkpoint_dir)
 
-            return _GinBuilderInfo(sig_def=sig_def)
+        return _GinBuilderInfo(sig_def=sig_def)
 
-        return _GinBuilder(import_graph_fn).build(feed_names, fetch_names)
+    return _GinBuilder(import_graph_fn).build(feed_names, fetch_names)
+
+
+def _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key=None, feed_names=None,
+                           fetch_names=None):
+    """
+    Construct a TFInputGraphBuilder from a SavedModel
+    """
+    assert (feed_names is None) == (fetch_names is None), \
+        'feed_names and fetch_names, if provided must appear together'
+    assert (feed_names is None) != (signature_def_key is None), \
+        'must either provide feed_names or singnature_def_key'
+
+    def import_graph_fn(sess):
+        tag_sets = tag_set.split(',')
+        meta_graph_def = tf.saved_model.loader.load(sess, tag_sets, saved_model_dir)
+
+        sig_def = None
+        if signature_def_key is not None:
+            sig_def = tf.contrib.saved_model.get_signature_def_by_key(meta_graph_def,
+                                                                      signature_def_key)
+
+        return _GinBuilderInfo(sig_def=sig_def)
+
+    return _GinBuilder(import_graph_fn).build(feed_names, fetch_names)
 
 
 class _GinBuilderInfo(object):
@@ -188,6 +182,7 @@ class _GinBuilderInfo(object):
             tnsr_name = tnsr_info.name
             self.fetch_mapping[sigdef_key] = tnsr_name
             self.fetch_names.append(tnsr_name)
+
 
 class _GinBuilder(object):
     def __init__(self, import_graph_fn, sess=None, graph=None):
