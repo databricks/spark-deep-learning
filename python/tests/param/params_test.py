@@ -22,35 +22,27 @@ from sparkdl.param.converters import SparkDLTypeConverters
 from ..tests import PythonUnitTestCase
 
 
-class TestGenInvalidMeta(type):
+class TestGenMeta(type):
     """
-    Generate one test function for each test case
+    This meta-class add test cases to the main unit-test class.
     """
 
     def __new__(mcs, name, bases, attrs):
         _add_invalid_col2tnsr_mapping_tests()
         attrs.update(_TEST_FUNCTIONS_REGISTRY)
-        return super(TestGenInvalidMeta, mcs).__new__(mcs, name, bases, attrs)
+        return super(TestGenMeta, mcs).__new__(mcs, name, bases, attrs)
 
-
+# Stores test function name mapped to implementation body
 _TEST_FUNCTIONS_REGISTRY = {}
 
 TestCase = namedtuple('TestCase', ['data', 'reason'])
 
 
-def _assemble_and_register_test(fn_name, fn_impl, description):
-    fn_impl.__name__ = fn_name
-    fn_impl.__doc__ = 'Auto Test: {}'.format(description)
-    _TEST_FUNCTIONS_REGISTRY[fn_name] = fn_impl
-
-
 def _add_invalid_col2tnsr_mapping_tests():
-    """ implement test cases here """
-    test_cases = [
-        TestCase(data=['a1', 'b2'], reason='required pair but get single element'),
-        TestCase(data=('c3', 'd4'), reason='required pair but get single element'),
-        TestCase(data=[('a', 1), ('b', 2)], reason='only accept dict, but get list'),
-    ]
+    """ Create a list of test cases and construct individual test functions for each case """
+    test_cases = [TestCase(data=['a1', 'b2'], reason='required pair but get single element'),
+                  TestCase(data=('c3', 'd4'), reason='required pair but get single element'),
+                  TestCase(data=[('a', 1), ('b', 2)], reason='only accept dict, but get list'),]
 
     # Add tests for `asColumnToTensorNameMap`
     for idx, test_case in enumerate(test_cases):
@@ -79,7 +71,7 @@ def _add_invalid_col2tnsr_mapping_tests():
         _TEST_FUNCTIONS_REGISTRY[test_fn_name] = test_fn_impl
 
 
-class ParamsConverterTest(with_metaclass(TestGenInvalidMeta, PythonUnitTestCase)):
+class ParamsConverterTest(with_metaclass(TestGenMeta, PythonUnitTestCase)):
     """ Test MLlib Params introduced in Spark Deep Learning Pipeline """
     # pylint: disable=protected-access
 
