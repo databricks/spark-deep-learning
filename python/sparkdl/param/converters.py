@@ -24,24 +24,33 @@ import sparkdl.utils.keras_model as kmutil
 
 __all__ = ['SparkDLTypeConverters']
 
+def _get_strict_tensor_name(_maybe_tnsr_name):
+    assert isinstance(_maybe_tnsr_name, six.string_types), \
+        "must provide a strict tensor name as input, but got {}".format(type(_maybe_tnsr_name))
+    assert tfx.as_tensor_name(_maybe_tnsr_name) == _maybe_tnsr_name, \
+        "input {} must be a valid tensor name".format(_maybe_tnsr_name)
+    return _maybe_tnsr_name
+
 def _try_convert_tf_tensor_mapping(value, is_key_tf_tensor=True):
     if isinstance(value, dict):
         strs_pair_seq = []
         for k, v in value.items():
+            # Check if the non-tensor value is of string type
+            _non_tnsr_str_val = v if is_key_tf_tensor else k
+            if not isinstance(_non_tnsr_str_val, six.string_types):
+                err_msg = 'expect string type for {}, but got {}'
+                raise TypeError(err_msg.format(_non_tnsr_str_val, type(_non_tnsr_str_val)))
+
+            # Check if the tensor name is actually valid
             try:
                 if is_key_tf_tensor:
-                    _pair = (tfx.as_tensor_name(k), v)
+                    _pair = (_get_strict_tensor_name(k), v)
                 else:
-                    _pair = (k, tfx.as_tensor_name(v))
-            except:
-                err_msg = "Can NOT convert {} (type {}) to tf.Tensor name"
+                    _pair = (k, _get_strict_tensor_name(v))
+            except Exception as exc:
+                err_msg = "Can NOT convert {} (type {}) to tf.Tensor name: {}"
                 _not_tf_op = k if is_key_tf_tensor else v
-                raise TypeError(err_msg.format(_not_tf_op, type(_not_tf_op)))
-
-            str_val = v if is_key_tf_tensor else k
-            if not isinstance(str_val, six.string_types):
-                err_msg = 'expect string type for {}, but got {}'
-                raise TypeError(err_msg.format(str_val, type(str_val)))
+                raise TypeError(err_msg.format(_not_tf_op, type(_not_tf_op), exc))
 
             strs_pair_seq.append(_pair)
 
