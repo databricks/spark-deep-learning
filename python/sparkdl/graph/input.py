@@ -29,6 +29,16 @@ class TFInputGraph(object):
     An opaque object containing TensorFlow graph.
     This object can be serialized.
 
+    .. note:: We recommend constructing this object using one of the class constructor methods.
+
+              - :py:meth:`fromGraph`
+              - :py:meth:`fromGraphDef`
+              - :py:meth:`fromCheckpoint`
+              - :py:meth:`fromCheckpointWithSignature`
+              - :py:meth:`fromSavedModel`
+              - :py:meth:`fromSavedModelWithSignature`
+
+
     When the graph contains serving signatures in which a set of well-known names are associtated
     with their corresponding raw tensor names in the graph, we extract and store them here.
     For example, the TensorFlow saved model may contain the following structure,
@@ -54,25 +64,12 @@ class TFInputGraph(object):
         }}
 
 
-    In this case, we will store the following mappings in the :py:obj:`TFInputGraph` object.
+    In this case, the class will internally store the mapping from signature names to tensor names.
 
     .. code-block:: python
 
-        self.input_tensor_name_from_signature = {'well_known_input_sig': 'tnsrIn:0'}
-        self.output_tensor_name_from_signature = {'well_known_output_sig': 'tnsrOut:0'}
-
-
-    .. warning:: The structure of the object is subject to change.
-
-
-    .. note:: We recommend constructing this object using one of the class constructor methods.
-
-              - :py:meth:`fromGraph`
-              - :py:meth:`fromGraphDef`
-              - :py:meth:`fromCheckpoint`
-              - :py:meth:`fromCheckpointWithSignature`
-              - :py:meth:`fromSavedModel`
-              - :py:meth:`fromSavedModelWithSignature`
+        {'well_known_input_sig': 'tnsrIn:0'}
+        {'well_known_output_sig': 'tnsrOut:0'}
 
 
     :param graph_def: :py:obj:`tf.GraphDef`, a serializable object containing the topology and
