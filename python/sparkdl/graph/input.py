@@ -21,7 +21,7 @@ import sparkdl.graph.utils as tfx
 
 __all__ = ["TFInputGraph"]
 
-# pylint: disable=invalid-name,wrong-spelling-in-docstring,wrong-spelling-in-comment
+# pylint: disable=invalid-name,wrong-spelling-in-comment,wrong-spelling-in-docstring
 
 
 class TFInputGraph(object):
@@ -29,30 +29,87 @@ class TFInputGraph(object):
     An opaque object containing TensorFlow graph.
     This object can be serialized.
 
-    .. warning: This class should not be called by any user code.
+    When the graph contains serving signatures in which a set of well-known names are associtated
+    with their corresponding raw tensor names in the graph, we extract and store them here.
+    For example, the TensorFlow saved model may contain the following structure,
+    so that end users can retrieve the the input tensor via `well_known_input_sig` and
+    the output tensor via `well_known_output_sig` without knowing the actual tensor names a priori.
+
+    .. code-block:: python
+
+        sigdef: {'well_known_prediction_signature':
+        inputs { key: "well_known_input_sig"
+          value {
+            name: "tnsrIn:0"
+            dtype: DT_DOUBLE
+            tensor_shape { dim { size: -1 } dim { size: 17 } }
+            }
+          }
+        outputs { key: "well_known_output_sig"
+          value {
+            name: "tnsrOut:0"
+            dtype: DT_DOUBLE
+            tensor_shape { dim { size: -1 } }
+            }
+        }}
+
+
+    In this case, we will store the following mappings in the :py:obj:`TFInputGraph` object.
+
+    .. code-block:: python
+
+        self.input_tensor_name_from_signature = {'well_known_input_sig': 'tnsrIn:0'}
+        self.output_tensor_name_from_signature = {'well_known_output_sig': 'tnsrOut:0'}
+
+
+    .. warning:: The structure of the object is subject to change.
+
+
+    .. note:: We recommend constructing this object using one of the class constructor methods.
+
+              - :py:meth:`fromGraph`
+              - :py:meth:`fromGraphDef`
+              - :py:meth:`fromCheckpoint`
+              - :py:meth:`fromCheckpointWithSignature`
+              - :py:meth:`fromSavedModel`
+              - :py:meth:`fromSavedModelWithSignature`
+
+
+    :param graph_def: :py:obj:`tf.GraphDef`, a serializable object containing the topology and
+                       computation units of the TensorFlow graph. The graph object is prepared for
+                       inference, i.e. the variables are converted to constants and operations like
+                       BatchNormalization_ are converted to be independent of input batch.
+
+                       .. _BatchNormalization: https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
+
+    :param input_tensor_name_from_signature: dict, signature key names mapped to tensor names.
+                                             Please see the example above.
+    :param output_tensor_name_from_signature: dict, signature key names mapped to tensor names
+                                              Please see the example above.
     """
 
-    def __init__(self):
-        raise NotImplementedError(
-            "Please do NOT build TFInputGraph directly. Instead, use one of the helper functions")
 
-    @classmethod
-    def _new_obj_internal(cls):
-        # pylint: disable=attribute-defined-outside-init
-        obj = object.__new__(cls)
-        # TODO: for (de-)serialization, the class should correspond to a ProtocolBuffer definition.
-        ##============================================================
-        obj.graph_def = None
-        obj.input_tensor_name_from_signature = None
-        obj.output_tensor_name_from_signature = None
-        ##============================================================
-        return obj
+    def __init__(self, graph_def, input_tensor_name_from_signature,
+                 output_tensor_name_from_signature):
+        self.graph_def = graph_def
+        self.input_tensor_name_from_signature = input_tensor_name_from_signature
+        self.output_tensor_name_from_signature = output_tensor_name_from_signature
 
     @classmethod
     def fromGraph(cls, graph, sess, feed_names, fetch_names):
         """
         Construct a TFInputGraph from a in memory `tf.Graph` object.
         The graph might contain variables that are maintained in the provided session.
+        Thus we need an active session in which the graph's variables are initialized or
+        restored. We do not close the session. As a result, this constructor can be used
+        inside a standard TensorFlow session context.
+
+        .. code-block:: python
+
+             with tf.Session() as sess:
+                  graph = import_my_tensorflow_graph(...)
+                  TFInputGraph.fromGraph(graph, sess, ...)
+
         :param graph: `tf.Graph`
         :param feed_names: list, names of the input tensors.
         :param fetch_names: list, names of the output tensors.
@@ -64,8 +121,9 @@ class TFInputGraph(object):
     def fromGraphDef(cls, graph_def, feed_names, fetch_names):
         """
         Construct a TFInputGraph from a tf.GraphDef object.
+
         :param graph_def: `tf.GraphDef`, a serializable object containing the topology and
-                           computation units of the data-flow graph.
+                           computation units of the TensorFlow graph.
         :param feed_names: list, names of the input tensors.
         :param fetch_names: list, names of the output tensors.
         """
@@ -84,10 +142,11 @@ class TFInputGraph(object):
         """
         Construct a TFInputGraph object from a checkpoint, ignore the embedded
         signature_def, if there is any.
+
         :param checkpoint_dir: str, name of the directory containing the TensorFlow graph
                                training checkpoint.
-        :feed_names: list, names of the input tensors.
-        :fetch_names: list, names of the output tensors.
+        :param feed_names: list, names of the input tensors.
+        :param fetch_names: list, names of the output tensors.
         """
         return _from_checkpoint_impl(checkpoint_dir, signature_def_key=None, feed_names=feed_names,
                                      fetch_names=fetch_names)
@@ -98,6 +157,7 @@ class TFInputGraph(object):
         Construct a TFInputGraph object from a checkpoint, using the embedded
         signature_def. Throw error if we cannot find an entry with the `signature_def_key`
         inside the `signature_def`.
+
         :param checkpoint_dir: str, name of the directory containing the TensorFlow graph
                                training checkpoint.
         :param signature_def_key: str, name of the mapping contained inside the `signature_def`
@@ -112,12 +172,13 @@ class TFInputGraph(object):
         """
         Construct a TFInputGraph object from a saved model (`tf.SavedModel`) directory.
         Ignore the the embedded signature_def, if there is any.
+
         :param saved_model_dir: str, name of the directory containing the TensorFlow graph
                                 training checkpoint.
         :param tag_set: str, name of the graph stored in this meta_graph of the saved model
                         that we are interested in using.
-        :feed_names: list, names of the input tensors.
-        :fetch_names: list, names of the output tensors.
+        :param feed_names: list, names of the input tensors.
+        :param fetch_names: list, names of the output tensors.
         """
         return _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key=None,
                                       feed_names=feed_names, fetch_names=fetch_names)
@@ -128,6 +189,7 @@ class TFInputGraph(object):
         Construct a TFInputGraph object from a saved model (`tf.SavedModel`) directory,
         using the embedded signature_def. Throw error if we cannot find an entry with
         the `signature_def_key` inside the `signature_def`.
+
         :param saved_model_dir: str, name of the directory containing the TensorFlow graph
                                 training checkpoint.
         :param tag_set: str, name of the graph stored in this meta_graph of the saved model
@@ -145,10 +207,11 @@ def _from_checkpoint_impl(checkpoint_dir, signature_def_key, feed_names, fetch_n
     Construct a TFInputGraph from a model checkpoint.
     Notice that one should either provide the `signature_def_key` or provide both
     `feed_names` and `fetch_names`. Please set the unprovided values to None.
+
     :param signature_def_key: str, name of the mapping contained inside the `signature_def`
                               from which we retrieve the signature key to tensor names mapping.
-    :feed_names: list, names of the input tensors.
-    :fetch_names: list, names of the output tensors.
+    :param feed_names: list, names of the input tensors.
+    :param fetch_names: list, names of the output tensors.
     """
     assert (feed_names is None) == (fetch_names is None), \
         'feed_names and fetch_names, if provided must appear together'
@@ -184,10 +247,11 @@ def _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key, feed_nam
     Construct a TFInputGraph from a SavedModel.
     Notice that one should either provide the `signature_def_key` or provide both
     `feed_names` and `fetch_names`. Please set the unprovided values to None.
+
     :param signature_def_key: str, name of the mapping contained inside the `signature_def`
                               from which we retrieve the signature key to tensor names mapping.
-    :feed_names: list, names of the input tensors.
-    :fetch_names: list, names of the output tensors.
+    :param feed_names: list, names of the input tensors.
+    :param fetch_names: list, names of the output tensors.
     """
     assert (feed_names is None) == (fetch_names is None), \
         'feed_names and fetch_names, if provided must appear together'
@@ -236,11 +300,8 @@ def _build_with_sig_def(sess, graph, sig_def):
         fetches = [tfx.get_tensor(graph, tnsr_name) for tnsr_name in fetch_names]
         graph_def = tfx.strip_and_freeze_until(fetches, graph, sess)
 
-    gin = TFInputGraph._new_obj_internal()
-    gin.input_tensor_name_from_signature = feed_mapping
-    gin.output_tensor_name_from_signature = fetch_mapping
-    gin.graph_def = graph_def
-    return gin
+    return TFInputGraph(graph_def=graph_def, input_tensor_name_from_signature=feed_mapping,
+                        output_tensor_name_from_signature=fetch_mapping)
 
 
 def _build_with_feeds_fetches(sess, graph, feed_names, fetch_names):
@@ -255,8 +316,5 @@ def _build_with_feeds_fetches(sess, graph, feed_names, fetch_names):
         fetches = [tfx.get_tensor(graph, tnsr_name) for tnsr_name in fetch_names]
         graph_def = tfx.strip_and_freeze_until(fetches, graph, sess)
 
-    gin = TFInputGraph._new_obj_internal()
-    gin.input_tensor_name_from_signature = None
-    gin.output_tensor_name_from_signature = None
-    gin.graph_def = graph_def
-    return gin
+    return TFInputGraph(graph_def=graph_def, input_tensor_name_from_signature=None,
+                        output_tensor_name_from_signature=None)
