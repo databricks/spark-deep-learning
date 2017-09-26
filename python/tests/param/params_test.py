@@ -25,19 +25,19 @@ from ..tests import PythonUnitTestCase
 TestCase = namedtuple('TestCase', ['data', 'description'])
 
 _shared_invalid_test_cases = [
-    TestCase(data=['a1', 'b2'], description='required pair but get single element'),
-    TestCase(data=('c3', 'd4'), description='required pair but get single element'),
-    TestCase(data=[('a', 1), ('b', 2)], description='only accept dict, but get list'),
+    TestCase(data=['a1', 'b2'], description='required pair but got single element'),
+    TestCase(data=('c3', 'd4'), description='required pair but got single element'),
+    TestCase(data=[('a', 1), ('b', 2)], description='only accept dict, but got list'),
     TestCase(data={1: 'a', 2.0: 'b'}, description='wrong mapping type'),
     TestCase(data={'a': 1.0, 'b': 2}, description='wrong mapping type'),
 ]
 _col2tnsr_test_cases = _shared_invalid_test_cases + [
     TestCase(data={'colA': 'tnsrOpA', 'colB': 'tnsrOpB'},
-             description='strict tensor name required'),
+             description='tensor name required'),
 ]
 _tnsr2col_test_cases = _shared_invalid_test_cases + [
     TestCase(data={'tnsrOpA': 'colA', 'tnsrOpB': 'colB'},
-             description='strict tensor name required'),
+             description='tensor name required'),
 ]
 
 class ParamsConverterTest(PythonUnitTestCase):
@@ -64,10 +64,12 @@ class ParamsConverterTest(PythonUnitTestCase):
 
     @parameterized.expand(_col2tnsr_test_cases)
     def test_invalid_input_mapping(self, data, description):
+        """ Test invalid column name to tensor name mapping """
         with self.assertRaises(TypeError, msg=description):
             SparkDLTypeConverters.asColumnToTensorNameMap(data)
 
     @parameterized.expand(_tnsr2col_test_cases)
     def test_invalid_output_mapping(self, data, description):
+        """ Test invalid tensor name to column name mapping """
         with self.assertRaises(TypeError, msg=description):
             SparkDLTypeConverters.asTensorNameToColumnMap(data)
