@@ -54,10 +54,10 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                   typeConverter=SparkDLTypeConverters.toTFGraph)
     inputTensor = Param(Params._dummy(), "inputTensor",
                         "A TensorFlow tensor object or name representing the input image",
-                        typeConverter=SparkDLTypeConverters.toStringOrTFTensor)
+                        typeConverter=SparkDLTypeConverters.toTFTensorName)
     outputTensor = Param(Params._dummy(), "outputTensor",
                          "A TensorFlow tensor object or name representing the output",
-                         typeConverter=SparkDLTypeConverters.toStringOrTFTensor)
+                         typeConverter=SparkDLTypeConverters.toTFTensorName)
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, graph=None,
@@ -99,18 +99,12 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         return self.getOrDefault(self.graph)
 
     def getInputTensor(self):
-        tensor_or_name = self.getOrDefault(self.inputTensor)
-        if isinstance(tensor_or_name, tf.Tensor):
-            return tensor_or_name
-        else:
-            return self.getGraph().get_tensor_by_name(tensor_or_name)
+        tensor_name = self.getOrDefault(self.inputTensor)
+        return self.getGraph().get_tensor_by_name(tensor_name)
 
     def getOutputTensor(self):
-        tensor_or_name = self.getOrDefault(self.outputTensor)
-        if isinstance(tensor_or_name, tf.Tensor):
-            return tensor_or_name
-        else:
-            return self.getGraph().get_tensor_by_name(tensor_or_name)
+        tensor_name = self.getOrDefault(self.outputTensor)
+        return self.getGraph().get_tensor_by_name(tensor_name)
 
     def _transform(self, dataset):
         graph = self.getGraph()
