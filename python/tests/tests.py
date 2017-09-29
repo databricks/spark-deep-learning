@@ -30,7 +30,8 @@ from pyspark.sql import SQLContext
 from pyspark.sql import SparkSession
 
 class PythonUnitTestCase(unittest.TestCase):
-    # Just the plain test unittest.TestCase, but won't have to do import check
+    # We try to use unittest2 for python 2.6 or earlier
+    # This class is created to avoid replicating this logic in various places.
     pass
 
 class SparkDLTestCase(unittest.TestCase):

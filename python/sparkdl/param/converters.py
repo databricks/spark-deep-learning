@@ -13,29 +13,36 @@
 # limitations under the License.
 #
 
+# pylint: disable=wrong-spelling-in-docstring,invalid-name,import-error
+
+""" SparkDLTypeConverters
+Type conversion utilities for definition Spark Deep Learning related MLlib `Params`.
+"""
+
 import six
 
 import tensorflow as tf
 
 from pyspark.ml.param import TypeConverters
 
-import sparkdl.graph.utils as tfx
 import sparkdl.utils.keras_model as kmutil
 
 __all__ = ['SparkDLTypeConverters']
-
 
 class SparkDLTypeConverters(object):
     """
     .. note:: DeveloperApi
 
-    Factory methods for common type conversion functions for :py:func:`Param.typeConverter`.
+    Factory methods for type conversion functions for :py:func:`Param.typeConverter`.
     These methods are similar to :py:class:`spark.ml.param.TypeConverters`.
     They provide support for the `Params` types introduced in Spark Deep Learning Pipelines.
     """
 
     @staticmethod
     def toTFGraph(value):
+        """
+        Convert a value to a :py:obj:`tf.Graph` object, if possible.
+        """
         if not isinstance(value, tf.Graph):
             raise TypeError("Could not convert %s to tf.Graph" % type(value))
         return value
@@ -50,7 +57,7 @@ class SparkDLTypeConverters(object):
             err_msg = "Could not convert [type {}] {} to column name to tf.Tensor name mapping"
             raise TypeError(err_msg.format(type(value), value))
 
-        # Convertion logic after quick type check
+        # Conversion logic after quick type check
         strs_pair_seq = []
         for _maybe_col_name, _maybe_tnsr_name in value.items():
             # Check if the non-tensor value is of string type
@@ -71,7 +78,7 @@ class SparkDLTypeConverters(object):
             err_msg = "Could not convert [type {}] {} to tf.Tensor name to column name mapping"
             raise TypeError(err_msg.format(type(value), value))
 
-        # Convertion logic after quick type check
+        # Conversion logic after quick type check
         strs_pair_seq = []
         for _maybe_tnsr_name, _maybe_col_name in value.items():
             # Check if the non-tensor value is of string type
@@ -113,6 +120,7 @@ class SparkDLTypeConverters(object):
         """
 
         def converter(value):
+            """ Implementing the conversion logic """
             if value not in supportedList:
                 err_msg = "[type {}] {} is not in the supported list: {}"
                 raise TypeError(err_msg.format(type(value), str(value), supportedList))
