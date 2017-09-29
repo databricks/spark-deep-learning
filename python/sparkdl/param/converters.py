@@ -143,8 +143,9 @@ class SparkDLTypeConverters(object):
 
 def _check_is_tensor_name(_maybe_tnsr_name):
     """ Check if the input is a valid tensor name """
-    assert isinstance(_maybe_tnsr_name, six.string_types), \
-        "expect tensor name to be of string type, but got [type {}]".format(type(_maybe_tnsr_name))
+    if not isinstance(_maybe_tnsr_name, six.string_types):
+        err_msg = "expect tensor name to be of string type, but got [type {}]"
+        raise TypeError(err_msg.format(type(_maybe_tnsr_name)))
 
     # The check is taken from TensorFlow's NodeDef protocol buffer.
     # https://github.com/tensorflow/tensorflow/blob/r1.3/tensorflow/core/framework/node_def.proto#L21-L25
