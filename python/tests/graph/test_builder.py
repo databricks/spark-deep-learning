@@ -78,15 +78,15 @@ class GraphFunctionWithIsolatedSessionTest(SparkDLTestCase):
             z = tf.add(x, 3, name='z')
 
             g = issn.graph
-            self.assertEqual(tfx.get_tensor(g, z), z)
-            self.assertEqual(tfx.get_tensor(g, x), x)
-            self.assertEqual(g.get_tensor_by_name("x:0"), tfx.get_tensor(g, x))
-            self.assertEqual("x:0", tfx.tensor_name(g, x))
-            self.assertEqual(g.get_operation_by_name("x"), tfx.get_op(g, x))
-            self.assertEqual("x", tfx.op_name(g, x))
-            self.assertEqual("z", tfx.op_name(g, z))
-            self.assertEqual(tfx.tensor_name(g, z), "z:0")
-            self.assertEqual(tfx.tensor_name(g, x), "x:0")
+            self.assertEqual(tfx.get_tensor(z, g), z)
+            self.assertEqual(tfx.get_tensor(x, g), x)
+            self.assertEqual(g.get_tensor_by_name("x:0"), tfx.get_tensor(x, g))
+            self.assertEqual("x:0", tfx.tensor_name(x, g))
+            self.assertEqual(g.get_operation_by_name("x"), tfx.get_op(x, g))
+            self.assertEqual("x", tfx.op_name(x, g))
+            self.assertEqual("z", tfx.op_name(z, g))
+            self.assertEqual(tfx.tensor_name(z, g), "z:0")
+            self.assertEqual(tfx.tensor_name(x, g), "x:0")
 
     def test_import_export_graph_function(self):
         """ Function import and export must be consistent """

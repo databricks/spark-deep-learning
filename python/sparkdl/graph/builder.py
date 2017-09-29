@@ -88,8 +88,8 @@ class IsolatedSession(object):
         else:
             gdef = self.graph.as_graph_def(add_shapes=True)
         return GraphFunction(graph_def=gdef,
-                             input_names=[tfx.validated_input(self.graph, elem) for elem in inputs],
-                             output_names=[tfx.validated_output(self.graph, elem) for elem in outputs])
+                             input_names=[tfx.validated_input(elem, self.graph) for elem in inputs],
+                             output_names=[tfx.validated_output(elem, self.graph) for elem in outputs])
 
     def importGraphFunction(self, gfn, input_map=None, prefix="GFN-IMPORT", **gdef_kargs):
         """
@@ -131,8 +131,8 @@ class IsolatedSession(object):
                             return_elements=gfn.output_names,
                             name=scope_name,
                             **gdef_kargs)
-        feeds = [tfx.get_tensor(self.graph, name) for name in input_names]
-        fetches = [tfx.get_tensor(self.graph, name) for name in output_names]
+        feeds = [tfx.get_tensor(name, self.graph) for name in input_names]
+        fetches = [tfx.get_tensor(name, self.graph) for name in output_names]
         return (feeds, fetches)
 
 
@@ -234,7 +234,7 @@ class GraphFunction(object):
             _, first_gfn = functions[0]
             feeds, _ = issn.importGraphFunction(first_gfn, prefix='')
             for tnsr in feeds:
-                name = tfx.op_name(issn.graph, tnsr)
+                name = tfx.op_name(tnsr, issn.graph)
                 first_input_info.append((tnsr.dtype, tnsr.shape, name))
             # TODO: make sure that this graph is not reused to prevent name conflict
             # Report error if the graph is not manipulated by anyone else
