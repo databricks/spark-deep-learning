@@ -40,7 +40,7 @@ def validated_graph(graph):
     assert isinstance(graph, tf.Graph), 'must provide tf.Graph, but get {}'.format(type(graph))
     return graph
 
-def get_shape(graph, tfobj_or_name):
+def get_shape(tfobj_or_name, graph):
     """
     Return the shape of the tensor as a list
 
@@ -48,10 +48,10 @@ def get_shape(graph, tfobj_or_name):
     :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
     graph = validated_graph(graph)
-    _shape = get_tensor(graph, tfobj_or_name).get_shape().as_list()
+    _shape = get_tensor(tfobj_or_name, graph).get_shape().as_list()
     return [-1 if x is None else x for x in _shape]
 
-def get_op(graph, tfobj_or_name):
+def get_op(tfobj_or_name, graph):
     """
     Get a tf.Operation object
 
@@ -65,14 +65,14 @@ def get_op(graph, tfobj_or_name):
     if isinstance(tfobj_or_name, tf.Tensor):
         name = tfobj_or_name.name
     if not isinstance(name, six.string_types):
-        raise TypeError('invalid op request for {} of {}'.format(name, type(name)))
-    _op_name = as_op_name(name)
+        raise TypeError('invalid op request for [type {}] {}'.format(type(name), name))
+    _op_name = op_name(name, graph=None)
     op = graph.get_operation_by_name(_op_name)
     assert op is not None, \
         'cannot locate op {} in current graph'.format(_op_name)
     return op
 
-def get_tensor(graph, tfobj_or_name):
+def get_tensor(tfobj_or_name, graph):
     """
     Get a tf.Tensor object
 
@@ -87,13 +87,13 @@ def get_tensor(graph, tfobj_or_name):
         name = tfobj_or_name.name
     if not isinstance(name, six.string_types):
         raise TypeError('invalid tensor request for {} of {}'.format(name, type(name)))
-    _tensor_name = as_tensor_name(name)
+    _tensor_name = tensor_name(name, graph=None)
     tnsr = graph.get_tensor_by_name(_tensor_name)
     assert tnsr is not None, \
         'cannot locate tensor {} in current graph'.format(_tensor_name)
     return tnsr
 
-def as_tensor_name(tfobj_or_name):
+def tensor_name(tfobj_or_name, graph=None):
     """
     Derive tf.Tensor name from an op/tensor name.
     If the input is a name, we do not check if the tensor exist
@@ -101,6 +101,10 @@ def as_tensor_name(tfobj_or_name):
 
     :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
+    # If `graph` is provided, directly get the graph operation
+    if graph is not None:
+        return get_tensor(tfobj_or_name, graph).name
+    # If `graph` is absent, check if other cases
     if isinstance(tfobj_or_name, six.string_types):
         # If input is a string, assume it is a name and infer the corresponding tensor name.
         # WARNING: this depends on TensorFlow's tensor naming convention
@@ -111,12 +115,11 @@ def as_tensor_name(tfobj_or_name):
             name += ":0"
         return name
     elif hasattr(tfobj_or_name, 'graph'):
-        tfobj = tfobj_or_name
-        return get_tensor(tfobj.graph, tfobj).name
+        return get_tensor(tfobj_or_name, tfobj_or_name.graph).name
     else:
         raise TypeError('invalid tf.Tensor name query type {}'.format(type(tfobj_or_name)))
 
-def as_op_name(tfobj_or_name):
+def op_name(tfobj_or_name, graph=None):
     """
     Derive tf.Operation name from an op/tensor name.
     If the input is a name, we do not check if the operation exist
@@ -124,6 +127,10 @@ def as_op_name(tfobj_or_name):
 
     :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
+    # If `graph` is provided, directly get the graph operation
+    if graph is not None:
+        return get_op(tfobj_or_name, graph).name
+    # If `graph` is absent, check if other cases
     if isinstance(tfobj_or_name, six.string_types):
         # If input is a string, assume it is a name and infer the corresponding operation name.
         # WARNING: this depends on TensorFlow's operation naming convention
@@ -132,32 +139,11 @@ def as_op_name(tfobj_or_name):
         assert len(name_parts) <= 2, name_parts
         return name_parts[0]
     elif hasattr(tfobj_or_name, 'graph'):
-        tfobj = tfobj_or_name
-        return get_op(tfobj.graph, tfobj).name
+        return get_op(tfobj_or_name, tfobj_or_name.graph).name
     else:
         raise TypeError('invalid tf.Operation name query type {}'.format(type(tfobj_or_name)))
 
-def op_name(graph, tfobj_or_name):
-    """
-    Get the name of a tf.Operation
-
-    :param graph: tf.Graph, a TensorFlow Graph object
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
-    """
-    graph = validated_graph(graph)
-    return get_op(graph, tfobj_or_name).name
-
-def tensor_name(graph, tfobj_or_name):
-    """
-    Get the name of a tf.Tensor
-
-    :param graph: tf.Graph, a TensorFlow Graph object
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
-    """
-    graph = validated_graph(graph)
-    return get_tensor(graph, tfobj_or_name).name
-
-def validated_output(graph, tfobj_or_name):
+def validated_output(tfobj_or_name, graph):
     """
     Validate and return the output names useable GraphFunction
 
@@ -165,9 +151,9 @@ def validated_output(graph, tfobj_or_name):
     :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
     graph = validated_graph(graph)
-    return op_name(graph, tfobj_or_name)
+    return op_name(tfobj_or_name, graph)
 
-def validated_input(graph, tfobj_or_name):
+def validated_input(tfobj_or_name, graph):
     """
     Validate and return the input names useable GraphFunction
 
@@ -175,7 +161,7 @@ def validated_input(graph, tfobj_or_name):
     :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
     graph = validated_graph(graph)
-    name = op_name(graph, tfobj_or_name)
+    name = op_name(tfobj_or_name, graph)
     op = graph.get_operation_by_name(name)
     assert 'Placeholder' == op.type, \
         ('input must be Placeholder, but get', op.type)
@@ -202,7 +188,7 @@ def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
     gdef_frozen = tf.graph_util.convert_variables_to_constants(
         sess,
         graph.as_graph_def(add_shapes=True),
-        [op_name(graph, tnsr) for tnsr in fetches])
+        [op_name(tnsr, graph) for tnsr in fetches])
 
     if should_close_session:
         sess.close()
