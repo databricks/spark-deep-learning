@@ -292,9 +292,9 @@ def _build_with_sig_def(sess, graph, sig_def):
             fetch_names.append(tnsr_name)
 
         for tnsr_name in feed_names:
-            assert tfx.get_op(graph, tnsr_name), \
+            assert tfx.get_op(tnsr_name, graph), \
                 'requested tensor {} but found none in graph {}'.format(tnsr_name, graph)
-        fetches = [tfx.get_tensor(graph, tnsr_name) for tnsr_name in fetch_names]
+        fetches = [tfx.get_tensor(tnsr_name, graph) for tnsr_name in fetch_names]
         graph_def = tfx.strip_and_freeze_until(fetches, graph, sess)
 
     return TFInputGraph(graph_def=graph_def, input_tensor_name_from_signature=feed_mapping,
@@ -308,9 +308,9 @@ def _build_with_feeds_fetches(sess, graph, feed_names, fetch_names):
 
     with sess.as_default(), graph.as_default():
         for tnsr_name in feed_names:
-            assert tfx.get_op(graph, tnsr_name), \
+            assert tfx.get_op(tnsr_name, graph), \
                 'requested tensor {} but found none in graph {}'.format(tnsr_name, graph)
-        fetches = [tfx.get_tensor(graph, tnsr_name) for tnsr_name in fetch_names]
+        fetches = [tfx.get_tensor(tnsr_name, graph) for tnsr_name in fetch_names]
         graph_def = tfx.strip_and_freeze_until(fetches, graph, sess)
 
     return TFInputGraph(graph_def=graph_def, input_tensor_name_from_signature=None,

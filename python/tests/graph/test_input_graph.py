@@ -87,14 +87,14 @@ class TFInputGraphTest(PythonUnitTestCase):
             # Build test graph and transformers from here
             yield sess
 
-            ref_feed = tfx.get_tensor(graph, self.input_op_name)
-            ref_fetch = tfx.get_tensor(graph, self.output_op_name)
+            ref_feed = tfx.get_tensor(self.input_op_name, graph)
+            ref_fetch = tfx.get_tensor(self.output_op_name, graph)
 
             def check_input_graph(tgt_gdef, test_idx):
                 namespace = 'TEST_TGT_NS{:03d}'.format(test_idx)
                 tf.import_graph_def(tgt_gdef, name=namespace)
-                tgt_feed = tfx.get_tensor(graph, '{}/{}'.format(namespace, self.input_op_name))
-                tgt_fetch = tfx.get_tensor(graph, '{}/{}'.format(namespace, self.output_op_name))
+                tgt_feed = tfx.get_tensor('{}/{}'.format(namespace, self.input_op_name), graph)
+                tgt_fetch = tfx.get_tensor('{}/{}'.format(namespace, self.output_op_name), graph)
 
                 for _ in range(10):
                     local_data = np.random.randn(31, self.vec_size)
