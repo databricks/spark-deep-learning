@@ -25,13 +25,13 @@ class TFeXtensionGraphUtilsTest(PythonUnitTestCase):
         for tnsr_idx in range(17):
             op_name = 'someOp'
             tnsr_name = '{}:{}'.format(op_name, tnsr_idx)
-            self.assertEqual(op_name, tfx.as_op_name(tnsr_name))
-            self.assertEqual(tnsr_name, tfx.as_tensor_name(tnsr_name))
+            self.assertEqual(op_name, tfx.op_name(tnsr_name))
+            self.assertEqual(tnsr_name, tfx.tensor_name(tnsr_name))
 
         with self.assertRaises(TypeError):
             for wrong_value in [7, 1.2, tf.Graph()]:
-                tfx.as_op_name(wrong_value)
-                tfx.as_tensor_name(wrong_value)
+                tfx.op_name(wrong_value)
+                tfx.tensor_name(wrong_value)
 
     def test_get_graph_elements(self):
         op_name = 'someConstOp'
@@ -39,11 +39,11 @@ class TFeXtensionGraphUtilsTest(PythonUnitTestCase):
         tnsr = tf.constant(1427.08, name=op_name)
         graph = tnsr.graph
 
-        self.assertEqual(op_name, tfx.as_op_name(tnsr))
-        self.assertEqual(op_name, tfx.op_name(graph, tnsr))
-        self.assertEqual(tnsr_name, tfx.as_tensor_name(tnsr))
-        self.assertEqual(tnsr_name, tfx.tensor_name(graph, tnsr))
-        self.assertEqual(tnsr, tfx.get_tensor(graph, tnsr))
-        self.assertEqual(tnsr.op, tfx.get_op(graph, tnsr))
-        self.assertEqual(graph, tfx.get_op(graph, tnsr).graph)
-        self.assertEqual(graph, tfx.get_tensor(graph, tnsr).graph)
+        self.assertEqual(op_name, tfx.op_name(tnsr))
+        self.assertEqual(op_name, tfx.op_name(tnsr, graph))
+        self.assertEqual(tnsr_name, tfx.tensor_name(tnsr))
+        self.assertEqual(tnsr_name, tfx.tensor_name(tnsr, graph))
+        self.assertEqual(tnsr, tfx.get_tensor(tnsr, graph))
+        self.assertEqual(tnsr.op, tfx.get_op(tnsr, graph))
+        self.assertEqual(graph, tfx.get_op(tnsr, graph).graph)
+        self.assertEqual(graph, tfx.get_tensor(tnsr, graph).graph)

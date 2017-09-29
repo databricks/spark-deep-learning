@@ -33,7 +33,7 @@ def makeGraphUDF(graph, udf_name, fetches, feeds_to_fields_map=None, blocked=Fal
     .. code-block:: python
 
         from sparkdl.graph.tensorframes_udf import makeUDF
-        
+
         with IsolatedSession() as issn:
             x = tf.placeholder(tf.double, shape=[], name="input_x")
             z = tf.add(x, 3, name='z')
@@ -45,7 +45,7 @@ def makeGraphUDF(graph, udf_name, fetches, feeds_to_fields_map=None, blocked=Fal
 
         df = spark.createDataFrame([Row(xCol=float(x)) for x in range(100)])
         df.createOrReplaceTempView("my_float_table")
-        spark.sql("select my_tensorflow_udf(xCol) as zCol from my_float_table").show()            
+        spark.sql("select my_tensorflow_udf(xCol) as zCol from my_float_table").show()
 
     :param graph: :py:class:`tf.Graph`, a TensorFlow Graph
     :param udf_name: str, name of the SQL UDF
@@ -77,18 +77,18 @@ def makeGraphUDF(graph, udf_name, fetches, feeds_to_fields_map=None, blocked=Fal
     tfs.core._add_graph(graph, jvm_builder)
 
     # Obtain the fetches and their shapes
-    fetch_names = [tfx.tensor_name(graph, fetch) for fetch in fetches]
-    fetch_shapes = [tfx.get_shape(graph, fetch) for fetch in fetches]
+    fetch_names = [tfx.tensor_name(fetch, graph) for fetch in fetches]
+    fetch_shapes = [tfx.get_shape(fetch, graph) for fetch in fetches]
 
     # Traverse the graph nodes and obtain all the placeholders and their shapes
     placeholder_names = []
     placeholder_shapes = []
     for node in graph.as_graph_def(add_shapes=True).node:
         if len(node.input) == 0 and str(node.op) == 'Placeholder':
-            tnsr_name = tfx.tensor_name(graph, node.name)
+            tnsr_name = tfx.tensor_name(node.name, graph)
             tnsr = graph.get_tensor_by_name(tnsr_name)
             try:
-                tnsr_shape = tfx.get_shape(graph, tnsr)
+                tnsr_shape = tfx.get_shape(tnsr, graph)
                 placeholder_names.append(tnsr_name)
                 placeholder_shapes.append(tnsr_shape)
             except ValueError:
@@ -98,7 +98,7 @@ def makeGraphUDF(graph, udf_name, fetches, feeds_to_fields_map=None, blocked=Fal
     jvm_builder.shape(fetch_names + placeholder_names, fetch_shapes + placeholder_shapes)
     jvm_builder.fetches(fetch_names)
     # Passing feeds to TensorFrames
-    placeholder_op_names = [tfx.op_name(graph, name) for name in placeholder_names]
+    placeholder_op_names = [tfx.op_name(name, graph) for name in placeholder_names]
     # Passing the graph input to DataFrame column mapping and additional placeholder names
     tfs.core._add_inputs(jvm_builder, feeds_to_fields_map, placeholder_op_names)
 
