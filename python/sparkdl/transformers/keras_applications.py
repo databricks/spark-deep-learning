@@ -109,4 +109,3 @@ KERAS_APPLICATION_MODELS = {
     "InceptionV3": InceptionV3Model,
     "Xception": XceptionModel
 }
-
