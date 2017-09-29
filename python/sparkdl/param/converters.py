@@ -92,14 +92,15 @@ class SparkDLTypeConverters(object):
 
     @staticmethod
     def toTFTensorName(value):
-        """ Convert a value to a str or a :py:obj:`tf.Tensor` object, if possible. """
+        """ Convert a value to a :py:obj:`tf.Tensor` name, if possible. """
         if isinstance(value, tf.Tensor):
             return value.name
         try:
-            _check_is_tensor_name(value)
-            return TypeConverters.toString(value)
+            _maybe_tnsr_name = TypeConverters.toString(value)
+            _check_is_tensor_name(_maybe_tnsr_name)
+            return _maybe_tnsr_name
         except Exception as exc:
-            err_msg = "Could not convert [type {}] {} to tf.Tensor or str. {}"
+            err_msg = "Could not convert [type {}] {} to tf.Tensor name. {}"
             raise TypeError(err_msg.format(type(value), value, exc))
 
     @staticmethod
@@ -142,19 +143,19 @@ class SparkDLTypeConverters(object):
 
 def _check_is_tensor_name(_maybe_tnsr_name):
     """ Check if the input is a valid tensor name """
-    try:
-        assert isinstance(_maybe_tnsr_name, six.string_types), \
-            "must provide a strict tensor name as input, but got {}".format(type(_maybe_tnsr_name))
+    assert isinstance(_maybe_tnsr_name, six.string_types), \
+        "expect tensor name to be of string type, but got [type {}]".format(type(_maybe_tnsr_name))
 
-        # The check is taken from TensorFlow's NodeDef protocol buffer.
-        # https://github.com/tensorflow/tensorflow/blob/r1.3/tensorflow/core/framework/node_def.proto#L21-L25
+    # The check is taken from TensorFlow's NodeDef protocol buffer.
+    # https://github.com/tensorflow/tensorflow/blob/r1.3/tensorflow/core/framework/node_def.proto#L21-L25
+    try:
         _, src_idx = _maybe_tnsr_name.split(":")
         _ = int(src_idx)
-    except Exception as exc:
-        err_msg = "Can NOT convert [type {}] {} to tf.Tensor name: {}"
-        raise TypeError(err_msg.format(type(_maybe_tnsr_name), _maybe_tnsr_name, exc))
-    else:
-        return _maybe_tnsr_name
+    except Exception:
+        err_msg = "Tensor name must be of type <op_name>:<index>, but got {}"
+        raise TypeError(err_msg.format(_maybe_tnsr_name))
+
+    return _maybe_tnsr_name
 
 
 def _check_is_str(_maybe_col_name):

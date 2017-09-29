@@ -28,6 +28,12 @@ import sparkdl.transformers.utils as utils
 import sparkdl.utils.jvmapi as JVMAPI
 import sparkdl.graph.utils as tfx
 
+__all__ = ['TFImageTransformer']
+
+IMAGE_INPUT_TENSOR_NAME = tfx.as_tensor_name(utils.IMAGE_INPUT_PLACEHOLDER_NAME)
+USER_GRAPH_NAMESPACE = 'given'
+NEW_OUTPUT_PREFIX = 'sdl_flattened'
+
 class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     """
     Applies the Tensorflow graph to the image column in DataFrame.
@@ -47,9 +53,6 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
               since a new session is created inside this transformer.
     """
 
-    USER_GRAPH_NAMESPACE = 'given'
-    NEW_OUTPUT_PREFIX = 'sdl_flattened'
-
     graph = Param(Params._dummy(), "graph", "A TensorFlow computation graph",
                   typeConverter=SparkDLTypeConverters.toTFGraph)
     inputTensor = Param(Params._dummy(), "inputTensor",
@@ -61,28 +64,28 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, graph=None,
-                 inputTensor=utils.IMAGE_INPUT_PLACEHOLDER_NAME, outputTensor=None,
+                 inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                  outputMode="vector"):
         """
         __init__(self, inputCol=None, outputCol=None, graph=None,
-                 inputTensor=utils.IMAGE_INPUT_PLACEHOLDER_NAME, outputTensor=None,
+                 inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                  outputMode="vector")
         """
         super(TFImageTransformer, self).__init__()
-        self._setDefault(inputTensor=utils.IMAGE_INPUT_PLACEHOLDER_NAME)
-        self._setDefault(outputMode="vector")
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
     def setParams(self, inputCol=None, outputCol=None, graph=None,
-                  inputTensor=utils.IMAGE_INPUT_PLACEHOLDER_NAME, outputTensor=None,
+                  inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                   outputMode="vector"):
         """
         setParams(self, inputCol=None, outputCol=None, graph=None,
-                  inputTensor=utils.IMAGE_INPUT_PLACEHOLDER_NAME, outputTensor=None,
+                  inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                   outputMode="vector")
         """
+        self._setDefault(inputTensor=IMAGE_INPUT_TENSOR_NAME)
+        self._setDefault(outputMode="vector")
         kwargs = self._input_kwargs
         return self._set(**kwargs)
 
@@ -179,7 +182,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
             # Add on the original graph
             tf.import_graph_def(gdef, input_map={input_tensor_name: image_reshaped_expanded},
                                 return_elements=[self.getOutputTensor().name],
-                                name=self.USER_GRAPH_NAMESPACE)
+                                name=USER_GRAPH_NAMESPACE)
 
             # Flatten the output for tensorframes
             output_node = g.get_tensor_by_name(self._getOriginalOutputTensorName())
@@ -198,10 +201,10 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         return g
 
     def _getOriginalOutputTensorName(self):
-        return self.USER_GRAPH_NAMESPACE + '/' + self.getOutputTensor().name
+        return USER_GRAPH_NAMESPACE + '/' + self.getOutputTensor().name
 
     def _getFinalOutputTensorName(self):
-        return self.NEW_OUTPUT_PREFIX + '_' + self.getOutputTensor().name
+        return NEW_OUTPUT_PREFIX + '_' + self.getOutputTensor().name
 
     def _getFinalOutputOpName(self):
         return tfx.as_op_name(self._getFinalOutputTensorName())
