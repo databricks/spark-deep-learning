@@ -53,10 +53,12 @@ class TestGenBase(object):
         self.test_cases = []
         self.input_graphs = []
         # Build a temporary directory, which might or might not be used by the test
-        self.model_output_root = tempfile.mkdtemp()
+        self.saved_model_root = tempfile.mkdtemp()
+        self.checkpoint_root = tempfile.mkdtemp()
 
     def tear_down_env(self):
-        shutil.rmtree(self.model_output_root, ignore_errors=True)
+        shutil.rmtree(self.saved_model_root, ignore_errors=True)
+        shutil.rmtree(self.checkpoint_root, ignore_errors=True)
 
     def reset_iomap(self, replica=1):
         self.input_mapping = {}
@@ -118,6 +120,9 @@ class TestGenBase(object):
                 res = create_test_result(input_graph.graph_def, test_idx)
                 self.test_cases.append(res)
 
+            # Cleanup the result for next rounds
+            self.input_graphs = []
+
     def register(self, tf_input_graph):
         self.input_graphs.append(tf_input_graph)
 
@@ -125,8 +130,14 @@ class TestGenBase(object):
         raise NotImplementedError("build your graph and test cases here")
 
 
-class GenTestFromGraph(TestGenBase):
+class GenTestCases(TestGenBase):
+
     def build_input_graphs(self):
+        self.build_from_checkpoint()
+        self.build_from_graph()
+        self.build_from_saved_model()
+
+    def build_from_graph(self):
         """ Build TFTransformer from tf.Graph """
         with self.prep_tf_session() as sess:
             # Begin building graph
@@ -140,12 +151,10 @@ class GenTestFromGraph(TestGenBase):
                 TFInputGraph.fromGraphDef(sess.graph.as_graph_def(), self.feed_names,
                                           self.fetch_names))
 
-
-class GenTestFromSavedModel(TestGenBase):
-    def build_input_graphs(self):
+    def build_from_saved_model(self):
         """ Build TFTransformer from saved model """
         # Setup saved model export directory
-        saved_model_dir = os.path.join(self.model_output_root, 'saved_model')
+        saved_model_dir = os.path.join(self.saved_model_root, 'saved_model')
         serving_tag = "serving_tag"
         serving_sigdef_key = 'prediction_signature'
         builder = tf.saved_model.builder.SavedModelBuilder(saved_model_dir)
@@ -187,11 +196,10 @@ class GenTestFromSavedModel(TestGenBase):
             self.register(gin)
 
 
-class GenTestFromCheckpoint(TestGenBase):
-    def build_input_graphs(self):
+    def build_from_checkpoint(self):
         """ Build TFTransformer from a model checkpoint """
         # Build the TensorFlow graph
-        model_ckpt_dir = self.model_output_root
+        model_ckpt_dir = self.checkpoint_root
         ckpt_path_prefix = os.path.join(model_ckpt_dir, 'model_ckpt')
         serving_sigdef_key = 'prediction_signature'
 
@@ -249,10 +257,9 @@ def register(obj):
 
 #========================================================================
 # Register all test objects here
-register(GenTestFromGraph(vec_size=23, test_batch_size=71))
-register(GenTestFromGraph(vec_size=3, test_batch_size=17))
-register(GenTestFromSavedModel(vec_size=13, test_batch_size=39))
-register(GenTestFromCheckpoint(vec_size=13, test_batch_size=39))
+register(GenTestCases(vec_size=23, test_batch_size=71))
+register(GenTestCases(vec_size=13, test_batch_size=71))
+register(GenTestCases(vec_size=5, test_batch_size=71))
 #========================================================================
 
 _ALL_TEST_CASES = []
