@@ -37,19 +37,32 @@ class TestGenBase(object):
         self.vec_size = vec_size
         self.test_batch_size = test_batch_size
 
-        self.input_col = 'dfInputCol'
+        # TensorFlow graph element names
         self.input_op_name = 'tnsrOpIn'
-        self.output_col = 'dfOutputCol'
-        self.output_op_name = 'tnsrOpOut'
-
         self.feed_names = []
+        self.output_op_name = 'tnsrOpOut'
         self.fetch_names = []
+
+        # DataFrame column names
+        self.input_col = 'dfInputCol'
+        self.output_col = 'dfOutputCol'
+
+        # Connecting data from Spark to TensorFlow
         self.input_mapping = {}
         self.output_mapping = {}
+
+        # When testing against multiple graph inputs,
+        # derive new names for the DataFrame columns and TensorFlow graph elements.
         self.reset_iomap(replica=1)
 
-        self.test_cases = []
+        # The basic stage contains the opaque :py:obj:`TFInputGraph` objects
+        # Any derived that override the :py:obj:`build_input_graphs` method will
+        # populate this field.
         self.input_graphs = []
+
+        # Construct final test cases, which will be passed to final test cases
+        self.test_cases = []
+
         # Build a temporary directory, which might or might not be used by the test
         self.saved_model_root = tempfile.mkdtemp()
         self.checkpoint_root = tempfile.mkdtemp()
