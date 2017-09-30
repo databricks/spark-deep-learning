@@ -27,9 +27,9 @@ import tensorflow as tf
 from sparkdl.graph.input import *
 import sparkdl.graph.utils as tfx
 
-
 TestCase = namedtuple('TestCase', ['ref_out', 'tgt_out', 'description'])
 _GinInfo = namedtuple('_GinInfo', ['gin', 'description'])
+
 
 class TestGenBase(object):
     def __init__(self, vec_size=17, test_batch_size=231):
@@ -132,8 +132,8 @@ class TestGenBase(object):
             for test_idx, gin_info in enumerate(self.input_graphs):
                 gdef = gin_info.gin.graph_def
                 ref_out, tgt_out = create_test_result(gdef, test_idx)
-                self.test_cases.append(TestCase(ref_out=ref_out, tgt_out=tgt_out,
-                                                description=gin_info.description))
+                self.test_cases.append(
+                    TestCase(ref_out=ref_out, tgt_out=tgt_out, description=gin_info.description))
 
     def register(self, gin, description):
         self.input_graphs.append(_GinInfo(gin=gin, description=description))
@@ -150,6 +150,7 @@ class GenTestCases(TestGenBase):
     the actual testing method. That is, by overriding :py:meth:`prep_tf_session`,
     the subclass can change the evaluation behavior.
     """
+
     def build_input_graphs(self):
         self.build_from_checkpoint()
         self.build_from_graph()
@@ -194,8 +195,7 @@ class GenTestCases(TestGenBase):
                 inputs=sig_inputs, outputs=sig_outputs)
 
             builder.add_meta_graph_and_variables(
-                sess,
-                [serving_tag], signature_def_map={serving_sigdef_key: serving_sigdef})
+                sess, [serving_tag], signature_def_map={serving_sigdef_key: serving_sigdef})
             builder.save()
 
             # Build the transformer from exported serving model
