@@ -64,12 +64,16 @@ class TestGenBase(object):
         self.test_cases = []
 
         # Build a temporary directory, which might or might not be used by the test
-        self.saved_model_root = tempfile.mkdtemp()
-        self.checkpoint_root = tempfile.mkdtemp()
+        self._temp_dirs = []
+
+    def make_tempdir(self):
+        tmp_dir = tempfile.mkdtemp()
+        self._temp_dirs.append(tmp_dir)
+        return tmp_dir
 
     def tear_down_env(self):
-        shutil.rmtree(self.saved_model_root, ignore_errors=True)
-        shutil.rmtree(self.checkpoint_root, ignore_errors=True)
+        for tmp_dir in self._temp_dirs:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     def reset_iomap(self, replica=1):
         self.input_mapping = {}
@@ -102,6 +106,9 @@ class TestGenBase(object):
         build custom testing behaviors
         """
         # Reset states
+        # In each `prep_tf_session`, the implementation is expected to define ONE graph and
+        # pass all test cases derived from it. We execute the graph and compare the result
+        # with each test case, and return the numerical results.
         self.input_graphs = []
 
         # Build the TensorFlow graph
@@ -173,7 +180,7 @@ class GenTestCases(TestGenBase):
     def build_from_saved_model(self):
         """ Build TFTransformer from saved model """
         # Setup saved model export directory
-        saved_model_dir = os.path.join(self.saved_model_root, 'saved_model')
+        saved_model_dir = os.path.join(self.make_tempdir(), 'saved_model')
         serving_tag = "serving_tag"
         serving_sigdef_key = 'prediction_signature'
         builder = tf.saved_model.builder.SavedModelBuilder(saved_model_dir)
@@ -216,7 +223,7 @@ class GenTestCases(TestGenBase):
     def build_from_checkpoint(self):
         """ Build TFTransformer from a model checkpoint """
         # Build the TensorFlow graph
-        model_ckpt_dir = self.checkpoint_root
+        model_ckpt_dir = self.make_tempdir()
         ckpt_path_prefix = os.path.join(model_ckpt_dir, 'model_ckpt')
         serving_sigdef_key = 'prediction_signature'
 
