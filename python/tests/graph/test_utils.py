@@ -52,14 +52,54 @@ def _gen_valid_tensor_op_objects():
                    description='get op name from tensor (no graph)')
     yield TestCase(data=(op_name, tfx.op_name(tnsr, graph)),
                    description='get op name from tensor (with graph)')
+    yield TestCase(data=(op_name, tfx.op_name(tnsr_name)),
+                   description='get op name from tensor name (no graph)')
+    yield TestCase(data=(op_name, tfx.op_name(tnsr_name, graph)),
+                   description='get op name from tensor name (with graph)')
+    yield TestCase(data=(op_name, tfx.op_name(tnsr.op)),
+                   description='get op name from op (no graph)')
+    yield TestCase(data=(op_name, tfx.op_name(tnsr.op, graph)),
+                   description='get op name from op (with graph)')
+    yield TestCase(data=(op_name, tfx.op_name(op_name)),
+                   description='get op name from op name (no graph)')
+    yield TestCase(data=(op_name, tfx.op_name(op_name, graph)),
+                   description='get op name from op name (with graph)')
+
     yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr)),
                    description='get tensor name from tensor (no graph)')
     yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr, graph)),
                    description='get tensor name from tensor (with graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr_name)),
+                   description='get tensor name from tensor name (no graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr_name, graph)),
+                   description='get tensor name from tensor name (with graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr.op)),
+                   description='get tensor name from op (no graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr.op, graph)),
+                   description='get tensor name from op (with graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr_name)),
+                   description='get tensor name from op name (no graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr_name, graph)),
+                   description='get tensor name from op name (with graph)')
+
     yield TestCase(data=(tnsr, tfx.get_tensor(tnsr, graph)),
-                   description='get tensor from the same tensor (with graph)')
+                   description='get tensor from tensor (with graph)')
+    yield TestCase(data=(tnsr, tfx.get_tensor(tnsr_name, graph)),
+                   description='get tensor from tensor name (with graph)')
+    yield TestCase(data=(tnsr, tfx.get_tensor(tnsr.op, graph)),
+                   description='get tensor from op (with graph)')
+    yield TestCase(data=(tnsr, tfx.get_tensor(op_name, graph)),
+                   description='get tensor from op name (with graph)')
+
     yield TestCase(data=(tnsr.op, tfx.get_op(tnsr, graph)),
                    description='get op from tensor (with graph)')
+    yield TestCase(data=(tnsr.op, tfx.get_op(tnsr_name, graph)),
+                   description='get op from tensor name (with graph)')
+    yield TestCase(data=(tnsr.op, tfx.get_op(tnsr.op, graph)),
+                   description='get op from op (with graph)')
+    yield TestCase(data=(tnsr.op, tfx.get_op(op_name, graph)),
+                   description='get op from op name (with graph)')
+
     yield TestCase(data=(graph, tfx.get_op(tnsr, graph).graph),
                    description='get graph from retrieved op (with graph)')
     yield TestCase(data=(graph, tfx.get_tensor(tnsr, graph).graph),
