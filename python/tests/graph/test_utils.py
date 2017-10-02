@@ -27,7 +27,7 @@ from ..tests import PythonUnitTestCase
 TestCase = namedtuple('TestCase', ['data', 'description'])
 
 
-def _gen_graph_elems_names():
+def _gen_tensor_op_string_input_tests():
     op_name = 'someOp'
     for tnsr_idx in range(17):
         tnsr_name = '{}:{}'.format(op_name, tnsr_idx)
@@ -37,12 +37,12 @@ def _gen_graph_elems_names():
                        description='must get the tensor name from its operation')
 
 
-def _gen_wrong_graph_elems_types():
+def _gen_invalid_tensor_op_input_with_wrong_types():
     for wrong_val in [7, 1.2, tf.Graph()]:
         yield TestCase(data=wrong_val, description='wrong type {}'.format(type(wrong_val)))
 
 
-def _gen_graph_elems():
+def _gen_valid_tensor_op_objects():
     op_name = 'someConstOp'
     tnsr_name = '{}:0'.format(op_name)
     tnsr = tf.constant(1427.08, name=op_name)
@@ -67,25 +67,25 @@ def _gen_graph_elems():
 
 
 class TFeXtensionGraphUtilsTest(PythonUnitTestCase):
-    @parameterized.expand(_gen_graph_elems_names)
+    @parameterized.expand(_gen_tensor_op_string_input_tests)
     def test_valid_graph_element_names(self, data, description):
         """ Must get correct names from valid graph element names """
         name_a, name_b = data
         self.assertEqual(name_a, name_b, msg=description)
 
-    @parameterized.expand(_gen_wrong_graph_elems_types)
+    @parameterized.expand(_gen_invalid_tensor_op_input_with_wrong_types)
+    def test_wrong_tensor_types(self, data, description):
+        """ Must fail when provided wrong types """
+        with self.assertRaises(TypeError):
+            tfx.tensor_name(data, msg=description)
+
+    @parameterized.expand(_gen_invalid_tensor_op_input_with_wrong_types)
     def test_wrong_op_types(self, data, description):
         """ Must fail when provided wrong types """
         with self.assertRaises(TypeError):
             tfx.op_name(data, msg=description)
 
-    @parameterized.expand(_gen_wrong_graph_elems_types)
-    def test_wrong_op_types(self, data, description):
-        """ Must fail when provided wrong types """
-        with self.assertRaises(TypeError):
-            tfx.op_name(data, msg=description)
-
-    @parameterized.expand(_gen_graph_elems)
+    @parameterized.expand(_gen_valid_tensor_op_objects)
     def test_get_graph_elements(self, data, description):
         """ Must get correct graph elements from valid graph elements or their names """
         tfobj_or_name_a, tfobj_or_name_b = data
