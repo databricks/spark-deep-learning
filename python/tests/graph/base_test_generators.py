@@ -129,32 +129,33 @@ class TestGenBase(object):
             ref_feed = tfx.get_tensor(self.input_op_name, graph)
             ref_fetch = tfx.get_tensor(self.output_op_name, graph)
 
+            # Build test data and reference results
             test_data = np.random.randn(self.test_batch_size, self.vec_size)
             ref_out = sess.run(ref_fetch, feed_dict={ref_feed: test_data})
 
-        def create_test_case(graph_def, description):
-            graph = tf.Graph()
-            with tf.Session(graph=graph) as sess:
-                namespace = 'TEST_TF_INPUT_GRAPH'
-                tf.import_graph_def(graph_def, name=namespace)
-                tgt_feed = tfx.get_tensor('{}/{}'.format(namespace, self.input_op_name), graph)
-                tgt_fetch = tfx.get_tensor('{}/{}'.format(namespace, self.output_op_name), graph)
-                # Run on the testing target
-                tgt_out = sess.run(tgt_fetch, feed_dict={tgt_feed: test_data})
-
-            # Uncomment to check if test cases work in parallel
-            # if np.random(1) < 0.3:
-            #     raise RuntimeError('randomly killing tests')
-
-            max_diff = np.max(np.abs(ref_out - tgt_out))
-            err_msg = '{}: max abs diff {}'.format(description, max_diff)
-            return TestCase(bool_result=np.allclose(ref_out, tgt_out), err_msg=err_msg)
-
         for gin_info in self.input_graphs:
-            gdef = gin_info.gin.graph_def
+            graph_def = gin_info.gin.graph_def
             description = gin_info.description
-            test_case = TestFn(test_fn=lambda: create_test_case(gdef, description),
-                               description=description)
+
+            def gen_input_graph_test_case():
+                graph = tf.Graph()
+                with tf.Session(graph=graph) as sess:
+                    namespace = 'TEST_TF_INPUT_GRAPH'
+                    tf.import_graph_def(graph_def, name=namespace)
+                    tgt_feed = tfx.get_tensor('{}/{}'.format(namespace, self.input_op_name), graph)
+                    tgt_fetch = tfx.get_tensor('{}/{}'.format(namespace, self.output_op_name), graph)
+                    # Run on the testing target
+                    tgt_out = sess.run(tgt_fetch, feed_dict={tgt_feed: test_data})
+
+                # Uncomment to check if test cases work in parallel
+                # if np.random(1) < 0.3:
+                #     raise RuntimeError('randomly killing tests')
+
+                max_diff = np.max(np.abs(ref_out - tgt_out))
+                err_msg = '{}: max abs diff {}'.format(description, max_diff)
+                return TestCase(bool_result=np.allclose(ref_out, tgt_out), err_msg=err_msg)
+
+            test_case = TestFn(test_fn=gen_input_graph_test_case, description=description)
             self.test_cases.append(test_case)
 
     def register(self, gin, description):

@@ -22,7 +22,7 @@ import numpy as np
 from parameterized import parameterized
 
 from ..tests import PythonUnitTestCase
-from .base_utils import GenTestCases
+from .base_test_generators import GenTestCases
 
 #========================================================================
 # Don't have to modify the content below
