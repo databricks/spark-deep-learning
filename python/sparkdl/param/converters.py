@@ -115,7 +115,7 @@ class SparkDLTypeConverters(object):
             raise TypeError(err_msg.format(type(value), value, exc))
 
     @staticmethod
-    def buildCheckList(supportedList):
+    def buildSupportedItemConverter(supportedList):
         """
         Create a "converter" that try to check if a value is part of the supported list of values.
 
