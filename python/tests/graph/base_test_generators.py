@@ -28,6 +28,8 @@ import tensorflow as tf
 from sparkdl.graph.input import *
 import sparkdl.graph.utils as tfx
 
+__all__ = ['TestCase', 'GenTestCases', 'TestFn']
+
 TestCase = namedtuple('TestCase', ['bool_result', 'err_msg'])
 TestFn = namedtuple('TestFn', ['test_fn', 'description'])
 _GinInfo = namedtuple('_GinInfo', ['gin', 'description'])
