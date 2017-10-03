@@ -147,10 +147,11 @@ class TFInputGraph(object):
         .. code-block:: python
 
              with tf.Session() as sess:
-                  graph = import_my_tensorflow_graph(...)
-                  TFInputGraph.fromGraph(graph, sess, ...)
+                 graph = import_my_tensorflow_graph(...)
+                 input = TFInputGraph.fromGraph(graph, sess, ...)
 
-        :param graph: `tf.Graph`
+        :param graph: a :py:class:`tf.Graph` object containing the topology and computation units of
+                      the TensorFlow graph.
         :param feed_names: list, names of the input tensors.
         :param fetch_names: list, names of the output tensors.
         """
@@ -162,7 +163,7 @@ class TFInputGraph(object):
         """
         Construct a TFInputGraph from a tf.GraphDef object.
 
-        :param graph_def: `tf.GraphDef`, a serializable object containing the topology and
+        :param graph_def: :py:class:`tf.GraphDef`, a serializable object containing the topology and
                            computation units of the TensorFlow graph.
         :param feed_names: list, names of the input tensors.
         :param fetch_names: list, names of the output tensors.
@@ -195,13 +196,13 @@ class TFInputGraph(object):
     def fromCheckpointWithSignature(cls, checkpoint_dir, signature_def_key):
         """
         Construct a TFInputGraph object from a checkpoint, using the embedded
-        signature_def. Throw error if we cannot find an entry with the `signature_def_key`
+        signature_def. Throw an error if we cannot find an entry with the `signature_def_key`
         inside the `signature_def`.
 
         :param checkpoint_dir: str, name of the directory containing the TensorFlow graph
                                training checkpoint.
-        :param signature_def_key: str, name of the mapping contained inside the `signature_def`
-                                  from which we retrieve the signature key to tensor names mapping.
+        :param signature_def_key: str, key (name) of the signature_def to use. It should be in
+                                  the list of `signature_def` structures saved with the checkpoint.
         """
         assert signature_def_key is not None
         return _from_checkpoint_impl(checkpoint_dir, signature_def_key, feed_names=None,
@@ -234,8 +235,9 @@ class TFInputGraph(object):
                                 training checkpoint.
         :param tag_set: str, name of the graph stored in this meta_graph of the saved model
                         that we are interested in using.
-        :param signature_def_key: str, name of the mapping contained inside the `signature_def`
-                                  from which we retrieve the signature key to tensor names mapping.
+        :param signature_def_key: str, key (name) of the signature_def to use. It should be in
+                                  the list of `signature_def` structures saved with the
+                                  TensorFlow `SavedModel`.
         """
         assert signature_def_key is not None
         return _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key=signature_def_key,
@@ -254,7 +256,7 @@ def _from_checkpoint_impl(checkpoint_dir, signature_def_key, feed_names, fetch_n
     :param fetch_names: list, names of the output tensors.
     """
     assert (feed_names is None) == (fetch_names is None), \
-        'feed_names and fetch_names, if provided must appear together'
+        'feed_names and fetch_names, if provided must be both non-None.'
     assert (feed_names is None) != (signature_def_key is None), \
         'must either provide feed_names or singnature_def_key'
 
@@ -314,10 +316,8 @@ def _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key, feed_nam
 
 
 def _build_with_sig_def(sess, graph, sig_def):
-    # pylint: disable=protected-access,attribute-defined-outside-init
-    assert sig_def, \
-        'signature_def {} provided, '.format(sig_def) + \
-        'but failed to find it from the meta_graph_def'
+    # pylint: disable=protected-access
+    assert sig_def, 'signature_def must not be None'
 
     with sess.as_default(), graph.as_default():
         feed_mapping = {}
@@ -327,6 +327,7 @@ def _build_with_sig_def(sess, graph, sig_def):
             feed_mapping[sigdef_key] = tnsr_name
             feed_names.append(tnsr_name)
 
+        # TODO: IN-THIS-PR, test if these mappings are constructed correctly.
         fetch_mapping = {}
         fetch_names = []
         for sigdef_key, tnsr_info in sig_def.outputs.items():
@@ -335,9 +336,9 @@ def _build_with_sig_def(sess, graph, sig_def):
             fetch_names.append(tnsr_name)
 
         for tnsr_name in feed_names:
-            assert tfx.get_op(graph, tnsr_name), \
+            assert tfx.get_op(tnsr_name, graph), \
                 'requested tensor {} but found none in graph {}'.format(tnsr_name, graph)
-        fetches = [tfx.get_tensor(graph, tnsr_name) for tnsr_name in fetch_names]
+        fetches = [tfx.get_tensor(tnsr_name, graph) for tnsr_name in fetch_names]
         graph_def = tfx.strip_and_freeze_until(fetches, graph, sess)
 
     return TFInputGraph(graph_def=graph_def, input_tensor_name_from_signature=feed_mapping,
@@ -345,15 +346,14 @@ def _build_with_sig_def(sess, graph, sig_def):
 
 
 def _build_with_feeds_fetches(sess, graph, feed_names, fetch_names):
-    # pylint: disable=protected-access,attribute-defined-outside-init
-    assert (feed_names is not None) and (fetch_names is not None), \
-        "must provide feed_names {} and fetch_names {}".format(feed_names, fetch_names)
+    assert feed_names is not None, "must provide feed_names"
+    assert fetch_names is not None, "must provide fetch names"
 
     with sess.as_default(), graph.as_default():
         for tnsr_name in feed_names:
-            assert tfx.get_op(graph, tnsr_name), \
+            assert tfx.get_op(tnsr_name, graph), \
                 'requested tensor {} but found none in graph {}'.format(tnsr_name, graph)
-        fetches = [tfx.get_tensor(graph, tnsr_name) for tnsr_name in fetch_names]
+        fetches = [tfx.get_tensor(tnsr_name, graph) for tnsr_name in fetch_names]
         graph_def = tfx.strip_and_freeze_until(fetches, graph, sess)
 
     return TFInputGraph(graph_def=graph_def, input_tensor_name_from_signature=None,
