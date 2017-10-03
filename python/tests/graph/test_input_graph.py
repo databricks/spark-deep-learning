@@ -15,6 +15,7 @@
 from __future__ import absolute_import, division, print_function
 
 from collections import namedtuple
+import itertools
 
 import numpy as np
 # Use this to create parameterized test cases
@@ -41,14 +42,22 @@ _REGISTER_(GenTestCases(vec_size=5, test_batch_size=17))
 #========================================================================
 
 _ALL_TEST_CASES = []
+_CLEAN_UP_TASKS = []
+
 for obj in _TEST_CASES_GENERATORS:
     obj.build_input_graphs()
     _ALL_TEST_CASES += obj.test_cases
-    obj.tear_down_env()
+    _CLEAN_UP_TASKS.append(obj.tear_down_env)
 
 
 class TFInputGraphTest(PythonUnitTestCase):
+    @classmethod
+    def tearDownClass(cls):
+        for clean_fn in _CLEAN_UP_TASKS:
+            clean_fn()
+
     @parameterized.expand(_ALL_TEST_CASES)
-    def test_tf_input_graph(self, ref_out, tgt_out, description):
-        """ Test build TFInputGraph from various methods """
-        self.assertTrue(np.allclose(ref_out, tgt_out), msg=description)
+    def test_tf_input_graph(self, test_fn, description):  # pylint: disable=unused-argument
+        """ Test build TFInputGraph from various sources """
+        bool_result, err_msg = test_fn()
+        self.assertTrue(bool_result, msg=err_msg)

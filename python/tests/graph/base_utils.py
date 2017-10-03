@@ -17,6 +17,7 @@ from __future__ import absolute_import, division, print_function
 from collections import namedtuple
 from contextlib import contextmanager
 from glob import glob
+import itertools
 import os
 import shutil
 import tempfile
@@ -27,7 +28,8 @@ import tensorflow as tf
 from sparkdl.graph.input import *
 import sparkdl.graph.utils as tfx
 
-TestCase = namedtuple('TestCase', ['ref_out', 'tgt_out', 'description'])
+TestCase = namedtuple('TestCase', ['bool_result', 'err_msg'])
+TestFn = namedtuple('TestFn', ['test_fn', 'description'])
 _GinInfo = namedtuple('_GinInfo', ['gin', 'description'])
 
 
@@ -67,6 +69,10 @@ class TestGenBase(object):
         self._temp_dirs = []
 
     def make_tempdir(self):
+        """ Create temp directories using this function.
+        At the end of this test object's life cycle, the temporary directories
+        will all be cleaned up.
+        """
         tmp_dir = tempfile.mkdtemp()
         self._temp_dirs.append(tmp_dir)
         return tmp_dir
@@ -123,24 +129,33 @@ class TestGenBase(object):
             ref_feed = tfx.get_tensor(self.input_op_name, graph)
             ref_fetch = tfx.get_tensor(self.output_op_name, graph)
 
-            def create_test_result(tgt_gdef, test_idx):
-                namespace = 'TEST_TGT_NS{:03d}'.format(test_idx)
-                tf.import_graph_def(tgt_gdef, name=namespace)
+            test_data = np.random.randn(self.test_batch_size, self.vec_size)
+            ref_out = sess.run(ref_fetch, feed_dict={ref_feed: test_data})
+
+        def create_test_case(graph_def, description):
+            graph = tf.Graph()
+            with tf.Session(graph=graph) as sess:
+                namespace = 'TEST_TF_INPUT_GRAPH'
+                tf.import_graph_def(graph_def, name=namespace)
                 tgt_feed = tfx.get_tensor('{}/{}'.format(namespace, self.input_op_name), graph)
                 tgt_fetch = tfx.get_tensor('{}/{}'.format(namespace, self.output_op_name), graph)
-
-                local_data = np.random.randn(self.test_batch_size, self.vec_size)
-                ref_out = sess.run(ref_fetch, feed_dict={ref_feed: local_data})
                 # Run on the testing target
-                tgt_out = sess.run(tgt_fetch, feed_dict={tgt_feed: local_data})
+                tgt_out = sess.run(tgt_fetch, feed_dict={tgt_feed: test_data})
 
-                return ref_out, tgt_out
+            # Uncomment to check if test cases work in parallel
+            # if np.random(1) < 0.3:
+            #     raise RuntimeError('randomly killing tests')
 
-            for test_idx, gin_info in enumerate(self.input_graphs):
-                gdef = gin_info.gin.graph_def
-                ref_out, tgt_out = create_test_result(gdef, test_idx)
-                self.test_cases.append(
-                    TestCase(ref_out=ref_out, tgt_out=tgt_out, description=gin_info.description))
+            max_diff = np.max(np.abs(ref_out - tgt_out))
+            err_msg = '{}: max abs diff {}'.format(description, max_diff)
+            return TestCase(bool_result=np.allclose(ref_out, tgt_out), err_msg=err_msg)
+
+        for gin_info in self.input_graphs:
+            gdef = gin_info.gin.graph_def
+            description = gin_info.description
+            test_case = TestFn(test_fn=lambda: create_test_case(gdef, description),
+                               description=description)
+            self.test_cases.append(test_case)
 
     def register(self, gin, description):
         self.input_graphs.append(_GinInfo(gin=gin, description=description))
@@ -211,6 +226,10 @@ class GenTestCases(TestGenBase):
                                                            serving_sigdef_key)
             self.register(gin=gin, description='saved model with signature')
 
+            imap_ref = {'input_sig': tfx.tensor_name(x)}
+            omap_ref = {'output_sig': tfx.tensor_name(z)}
+            self._add_signature_tensor_name_test_cases(gin, imap_ref, omap_ref)
+
             # Build the transformer from exported serving model
             # We are not using signatures, thus must provide tensor/operation names
             gin = TFInputGraph.fromSavedModel(saved_model_dir, serving_tag, self.feed_names,
@@ -262,9 +281,33 @@ class GenTestCases(TestGenBase):
             gin = TFInputGraph.fromCheckpointWithSignature(model_ckpt_dir, serving_sigdef_key)
             self.register(gin=gin, description='checkpoint with signature')
 
+            imap_ref = {'input_sig': tfx.tensor_name(x)}
+            omap_ref = {'output_sig': tfx.tensor_name(z)}
+            self._add_signature_tensor_name_test_cases(gin, imap_ref, omap_ref)
+
             # Transformer without using signature_def
             gin = TFInputGraph.fromCheckpoint(model_ckpt_dir, self.feed_names, self.fetch_names)
             self.register(gin=gin, description='checkpoint no signature')
 
             gin = TFInputGraph.fromGraph(sess.graph, sess, self.feed_names, self.fetch_names)
             self.register(gin=gin, description='checkpoing, graph')
+
+    def _add_signature_tensor_name_test_cases(self, gin, imap_ref, omap_ref):
+        """ Add tests for checking signature to tensor names mapping """
+        imap_tgt = gin.input_tensor_name_from_signature
+        description = 'test input signature to tensor name mapping'
+
+        def check_imap():
+            err_msg = '{}: {} != {}'.format(description, imap_tgt, imap_ref)
+            return TestCase(bool_result=imap_ref == imap_tgt, err_msg=err_msg)
+
+        self.test_cases.append(TestFn(test_fn=check_imap, description=description))
+
+        omap_tgt = gin.output_tensor_name_from_signature
+        description = 'test output signature to tensor name mapping'
+
+        def check_omap():
+            err_msg = '{}: {} != {}'.format(description, omap_tgt, omap_ref)
+            return TestCase(bool_result=omap_ref == omap_tgt, err_msg=err_msg)
+
+        self.test_cases.append(TestFn(test_fn=check_omap, description=description))

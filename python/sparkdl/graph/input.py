@@ -273,7 +273,7 @@ def _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key, feed_nam
 
 
 def _build_with_sig_def(sess, graph, sig_def):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     assert sig_def, 'signature_def must not be None'
 
     with sess.as_default(), graph.as_default():
