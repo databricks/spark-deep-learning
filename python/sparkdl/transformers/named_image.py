@@ -40,7 +40,7 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
     """
 
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-                      typeConverter=SparkDLTypeConverters.buildCheckList(SUPPORTED_MODELS))
+                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
     decodePredictions = Param(Params._dummy(), "decodePredictions",
                               "If true, output predictions in the (class, description, probability) format",
                               typeConverter=TypeConverters.toBoolean)
@@ -125,7 +125,7 @@ class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
     """
 
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-                      typeConverter=SparkDLTypeConverters.buildCheckList(SUPPORTED_MODELS))
+                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelName=None):
@@ -169,7 +169,7 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
     """
 
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-                      typeConverter=SparkDLTypeConverters.buildCheckList(SUPPORTED_MODELS))
+                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
     featurize = Param(Params._dummy(), "featurize",
                       "If true, output features. If false, output predictions. Either way the output is a vector.",
                       typeConverter=TypeConverters.toBoolean)
