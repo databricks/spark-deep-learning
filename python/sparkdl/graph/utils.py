@@ -33,9 +33,10 @@ one of the four target variants.
 
 def validated_graph(graph):
     """
-    Check if the input is a valid tf.Graph
+    Check if the input is a valid :py:class:`tf.Graph` and return it.
+    Raise an error otherwise.
 
-    :param graph: tf.Graph, a TensorFlow Graph object
+    :param graph: :py:class:`tf.Graph`, a TensorFlow Graph object
     """
     assert isinstance(graph, tf.Graph), 'must provide tf.Graph, but get {}'.format(type(graph))
     return graph
@@ -53,10 +54,12 @@ def get_shape(tfobj_or_name, graph):
 
 def get_op(tfobj_or_name, graph):
     """
-    Get a tf.Operation object
+    Get a :py:class:`tf.Operation` object.
 
-    :param graph: tf.Graph, a TensorFlow Graph object
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
+    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or
+                          a name to either.
+    :param graph: a :py:class:`tf.Graph` object containing the operation.
+                  By default the graph we don't require this argument to be provided.
     """
     graph = validated_graph(graph)
     if isinstance(tfobj_or_name, tf.Operation):
@@ -76,8 +79,10 @@ def get_tensor(tfobj_or_name, graph):
     """
     Get a tf.Tensor object
 
-    :param graph: tf.Graph, a TensorFlow Graph object
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
+    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or
+                          a name to either.
+    :param graph: a :py:class:`tf.Graph` object containing the tensor.
+                  By default the graph we don't require this argument to be provided.
     """
     graph = validated_graph(graph)
     if isinstance(tfobj_or_name, tf.Tensor):
@@ -95,16 +100,20 @@ def get_tensor(tfobj_or_name, graph):
 
 def tensor_name(tfobj_or_name, graph=None):
     """
-    Derive tf.Tensor name from an op/tensor name.
-    If the input is a name, we do not check if the tensor exist
-    (as no graph parameter is passed in).
+    Derive the :py:class:`tf.Tensor` name from a :py:class:`tf.Operation` or :py:class:`tf.Tensor`
+    object, or its name.
+    If a name is provided and the graph is not, we will derive the tensor name based on
+    TensorFlow's naming convention.
+    If the input is a TensorFlow object, or the graph is given, we also check that
+    the tensor exists in the associated graph.
 
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
+    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or
+                          a name to either.
+    :param graph: a :py:class:`tf.Graph` object containing the tensor.
+                  By default the graph we don't require this argument to be provided.
     """
-    # If `graph` is provided, directly get the graph operation
     if graph is not None:
         return get_tensor(tfobj_or_name, graph).name
-    # If `graph` is absent, check if other cases
     if isinstance(tfobj_or_name, six.string_types):
         # If input is a string, assume it is a name and infer the corresponding tensor name.
         # WARNING: this depends on TensorFlow's tensor naming convention
@@ -121,16 +130,20 @@ def tensor_name(tfobj_or_name, graph=None):
 
 def op_name(tfobj_or_name, graph=None):
     """
-    Derive tf.Operation name from an op/tensor name.
-    If the input is a name, we do not check if the operation exist
-    (as no graph parameter is passed in).
+    Derive the :py:class:`tf.Operation` name from a :py:class:`tf.Operation` or
+    :py:class:`tf.Tensor` object, or its name.
+    If a name is provided and the graph is not, we will derive the operation name based on
+    TensorFlow's naming convention.
+    If the input is a TensorFlow object, or the graph is given, we also check that
+    the operation exists in the associated graph.
 
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
+    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or
+                          a name to either.
+    :param graph: a :py:class:`tf.Graph` object containing the operation.
+                  By default the graph we don't require this argument to be provided.
     """
-    # If `graph` is provided, directly get the graph operation
     if graph is not None:
         return get_op(tfobj_or_name, graph).name
-    # If `graph` is absent, check if other cases
     if isinstance(tfobj_or_name, six.string_types):
         # If input is a string, assume it is a name and infer the corresponding operation name.
         # WARNING: this depends on TensorFlow's operation naming convention

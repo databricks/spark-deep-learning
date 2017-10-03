@@ -27,66 +27,135 @@ from ..tests import PythonUnitTestCase
 TestCase = namedtuple('TestCase', ['data', 'description'])
 
 
-def _gen_graph_elems_names():
+def _gen_tensor_op_string_input_tests():
     op_name = 'someOp'
-    for tnsr_idx in range(17):
+    for tnsr_idx in [0, 1, 2, 3, 5, 8, 15, 17]:
         tnsr_name = '{}:{}'.format(op_name, tnsr_idx)
         yield TestCase(data=(op_name, tfx.op_name(tnsr_name)),
-                       description='must get the same op name from its tensor')
+                       description='test tensor name to op name')
         yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr_name)),
-                       description='must get the tensor name from its operation')
+                       description='test tensor name to tensor name')
 
 
-def _gen_wrong_graph_elems_types():
+def _gen_invalid_tensor_or_op_input_with_wrong_types():
     for wrong_val in [7, 1.2, tf.Graph()]:
         yield TestCase(data=wrong_val, description='wrong type {}'.format(type(wrong_val)))
 
 
-def _gen_graph_elems():
+def _gen_valid_tensor_op_objects():
     op_name = 'someConstOp'
     tnsr_name = '{}:0'.format(op_name)
     tnsr = tf.constant(1427.08, name=op_name)
     graph = tnsr.graph
 
+    # Test for op_name
     yield TestCase(data=(op_name, tfx.op_name(tnsr)),
                    description='get op name from tensor (no graph)')
     yield TestCase(data=(op_name, tfx.op_name(tnsr, graph)),
                    description='get op name from tensor (with graph)')
+    yield TestCase(data=(op_name, tfx.op_name(tnsr_name)),
+                   description='get op name from tensor name (no graph)')
+    yield TestCase(data=(op_name, tfx.op_name(tnsr_name, graph)),
+                   description='get op name from tensor name (with graph)')
+    yield TestCase(data=(op_name, tfx.op_name(tnsr.op)),
+                   description='get op name from op (no graph)')
+    yield TestCase(data=(op_name, tfx.op_name(tnsr.op, graph)),
+                   description='get op name from op (with graph)')
+    yield TestCase(data=(op_name, tfx.op_name(op_name)),
+                   description='get op name from op name (no graph)')
+    yield TestCase(data=(op_name, tfx.op_name(op_name, graph)),
+                   description='get op name from op name (with graph)')
+
+    # Test for tensor_name
     yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr)),
                    description='get tensor name from tensor (no graph)')
     yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr, graph)),
                    description='get tensor name from tensor (with graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr_name)),
+                   description='get tensor name from tensor name (no graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr_name, graph)),
+                   description='get tensor name from tensor name (with graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr.op)),
+                   description='get tensor name from op (no graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr.op, graph)),
+                   description='get tensor name from op (with graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr_name)),
+                   description='get tensor name from op name (no graph)')
+    yield TestCase(data=(tnsr_name, tfx.tensor_name(tnsr_name, graph)),
+                   description='get tensor name from op name (with graph)')
+
+    # Test for get_tensor
     yield TestCase(data=(tnsr, tfx.get_tensor(tnsr, graph)),
-                   description='get tensor from the same tensor (with graph)')
+                   description='get tensor from tensor')
+    yield TestCase(data=(tnsr, tfx.get_tensor(tnsr_name, graph)),
+                   description='get tensor from tensor name')
+    yield TestCase(data=(tnsr, tfx.get_tensor(tnsr.op, graph)),
+                   description='get tensor from op')
+    yield TestCase(data=(tnsr, tfx.get_tensor(op_name, graph)),
+                   description='get tensor from op name')
+
+    # Test for get_op
     yield TestCase(data=(tnsr.op, tfx.get_op(tnsr, graph)),
-                   description='get op from tensor (with graph)')
+                   description='get op from tensor')
+    yield TestCase(data=(tnsr.op, tfx.get_op(tnsr_name, graph)),
+                   description='get op from tensor name')
+    yield TestCase(data=(tnsr.op, tfx.get_op(tnsr.op, graph)),
+                   description='get op from op')
+    yield TestCase(data=(tnsr.op, tfx.get_op(op_name, graph)),
+                   description='test op from op name')
+
+    # Test get_tensor and get_op returns tensor or op contained in the same graph
     yield TestCase(data=(graph, tfx.get_op(tnsr, graph).graph),
-                   description='get graph from retrieved op (with graph)')
+                   description='test graph from getting op fron tensor')
     yield TestCase(data=(graph, tfx.get_tensor(tnsr, graph).graph),
-                   description='get graph from retrieved tensor (with graph)')
+                   description='test graph from getting tensor from tensor')
+    yield TestCase(data=(graph, tfx.get_op(tnsr_name, graph).graph),
+                   description='test graph from getting op fron tensor name')
+    yield TestCase(data=(graph, tfx.get_tensor(tnsr_name, graph).graph),
+                   description='test graph from getting tensor from tensor name')
+    yield TestCase(data=(graph, tfx.get_op(tnsr.op, graph).graph),
+                   description='test graph from getting op from op')
+    yield TestCase(data=(graph, tfx.get_tensor(tnsr.op, graph).graph),
+                   description='test graph from getting tensor from op')
+    yield TestCase(data=(graph, tfx.get_op(op_name, graph).graph),
+                   description='test graph from getting op from op name')
+    yield TestCase(data=(graph, tfx.get_tensor(op_name, graph).graph),
+                   description='test graph from getting tensor from op name')
 
 
 class TFeXtensionGraphUtilsTest(PythonUnitTestCase):
-    @parameterized.expand(_gen_graph_elems_names)
-    def test_valid_graph_element_names(self, data, description):
+    @parameterized.expand(_gen_tensor_op_string_input_tests)
+    def test_valid_tensor_op_name_inputs(self, data, description):
         """ Must get correct names from valid graph element names """
         name_a, name_b = data
         self.assertEqual(name_a, name_b, msg=description)
 
-    @parameterized.expand(_gen_wrong_graph_elems_types)
-    def test_wrong_op_types(self, data, description):
+    @parameterized.expand(_gen_invalid_tensor_or_op_input_with_wrong_types)
+    def test_invalid_tensor_name_inputs_with_wrong_types(self, data, description):
         """ Must fail when provided wrong types """
-        with self.assertRaises(TypeError):
-            tfx.op_name(data, msg=description)
+        with self.assertRaises(TypeError, msg=description):
+            tfx.tensor_name(data)
 
-    @parameterized.expand(_gen_wrong_graph_elems_types)
-    def test_wrong_op_types(self, data, description):
+    @parameterized.expand(_gen_invalid_tensor_or_op_input_with_wrong_types)
+    def test_invalid_op_name_inputs_with_wrong_types(self, data, description):
         """ Must fail when provided wrong types """
-        with self.assertRaises(TypeError):
-            tfx.op_name(data, msg=description)
+        with self.assertRaises(TypeError, msg=description):
+            tfx.op_name(data)
 
-    @parameterized.expand(_gen_graph_elems)
-    def test_get_graph_elements(self, data, description):
+    @parameterized.expand(_gen_invalid_tensor_or_op_input_with_wrong_types)
+    def test_invalid_op_inputs_with_wrong_types(self, data, description):
+        """ Must fail when provided wrong types """
+        with self.assertRaises(TypeError, msg=description):
+            tfx.get_op(data, tf.Graph())
+
+    @parameterized.expand(_gen_invalid_tensor_or_op_input_with_wrong_types)
+    def test_invalid_tensor_inputs_with_wrong_types(self, data, description):
+        """ Must fail when provided wrong types """
+        with self.assertRaises(TypeError, msg=description):
+            tfx.get_tensor(data, tf.Graph())
+
+    @parameterized.expand(_gen_valid_tensor_op_objects)
+    def test_valid_tensor_op_object_inputs(self, data, description):
         """ Must get correct graph elements from valid graph elements or their names """
         tfobj_or_name_a, tfobj_or_name_b = data
         self.assertEqual(tfobj_or_name_a, tfobj_or_name_b, msg=description)
