@@ -57,7 +57,7 @@ class TFInputGraphTest(PythonUnitTestCase):
             clean_fn()
 
     @parameterized.expand(_ALL_TEST_CASES)
-    def test_tf_input_graph(self, test_fn, description):  # pylint: disable=unused-argument
+    def test_tf_input_graph(self, test_fn, description, metadata):  # pylint: disable=unused-argument
         """ Test build TFInputGraph from various sources """
         bool_result, err_msg = test_fn()
         self.assertTrue(bool_result, msg=err_msg)

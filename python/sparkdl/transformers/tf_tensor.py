@@ -66,8 +66,8 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         gin = self.getTFInputGraph()
         input_mapping = self.getInputMapping()
         output_mapping = self.getOutputMapping()
-        input_node_names = [tfx.as_op_name(tnsr_name) for _, tnsr_name in input_mapping]
-        output_node_names = [tfx.as_op_name(tnsr_name) for tnsr_name, _ in output_mapping]
+        input_node_names = [tfx.op_name(tnsr_name) for _, tnsr_name in input_mapping]
+        output_node_names = [tfx.op_name(tnsr_name) for tnsr_name, _ in output_mapping]
 
         # NOTE(phi-dbq): Spark DataFrame assumes float64 as default floating point type
         opt_gdef = infr_opt.optimize_for_inference(gin.graph_def,
@@ -85,17 +85,18 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         with tf.Session(graph=graph):
             analyzed_df = tfs.analyze(dataset)
 
-            out_tnsr_op_names = [tfx.as_op_name(tnsr_name) for tnsr_name, _ in output_mapping]
+            out_tnsr_op_names = [tfx.op_name(tnsr_name) for tnsr_name, _ in output_mapping]
             tf.import_graph_def(graph_def=graph_def, name='', return_elements=out_tnsr_op_names)
 
-            feed_dict = dict((tfx.op_name(graph, tnsr_name), col_name)
+            feed_dict = dict((tfx.op_name(tnsr_name, graph), col_name)
                              for col_name, tnsr_name in input_mapping)
-            fetches = [tfx.get_tensor(graph, tnsr_op_name) for tnsr_op_name in out_tnsr_op_names]
+            fetches = [tfx.get_tensor(tnsr_op_name, graph) for tnsr_op_name in out_tnsr_op_names]
 
             out_df = tfs.map_blocks(fetches, analyzed_df, feed_dict=feed_dict)
 
             # We still have to rename output columns
-            for old_colname, new_colname in output_mapping:
+            for tnsr_name, new_colname in output_mapping:
+                old_colname = tfx.op_name(tnsr_name, graph)
                 if old_colname != new_colname:
                     out_df = out_df.withColumnRenamed(old_colname, new_colname)
 

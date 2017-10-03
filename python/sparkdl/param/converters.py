@@ -30,6 +30,7 @@ import tensorflow as tf
 
 from pyspark.ml.param import TypeConverters
 
+from sparkdl.graph.input import *
 import sparkdl.utils.keras_model as kmutil
 
 __all__ = ['SparkDLTypeConverters']

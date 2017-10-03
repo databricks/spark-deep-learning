@@ -31,7 +31,7 @@ import sparkdl.graph.utils as tfx
 __all__ = ['TestCase', 'GenTestCases', 'TestFn']
 
 TestCase = namedtuple('TestCase', ['bool_result', 'err_msg'])
-TestFn = namedtuple('TestFn', ['test_fn', 'description'])
+TestFn = namedtuple('TestFn', ['test_fn', 'description', 'metadata'])
 _GinInfo = namedtuple('_GinInfo', ['gin', 'description'])
 
 
@@ -47,6 +47,14 @@ class TestGenBase(object):
         self.output_op_name = 'tnsrOpOut'
         self.fetch_names = []
 
+        # Serving signatures
+        self.serving_tag = "serving_tag"
+        self.serving_sigdef_key = 'prediction_signature'
+        self.input_sig_name = 'wellKnownInputSig'
+        self.output_sig_name = 'wellKnownOutputSig'
+        self.sig_input_mapping = {}
+        self.sig_output_mapping = {}
+
         # DataFrame column names
         self.input_col = 'dfInputCol'
         self.output_col = 'dfOutputCol'
@@ -55,14 +63,15 @@ class TestGenBase(object):
         self.input_mapping = {}
         self.output_mapping = {}
 
-        # When testing against multiple graph inputs,
-        # derive new names for the DataFrame columns and TensorFlow graph elements.
-        self.reset_iomap(replica=1)
+        # # When testing against multiple graph inputs,
+        # # derive new names for the DataFrame columns and TensorFlow graph elements.
+        # self.reset_iomap(replica=1)
 
         # The basic stage contains the opaque :py:obj:`TFInputGraph` objects
         # Any derived that override the :py:obj:`build_input_graphs` method will
         # populate this field.
         self.input_graphs = []
+        self.input_graph_with_signature = set()
 
         # Construct final test cases, which will be passed to final test cases
         self.test_cases = []
@@ -85,29 +94,40 @@ class TestGenBase(object):
 
     def reset_iomap(self, replica=1):
         self.input_mapping = {}
+        self.sig_input_mapping = {}
         self.feed_names = []
         self.output_mapping = {}
+        self.sig_output_mapping = {}
         self.fetch_names = []
 
         if replica > 1:
+            _template = '{}_replica{:03d}'
             for i in range(replica):
-                colname = '{}_replica{:03d}'.format(self.input_col, i)
-                tnsr_op_name = '{}_replica{:03d}'.format(self.input_op_name, i)
-                self.input_mapping[colname] = tnsr_op_name
-                self.feed_names.append(tnsr_op_name + ':0')
+                colname = _template.format(self.input_col, i)
+                op_name = _template.format(self.input_op_name, i)
+                sig_name = _template.format(self.input_sig_name, i)
+                tnsr_name = tfx.tensor_name(op_name)
+                self.input_mapping[colname] = tnsr_name
+                self.feed_names.append(tnsr_name)
+                self.sig_input_mapping[colname] = sig_name
 
-                colname = '{}_replica{:03d}'.format(self.output_col, i)
-                tnsr_op_name = '{}_replica{:03d}'.format(self.output_op_name, i)
-                self.output_mapping[tnsr_op_name] = colname
-                self.fetch_names.append(tnsr_op_name + ':0')
+                colname = _template.format(self.output_col, i)
+                op_name = _template.format(self.output_op_name, i)
+                sig_name = _template.format(self.output_sig_name, i)
+                tnsr_name = tfx.tensor_name(op_name)
+                self.output_mapping[tnsr_name] = colname
+                self.fetch_names.append(tnsr_name)
+                self.sig_output_mapping[sig_name] = colname
         else:
-            self.input_mapping = {self.input_col: self.input_op_name}
-            self.feed_names = [self.input_op_name + ':0']
-            self.output_mapping = {self.output_op_name: self.output_col}
-            self.fetch_names = [self.output_op_name + ':0']
+            self.input_mapping = {self.input_col: tfx.tensor_name(self.input_op_name)}
+            self.sig_input_mapping = {self.input_col: self.input_sig_name}
+            self.feed_names = [tfx.tensor_name(self.input_op_name)]
+            self.output_mapping = {tfx.tensor_name(self.output_op_name): self.output_col}
+            self.sig_output_mapping = {self.output_sig_name: self.output_col}
+            self.fetch_names = [tfx.tensor_name(self.output_op_name)]
 
     @contextmanager
-    def prep_tf_session(self):
+    def prep_tf_session(self, io_replica=1):
         """ Create a session to let build testing graphs
 
         Downstream classes could also choose to override this function to
@@ -117,7 +137,9 @@ class TestGenBase(object):
         # In each `prep_tf_session`, the implementation is expected to define ONE graph and
         # pass all test cases derived from it. We execute the graph and compare the result
         # with each test case, and return the numerical results.
+        self.reset_iomap(replica=io_replica)
         self.input_graphs = []
+        self.input_graph_with_signature.clear()
 
         # Build the TensorFlow graph
         graph = tf.Graph()
@@ -138,14 +160,16 @@ class TestGenBase(object):
         for gin_info in self.input_graphs:
             graph_def = gin_info.gin.graph_def
             description = gin_info.description
+            input_op_name = self.input_op_name
+            output_op_name = self.output_op_name
 
             def gen_input_graph_test_case():
                 graph = tf.Graph()
                 with tf.Session(graph=graph) as sess:
                     namespace = 'TEST_TF_INPUT_GRAPH'
                     tf.import_graph_def(graph_def, name=namespace)
-                    tgt_feed = tfx.get_tensor('{}/{}'.format(namespace, self.input_op_name), graph)
-                    tgt_fetch = tfx.get_tensor('{}/{}'.format(namespace, self.output_op_name), graph)
+                    tgt_feed = tfx.get_tensor('{}/{}'.format(namespace, input_op_name), graph)
+                    tgt_fetch = tfx.get_tensor('{}/{}'.format(namespace, output_op_name), graph)
                     # Run on the testing target
                     tgt_out = sess.run(tgt_fetch, feed_dict={tgt_feed: test_data})
 
@@ -157,7 +181,8 @@ class TestGenBase(object):
                 err_msg = '{}: max abs diff {}'.format(description, max_diff)
                 return TestCase(bool_result=np.allclose(ref_out, tgt_out), err_msg=err_msg)
 
-            test_case = TestFn(test_fn=gen_input_graph_test_case, description=description)
+            test_case = TestFn(test_fn=gen_input_graph_test_case,
+                               description=description, metadata={})
             self.test_cases.append(test_case)
 
     def register(self, gin, description):
@@ -199,8 +224,6 @@ class GenTestCases(TestGenBase):
         """ Build TFTransformer from saved model """
         # Setup saved model export directory
         saved_model_dir = os.path.join(self.make_tempdir(), 'saved_model')
-        serving_tag = "serving_tag"
-        serving_sigdef_key = 'prediction_signature'
         builder = tf.saved_model.builder.SavedModelBuilder(saved_model_dir)
 
         with self.prep_tf_session() as sess:
@@ -213,29 +236,29 @@ class GenTestCases(TestGenBase):
 
             sess.run(w.initializer)
 
-            sig_inputs = {'input_sig': tf.saved_model.utils.build_tensor_info(x)}
-            sig_outputs = {'output_sig': tf.saved_model.utils.build_tensor_info(z)}
+            sig_inputs = {self.input_sig_name: tf.saved_model.utils.build_tensor_info(x)}
+            sig_outputs = {self.output_sig_name: tf.saved_model.utils.build_tensor_info(z)}
 
             serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
                 inputs=sig_inputs, outputs=sig_outputs)
 
             builder.add_meta_graph_and_variables(
-                sess, [serving_tag], signature_def_map={serving_sigdef_key: serving_sigdef})
+                sess, [self.serving_tag], signature_def_map={self.serving_sigdef_key: serving_sigdef})
             builder.save()
 
             # Build the transformer from exported serving model
             # We are using signatures, thus must provide the keys
-            gin = TFInputGraph.fromSavedModelWithSignature(saved_model_dir, serving_tag,
-                                                           serving_sigdef_key)
+            gin = TFInputGraph.fromSavedModelWithSignature(saved_model_dir, self.serving_tag,
+                                                           self.serving_sigdef_key)
             self.register(gin=gin, description='saved model with signature')
 
-            imap_ref = {'input_sig': tfx.tensor_name(x)}
-            omap_ref = {'output_sig': tfx.tensor_name(z)}
-            self._add_signature_tensor_name_test_cases(gin, imap_ref, omap_ref)
+            _imap = {self.input_sig_name: tfx.tensor_name(x)}
+            _omap = {self.output_sig_name: tfx.tensor_name(z)}
+            self._add_signature_tensor_name_test_cases(gin, _imap, _omap)
 
             # Build the transformer from exported serving model
             # We are not using signatures, thus must provide tensor/operation names
-            gin = TFInputGraph.fromSavedModel(saved_model_dir, serving_tag, self.feed_names,
+            gin = TFInputGraph.fromSavedModel(saved_model_dir, self.serving_tag, self.feed_names,
                                               self.fetch_names)
             self.register(gin=gin, description='saved model no signature')
 
@@ -247,7 +270,6 @@ class GenTestCases(TestGenBase):
         # Build the TensorFlow graph
         model_ckpt_dir = self.make_tempdir()
         ckpt_path_prefix = os.path.join(model_ckpt_dir, 'model_ckpt')
-        serving_sigdef_key = 'prediction_signature'
 
         with self.prep_tf_session() as sess:
             x = tf.placeholder(tf.float64, shape=[None, self.vec_size], name=self.input_op_name)
@@ -261,8 +283,8 @@ class GenTestCases(TestGenBase):
 
             # Prepare the signature_def
             serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
-                inputs={'input_sig': tf.saved_model.utils.build_tensor_info(x)},
-                outputs={'output_sig': tf.saved_model.utils.build_tensor_info(z)})
+                inputs={self.input_sig_name: tf.saved_model.utils.build_tensor_info(x)},
+                outputs={self.output_sig_name: tf.saved_model.utils.build_tensor_info(z)})
 
             # A rather contrived way to add signature def to a meta_graph
             meta_graph_def = tf.train.export_meta_graph()
@@ -275,18 +297,18 @@ class GenTestCases(TestGenBase):
 
             # Add signature_def to the meta_graph and serialize it
             # This will overwrite the existing meta_graph_def file
-            meta_graph_def.signature_def[serving_sigdef_key].CopyFrom(serving_sigdef)
+            meta_graph_def.signature_def[self.serving_sigdef_key].CopyFrom(serving_sigdef)
             with open(ckpt_meta_fpath, mode='wb') as fout:
                 fout.write(meta_graph_def.SerializeToString())
 
             # Build the transformer from exported serving model
             # We are using signaures, thus must provide the keys
-            gin = TFInputGraph.fromCheckpointWithSignature(model_ckpt_dir, serving_sigdef_key)
+            gin = TFInputGraph.fromCheckpointWithSignature(model_ckpt_dir, self.serving_sigdef_key)
             self.register(gin=gin, description='checkpoint with signature')
 
-            imap_ref = {'input_sig': tfx.tensor_name(x)}
-            omap_ref = {'output_sig': tfx.tensor_name(z)}
-            self._add_signature_tensor_name_test_cases(gin, imap_ref, omap_ref)
+            _imap = {self.input_sig_name: tfx.tensor_name(x)}
+            _omap = {self.output_sig_name: tfx.tensor_name(z)}
+            self._add_signature_tensor_name_test_cases(gin, _imap, _omap)
 
             # Transformer without using signature_def
             gin = TFInputGraph.fromCheckpoint(model_ckpt_dir, self.feed_names, self.fetch_names)
@@ -295,22 +317,25 @@ class GenTestCases(TestGenBase):
             gin = TFInputGraph.fromGraph(sess.graph, sess, self.feed_names, self.fetch_names)
             self.register(gin=gin, description='checkpoing, graph')
 
-    def _add_signature_tensor_name_test_cases(self, gin, imap_ref, omap_ref):
+    def _add_signature_tensor_name_test_cases(self, gin, input_sig2tnsr, output_sig2tnsr):
         """ Add tests for checking signature to tensor names mapping """
         imap_tgt = gin.input_tensor_name_from_signature
         description = 'test input signature to tensor name mapping'
 
         def check_imap():
-            err_msg = '{}: {} != {}'.format(description, imap_tgt, imap_ref)
-            return TestCase(bool_result=imap_ref == imap_tgt, err_msg=err_msg)
+            err_msg = '{}: {} != {}'.format(description, imap_tgt, input_sig2tnsr)
+            bool_result = input_sig2tnsr == imap_tgt
+            return TestCase(bool_result=bool_result, err_msg=err_msg)
 
-        self.test_cases.append(TestFn(test_fn=check_imap, description=description))
+        self.test_cases.append(TestFn(test_fn=check_imap, description=description, metadata={}))
 
         omap_tgt = gin.output_tensor_name_from_signature
         description = 'test output signature to tensor name mapping'
 
         def check_omap():
-            err_msg = '{}: {} != {}'.format(description, omap_tgt, omap_ref)
-            return TestCase(bool_result=omap_ref == omap_tgt, err_msg=err_msg)
+            err_msg = '{}: {} != {}'.format(description, omap_tgt, output_sig2tnsr)
+            bool_result = output_sig2tnsr == omap_tgt
+            return TestCase(bool_result=bool_result, err_msg=err_msg)
 
-        self.test_cases.append(TestFn(test_fn=check_omap, description=description))
+        self.input_graph_with_signature.add(gin)
+        self.test_cases.append(TestFn(test_fn=check_omap, description=description, metadata={}))
