@@ -256,7 +256,7 @@ class HasTFHParams(Params):
                       key-value object, storing parameters to be used to define the final
                       TensorFlow graph for the Transformer.
 
-                      Currently accepted values are:
+                      Currently used values are:
                       - `batch_size`: number of samples evaluated together in inference steps"""),
                       typeConverter=SparkDLTypeConverters.toTFHParams)
 
