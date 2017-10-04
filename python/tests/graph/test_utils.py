@@ -47,23 +47,24 @@ def _gen_invalid_tensor_or_op_with_graph_pairing():
     other_graph = tf.Graph()
     op_name = tnsr.op.name
 
-    # Test get_tensor and get_op returns tensor or op contained in the same graph
+    # Test get_tensor and get_op with non-associated tensor/op and graph inputs
+    _comm_suffix = ' with non-associated tensor/op and graph inputs'
     yield TestCase(data=lambda: tfx.get_op(tnsr, other_graph),
-                   description='test graph from getting op fron tensor')
+                   description='test get_op with from tensor' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_tensor(tnsr, other_graph),
-                   description='test graph from getting tensor from tensor')
+                   description='test get_tensor from tensor' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_op(tnsr.name, other_graph),
-                   description='test graph from getting op fron tensor name')
+                   description='test get_op fron tensor name' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_tensor(tnsr.name, other_graph),
-                   description='test graph from getting tensor from tensor name')
+                   description='test get_tensor from tensor name' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_op(tnsr.op, other_graph),
-                   description='test graph from getting op from op')
+                   description='test get_op from op' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_tensor(tnsr.op, other_graph),
-                   description='test graph from getting tensor from op')
+                   description='test get_tensor from op' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_op(op_name, other_graph),
-                   description='test graph from getting op from op name')
+                   description='test get_op from op name' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_tensor(op_name, other_graph),
-                   description='test graph from getting tensor from op name')
+                   description='test get_tensor from op name' + _comm_suffix)
 
 
 def _gen_valid_tensor_op_input_combos():
@@ -127,24 +128,6 @@ def _gen_valid_tensor_op_input_combos():
                    description='get op from op')
     yield TestCase(data=(tnsr.op, tfx.get_op(op_name, graph)),
                    description='test op from op name')
-
-    # Test get_tensor and get_op returns tensor or op contained in the same graph
-    yield TestCase(data=(graph, tfx.get_op(tnsr, graph).graph),
-                   description='test graph from getting op fron tensor')
-    yield TestCase(data=(graph, tfx.get_tensor(tnsr, graph).graph),
-                   description='test graph from getting tensor from tensor')
-    yield TestCase(data=(graph, tfx.get_op(tnsr_name, graph).graph),
-                   description='test graph from getting op fron tensor name')
-    yield TestCase(data=(graph, tfx.get_tensor(tnsr_name, graph).graph),
-                   description='test graph from getting tensor from tensor name')
-    yield TestCase(data=(graph, tfx.get_op(tnsr.op, graph).graph),
-                   description='test graph from getting op from op')
-    yield TestCase(data=(graph, tfx.get_tensor(tnsr.op, graph).graph),
-                   description='test graph from getting tensor from op')
-    yield TestCase(data=(graph, tfx.get_op(op_name, graph).graph),
-                   description='test graph from getting op from op name')
-    yield TestCase(data=(graph, tfx.get_tensor(op_name, graph).graph),
-                   description='test graph from getting tensor from op name')
 
 
 class TFeXtensionGraphUtilsTest(PythonUnitTestCase):
