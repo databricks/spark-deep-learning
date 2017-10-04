@@ -62,6 +62,7 @@ def get_op(tfobj_or_name, graph):
                   By default the graph we don't require this argument to be provided.
     """
     graph = validated_graph(graph)
+    _assert_same_graph(tfobj_or_name, graph)
     if isinstance(tfobj_or_name, tf.Operation):
         return tfobj_or_name
     name = tfobj_or_name
@@ -71,8 +72,7 @@ def get_op(tfobj_or_name, graph):
         raise TypeError('invalid op request for [type {}] {}'.format(type(name), name))
     _op_name = op_name(name, graph=None)
     op = graph.get_operation_by_name(_op_name)
-    assert op is not None, \
-        'cannot locate op {} in current graph'.format(_op_name)
+    assert isinstance(op, tf.Operation), 'expect tf.Operation, but got {}'.format(type(op))
     return op
 
 def get_tensor(tfobj_or_name, graph):
@@ -85,6 +85,7 @@ def get_tensor(tfobj_or_name, graph):
                   By default the graph we don't require this argument to be provided.
     """
     graph = validated_graph(graph)
+    _assert_same_graph(tfobj_or_name, graph)
     if isinstance(tfobj_or_name, tf.Tensor):
         return tfobj_or_name
     name = tfobj_or_name
@@ -94,8 +95,7 @@ def get_tensor(tfobj_or_name, graph):
         raise TypeError('invalid tensor request for {} of {}'.format(name, type(name)))
     _tensor_name = tensor_name(name, graph=None)
     tnsr = graph.get_tensor_by_name(_tensor_name)
-    assert tnsr is not None, \
-        'cannot locate tensor {} in current graph'.format(_tensor_name)
+    assert isinstance(tnsr, tf.Tensor), 'expect tf.Tensor, but got {}'.format(type(tnsr))
     return tnsr
 
 def tensor_name(tfobj_or_name, graph=None):
@@ -213,3 +213,10 @@ def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
         return g
     else:
         return gdef_frozen
+
+
+def _assert_same_graph(tfobj, graph):
+    if graph is None or not hasattr(tfobj, 'graph'):
+        return
+    assert tfobj.graph == graph, \
+        'the graph of TensorFlow element {} != graph {}'.format(tfobj, graph)

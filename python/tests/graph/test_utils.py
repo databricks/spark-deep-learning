@@ -42,7 +42,31 @@ def _gen_invalid_tensor_or_op_input_with_wrong_types():
         yield TestCase(data=wrong_val, description='wrong type {}'.format(type(wrong_val)))
 
 
-def _gen_valid_tensor_op_objects():
+def _gen_invalid_tensor_or_op_with_graph_pairing():
+    tnsr = tf.constant(1427.08, name='someConstOp')
+    other_graph = tf.Graph()
+    op_name = tnsr.op.name
+
+    # Test get_tensor and get_op returns tensor or op contained in the same graph
+    yield TestCase(data=lambda: tfx.get_op(tnsr, other_graph),
+                   description='test graph from getting op fron tensor')
+    yield TestCase(data=lambda: tfx.get_tensor(tnsr, other_graph),
+                   description='test graph from getting tensor from tensor')
+    yield TestCase(data=lambda: tfx.get_op(tnsr.name, other_graph),
+                   description='test graph from getting op fron tensor name')
+    yield TestCase(data=lambda: tfx.get_tensor(tnsr.name, other_graph),
+                   description='test graph from getting tensor from tensor name')
+    yield TestCase(data=lambda: tfx.get_op(tnsr.op, other_graph),
+                   description='test graph from getting op from op')
+    yield TestCase(data=lambda: tfx.get_tensor(tnsr.op, other_graph),
+                   description='test graph from getting tensor from op')
+    yield TestCase(data=lambda: tfx.get_op(op_name, other_graph),
+                   description='test graph from getting op from op name')
+    yield TestCase(data=lambda: tfx.get_tensor(op_name, other_graph),
+                   description='test graph from getting tensor from op name')
+
+
+def _gen_valid_tensor_op_input_combos():
     op_name = 'someConstOp'
     tnsr_name = '{}:0'.format(op_name)
     tnsr = tf.constant(1427.08, name=op_name)
@@ -154,8 +178,14 @@ class TFeXtensionGraphUtilsTest(PythonUnitTestCase):
         with self.assertRaises(TypeError, msg=description):
             tfx.get_tensor(data, tf.Graph())
 
-    @parameterized.expand(_gen_valid_tensor_op_objects)
+    @parameterized.expand(_gen_valid_tensor_op_input_combos)
     def test_valid_tensor_op_object_inputs(self, data, description):
         """ Must get correct graph elements from valid graph elements or their names """
         tfobj_or_name_a, tfobj_or_name_b = data
         self.assertEqual(tfobj_or_name_a, tfobj_or_name_b, msg=description)
+
+    @parameterized.expand(_gen_invalid_tensor_or_op_with_graph_pairing)
+    def test_invalid_tensor_op_object_graph_pairing(self, data, description):
+        """ Must fail when the graph element is from a different graph than the provided """
+        with self.assertRaises((KeyError, AssertionError, TypeError), msg=description):
+            data()
