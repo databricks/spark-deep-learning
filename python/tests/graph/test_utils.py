@@ -48,13 +48,13 @@ def _gen_invalid_tensor_or_op_with_graph_pairing():
     op_name = tnsr.op.name
 
     # Test get_tensor and get_op with non-associated tensor/op and graph inputs
-    _comm_suffix = ' with non-associated tensor/op and graph inputs'
+    _comm_suffix = ' with wrong graph'
     yield TestCase(data=lambda: tfx.get_op(tnsr, other_graph),
-                   description='test get_op with from tensor' + _comm_suffix)
+                   description='test get_op from tensor' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_tensor(tnsr, other_graph),
                    description='test get_tensor from tensor' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_op(tnsr.name, other_graph),
-                   description='test get_op fron tensor name' + _comm_suffix)
+                   description='test get_op from tensor name' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_tensor(tnsr.name, other_graph),
                    description='test get_tensor from tensor name' + _comm_suffix)
     yield TestCase(data=lambda: tfx.get_op(tnsr.op, other_graph),
@@ -169,6 +169,6 @@ class TFeXtensionGraphUtilsTest(PythonUnitTestCase):
 
     @parameterized.expand(_gen_invalid_tensor_or_op_with_graph_pairing)
     def test_invalid_tensor_op_object_graph_pairing(self, data, description):
-        """ Must fail when the graph element is from a different graph than the provided """
+        """ Must fail with non-associated tensor/op and graph inputs """
         with self.assertRaises((KeyError, AssertionError, TypeError), msg=description):
             data()
