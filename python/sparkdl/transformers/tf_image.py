@@ -120,7 +120,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         with final_graph.as_default():
             image = dataset[self.getInputCol()]
             image_df_exploded = (dataset
-              .withColumn("__sdl_image_height", image.height)
+              .n("__sdl_image_height", image.height)
               .withColumn("__sdl_image_width", image.width)
               .withColumn("__sdl_image_nchannels", image.nChannels)
               .withColumn("__sdl_image_data", image.data)
