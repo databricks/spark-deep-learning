@@ -69,7 +69,7 @@ class TFTextFileEstimatorTest(SparkDLTestCase):
         # create a estimator to training where map_fun contains tensorflow's code
         estimator = TFTextFileEstimator(inputCol="sentence_matrix", outputCol="sentence_matrix", labelCol="preds",
                                         kafkaParam={"bootstrap_servers": ["127.0.0.1"], "topic": "test",
-                                                    "group_id": "sdl_1", "test_mode": False},
+                                                    "group_id": "sdl_1", "test_mode": True},
                                         fitParam=[{"epochs": 5, "batch_size": 64}, {"epochs": 5, "batch_size": 1}],
                                         mapFnParam=map_fun)
         estimator.fit(df).collect()
