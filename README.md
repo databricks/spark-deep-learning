@@ -131,16 +131,16 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
 
     ```python
     from sparkdl import readImages, TFImageTransformer
+    import sparkdl.graph.utils as tfx
     from sparkdl.transformers import utils
     import tensorflow as tf
 
-    g = tf.Graph()
-    with g.as_default():
+    graph = tf.Graph()
+    with tf.Session(graph=graph) as sess:
         image_arr = utils.imageInputPlaceholder()
         resized_images = tf.image.resize_images(image_arr, (299, 299))
-        # the following step is not necessary for this graph, but can be for graphs with variables, etc
-        frozen_graph = utils.stripAndFreezeGraph(g.as_graph_def(add_shapes=True), tf.Session(graph=g),
-                                                 [resized_images])
+        frozen_graph = tfx.strip_and_freeze_until([resized_images], graph, sess,
+                                                  return_graph=True)
 
     transformer = TFImageTransformer(inputCol="image", outputCol="predictions", graph=frozen_graph,
                                      inputTensor=image_arr, outputTensor=resized_images,
@@ -241,7 +241,7 @@ registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"),
 
 ```
 
+### Estimator
 
 ## Releases:
 * 0.1.0 initial release
-
