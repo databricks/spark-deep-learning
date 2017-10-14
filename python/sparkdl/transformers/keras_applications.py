@@ -43,7 +43,6 @@ class KerasApplicationModel:
         with sess.as_default():
             K.set_learning_phase(0)
             inputImage = imageInputPlaceholder(nChannels=3)
-            # PROBLEM: the type of preprocessed here i think doesn't match between InceptionV3/Xception and Resnet50
             preprocessed = self.preprocess(inputImage)
             model = self.model(preprocessed, featurize)
         return dict(inputTensorName=inputImage.name,
