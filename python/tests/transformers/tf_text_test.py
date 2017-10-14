@@ -48,7 +48,7 @@ class TFTextTransformerTest(SparkDLTestCase):
 class TFTextFileEstimatorTest(SparkDLTestCase):
     def test_trainText(self):
         import os
-        if  os.path.exists(KafkaMockServer()._kafka_mock_server_tmp_file_):
+        if os.path.exists(KafkaMockServer()._kafka_mock_server_tmp_file_):
             shutil.rmtree(KafkaMockServer()._kafka_mock_server_tmp_file_)
 
         input_col = "text"
@@ -71,6 +71,7 @@ class TFTextFileEstimatorTest(SparkDLTestCase):
                                         kafkaParam={"bootstrap_servers": ["127.0.0.1"], "topic": "test",
                                                     "group_id": "sdl_1", "test_mode": True},
                                         fitParam=[{"epochs": 5, "batch_size": 64}, {"epochs": 5, "batch_size": 1}],
+                                        runningMode="Normal",
                                         mapFnParam=map_fun)
         estimator.fit(df).collect()
 

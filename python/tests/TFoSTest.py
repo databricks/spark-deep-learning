@@ -1,3 +1,8 @@
+from pyspark.sql import SparkSession
+from sparkdl.estimators.tf_text_file_estimator import TFTextFileEstimator, KafkaMockServer
+from sparkdl.transformers.tf_text import TFTextTransformer
+
+
 def map_fun(args={}, ctx=None, _read_data=None):
     from tensorflowonspark import TFNode
     from datetime import datetime
@@ -11,8 +16,7 @@ def map_fun(args={}, ctx=None, _read_data=None):
     EMBEDDING_SIZE = args["embedding_size"]
     feature = args['feature']
     label = args['label']
-    params = args['params']['fitParam']
-    print(params)
+    params = args['params']['fitParam'][0]
     SEQUENCE_LENGTH = 64
 
     clusterMode = False if ctx is None else True
@@ -144,3 +148,27 @@ def map_fun(args={}, ctx=None, _read_data=None):
     else:
         input_x, init_op, train_step, xent, global_step, summ = build_graph()
         train(input_x, init_op, train_step, xent, global_step, summ)
+
+
+input_col = "text"
+output_col = "sentence_matrix"
+
+session = SparkSession.builder.master("spark://allwefantasy:7077").appName("test").getOrCreate()
+documentDF = session.createDataFrame([
+    ("Hi I heard about Spark", 1),
+    ("I wish Java could use case classes", 0),
+    ("Logistic regression models are neat", 2)
+], ["text", "preds"])
+
+# transform text column to sentence_matrix column which contains 2-D array.
+transformer = TFTextTransformer(
+    inputCol=input_col, outputCol=output_col, embeddingSize=100, sequenceLength=64)
+
+df = transformer.transform(documentDF)
+
+# create a estimator to training where map_fun contains tensorflow's code
+estimator = TFTextFileEstimator(inputCol="sentence_matrix", outputCol="sentence_matrix", labelCol="preds",
+                                fitParam=[{"epochs": 1, "cluster_size": 2, "batch_size": 64, "model": "/tmp/model"}],
+                                runningMode="TFoS",
+                                mapFnParam=map_fun)
+estimator.fit(df).collect()
