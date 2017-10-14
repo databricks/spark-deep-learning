@@ -162,7 +162,10 @@ exec "${_spark_shell}" \
      --master "local[4]" \
      --conf spark.app.name="[drgscl]::spark-shell" \
      --conf spark.eventLog.enabled=false \
+     --conf spark.driver.memory=10g \
+     --conf spark.executor.memory=10g \
      --jars "${_submit_jars}" \
+     --verbose \
      $@
 
 _EXEC_SCRIPT_EOF_
