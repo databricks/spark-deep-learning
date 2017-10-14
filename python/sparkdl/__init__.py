@@ -13,15 +13,17 @@
 # limitations under the License.
 #
 
+from .graph.input import TFInputGraph
 from .image.imageIO import imageSchema, imageType, readImages
 from .transformers.keras_image import KerasImageFileTransformer
 from .transformers.named_image import DeepImagePredictor, DeepImageFeaturizer
 from .transformers.tf_image import TFImageTransformer
+from .transformers.tf_tensor import TFTransformer
 from .transformers.utils import imageInputPlaceholder
+
 
 __all__ = [
     'imageSchema', 'imageType', 'readImages',
-    'TFImageTransformer',
-    'DeepImagePredictor', 'DeepImageFeaturizer',
-    'KerasImageFileTransformer',
+    'TFImageTransformer', 'TFInputGraph', 'TFTransformer',
+    'DeepImagePredictor', 'DeepImageFeaturizer', 'KerasImageFileTransformer',
     'imageInputPlaceholder']
