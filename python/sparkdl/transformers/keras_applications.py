@@ -16,7 +16,8 @@
 from abc import ABCMeta, abstractmethod
 
 import keras.backend as K
-from keras.applications import inception_v3, xception
+from keras.applications import inception_v3, xception, resnet50
+import numpy as np
 import tensorflow as tf
 
 from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
@@ -104,9 +105,41 @@ class XceptionModel(KerasApplicationModel):
     def _testKerasModel(self, include_top):
         return xception.Xception(weights="imagenet", include_top=include_top)
 
+class ResNet50Model(KerasApplicationModel):
+    def preprocess(self, inputImage):
+        return _imagenet_preprocess_input(inputImage, self.inputShape())
+
+    def model(self, preprocessed, featurize):
+        return resnet50.ResNet50(input_tensor=preprocessed, weights="imagenet",
+                                 include_top=(not featurize))
+
+    def inputShape(self):
+        return (224, 224)
+
+    def _testKerasModel(self, include_top):
+        return resnet50.ResNet50(weights="imagenet", include_top=include_top)
+
+def _imagenet_preprocess_input(x, input_shape):
+    """
+    For ResNet50, VGG models. For InceptionV3 and Xception it's okay to use the
+    keras version (e.g. InceptionV3.preprocess_input) as the code path they hit
+    works okay with tf.Tensor inputs. The following was translated to tf ops from
+    https://github.com/fchollet/keras/blob/fb4a0849cf4dc2965af86510f02ec46abab1a6a4/keras/applications/imagenet_utils.py#L52
+    It's a possibility to change the implementation in keras to look like the
+    following, but not doing it for now.
+    """
+    # 'RGB'->'BGR'
+    x = x[..., ::-1]
+    # Zero-center by mean pixel
+    mean = np.ones(input_shape + (3,), dtype=np.float32)
+    mean[..., 0] = 103.939
+    mean[..., 1] = 116.779
+    mean[..., 2] = 123.68
+    return x - mean
 
 KERAS_APPLICATION_MODELS = {
     "InceptionV3": InceptionV3Model,
-    "Xception": XceptionModel
+    "Xception": XceptionModel,
+    "ResNet50": ResNet50Model,
 }
 

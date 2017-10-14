@@ -14,6 +14,7 @@
 #
 
 import numpy as np
+from keras.applications import resnet50
 import tensorflow as tf
 
 from pyspark.ml import Pipeline
@@ -29,9 +30,25 @@ from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF, getSampleImageList
 
 
-class GetKerasApplicationModelTestCase(SparkDLTestCase):
+class KerasApplicationModelTestCase(SparkDLTestCase):
     def test_getKerasApplicationModelError(self):
         self.assertRaises(ValueError, keras_apps.getKerasApplicationModel, "NotAModelABC")
+
+    def test_imagenet_preprocess_input(self):
+        # compare our tf implementation to the np implementation in keras
+        image = np.zeros((256, 256, 3))
+
+        sess = tf.Session()
+        with sess.as_default():
+            x = tf.placeholder(tf.float32, shape=[256, 256, 3])
+            processed = keras_apps._imagenet_preprocess_input(x, (256, 256)),
+            sparkdl_preprocessed_input = sess.run(processed, {x: image})
+
+        keras_preprocessed_input = resnet50.preprocess_input(np.expand_dims(image, axis=0))
+
+        # NOTE: precision errors occur for decimal > 5
+        np.testing.assert_array_almost_equal(sparkdl_preprocessed_input, keras_preprocessed_input,
+                                             decimal=5)
 
 
 class NamedImageTransformerBaseTestCase(SparkDLTestCase):
