@@ -29,7 +29,7 @@ from sparkdl.param import (
 from sparkdl.transformers.tf_image import TFImageTransformer
 
 
-SUPPORTED_MODELS = ["InceptionV3", "Xception"]
+SUPPORTED_MODELS = ["InceptionV3", "Xception", "ResNet50"]
 
 
 class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
