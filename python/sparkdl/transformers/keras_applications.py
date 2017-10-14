@@ -121,11 +121,12 @@ class ResNet50Model(KerasApplicationModel):
 
 def _imagenet_preprocess_input(x, input_shape):
     """
-    For ResNet50, VGG models. For InceptionV3 and Xception use the keras one
-    for them as they work okay for tf.Tensor. The following was translated to tf ops from
+    For ResNet50, VGG models. For InceptionV3 and Xception it's okay to use the
+    keras version (e.g. InceptionV3.preprocess_input) as the code path they hit
+    works okay with tf.Tensor inputs. The following was translated to tf ops from
     https://github.com/fchollet/keras/blob/fb4a0849cf4dc2965af86510f02ec46abab1a6a4/keras/applications/imagenet_utils.py#L52
-    It's a possibility to change the implementation in keras to look like the following, but
-    not doing it for now.
+    It's a possibility to change the implementation in keras to look like the
+    following, but not doing it for now.
     """
     # 'RGB'->'BGR'
     x = x[..., ::-1]
