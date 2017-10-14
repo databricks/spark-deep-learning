@@ -147,6 +147,27 @@ class HasEmbeddingSize(Params):
         return self.getOrDefault(self.embeddingSize)
 
 
+class RunningMode(Params):
+    """
+    Mixin for param RunningMode
+        * TFoS
+        * Normal
+    """
+
+    runningMode = Param(Params._dummy(), "runningMode", "based on TFoS or Normal which is used to "
+                                                        "hyper parameter tuning",
+                        typeConverter=TypeConverters.toString)
+
+    def __init__(self):
+        super(RunningMode, self).__init__()
+
+    def setRunningMode(self, value):
+        return self._set(runningMode=value)
+
+    def getRunningMode(self):
+        return self.getOrDefault(self.runningMode)
+
+
 class HasSequenceLength(Params):
     """
     Mixin for param sequenceLength

@@ -28,10 +28,11 @@ import cPickle as pickle
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
 from pyspark.ml import Estimator
+from tensorflowonspark import TFCluster
 
 from sparkdl.param import (
     keyword_only, HasLabelCol, HasInputCol, HasOutputCol)
-from sparkdl.param.shared_params import KafkaParam, FitParam, MapFnParam
+from sparkdl.param.shared_params import KafkaParam, FitParam, MapFnParam, RunningMode
 import sparkdl.utils.jvmapi as JVMAPI
 
 __all__ = ['TFTextFileEstimator']
@@ -39,7 +40,8 @@ __all__ = ['TFTextFileEstimator']
 logger = logging.getLogger('sparkdl')
 
 
-class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, KafkaParam, FitParam, MapFnParam):
+class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, KafkaParam, FitParam, RunningMode,
+                          MapFnParam):
     """
     Build a Estimator from tensorflow or keras when backend is tensorflow.
 
@@ -111,13 +113,15 @@ class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, Kaf
     """
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, labelCol=None, kafkaParam=None, fitParam=None, mapFnParam=None):
+    def __init__(self, inputCol=None, outputCol=None, labelCol=None, kafkaParam=None, fitParam=None,
+                 runningMode="Normal", mapFnParam=None):
         super(TFTextFileEstimator, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, labelCol=None, kafkaParam=None, fitParam=None, mapFnParam=None):
+    def setParams(self, inputCol=None, outputCol=None, labelCol=None, kafkaParam=None, fitParam=None,
+                  runningMode="Normal", mapFnParam=None):
         kwargs = self._input_kwargs
         return self._set(**kwargs)
 
@@ -136,7 +140,10 @@ class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, Kaf
         else:
             raise ValueError("Params must be either a param map or a list/tuple of param maps, "
                              "but got %s." % type(params))
-        return self._fitInParallel(dataset, paramMaps)
+        if self.getRunningMode() == "TFoS":
+            return self._fitInCluster(dataset, paramMaps)
+        else:
+            return self._fitInParallel(dataset, paramMaps)
 
     def _validateParams(self):
         """
@@ -148,6 +155,41 @@ class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, Kaf
         if not self.isDefined(self.outputCol):
             raise ValueError("Output column must be defined")
         return True
+
+    def _clusterModelDefaultValue(self, sc, args):
+        if "cluster_size" not in args:
+            executors = sc._conf.get("spark.executor.instances")
+            num_executors = int(executors) if executors is not None else 1
+            args['cluster_size'] = num_executors
+            num_ps = 1
+        if "num_ps" not in args:
+            args['num_ps'] = 1
+        if "tensorboard" not in args:
+            args['tensorboard'] = None
+        return args
+
+    def _fitInCluster(self, dataset, paramMaps):
+        sc = JVMAPI._curr_sc()
+
+        temp_item = dataset.take(1)[0]
+        vocab_s = temp_item["vocab_size"]
+        embedding_size = temp_item["embedding_size"]
+
+        baseParamMap = self.extractParamMap()
+        baseParamDict = dict([(param.name, val) for param, val in baseParamMap.items()])
+
+        args = self._clusterModelDefaultValue(sc, paramMaps[0])
+        args["feature"] = self.getInputCol()
+        args["label"] = self.getLabelCol()
+        args["vacab_size"] = vocab_s
+        args["embedding_size"] = embedding_size
+        args["params"] = baseParamDict
+
+        cluster = TFCluster.run(sc, self.getMapFnParam(), args, args['cluster_size'], args['num_ps'],
+                                args['tensorboard'],
+                                TFCluster.InputMode.SPARK)
+        cluster.train(dataset.rdd, args["epochs"])
+        cluster.shutdown()
 
     def _fitInParallel(self, dataset, paramMaps):
 
@@ -245,12 +287,11 @@ class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, Kaf
                 finally:
                     consumer.close()
 
-            self.getMapFnParam()(_read_data,
-                                 feature=inputCol,
-                                 label=labelCol,
-                                 vacab_size=vocab_s,
-                                 embedding_size=embedding_size,
-                                 params=params
+            self.getMapFnParam()(args=dict(feature=inputCol,
+                                           label=labelCol,
+                                           vacab_size=vocab_s,
+                                           embedding_size=embedding_size,
+                                           params=params), ctx=None, _read_data=_read_data
                                  )
 
         return paramMapsRDD.map(lambda paramMap: (paramMap, _local_fit(paramMap)))
