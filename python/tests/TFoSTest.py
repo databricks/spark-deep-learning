@@ -122,7 +122,7 @@ def map_fun(args={}, ctx=None, _read_data=None):
                 batch_data = feed_dict(data)
                 step += 1
                 _, x, g = sess.run([train_step, xent, global_step], feed_dict={input_x: batch_data})
-                print("global_step:{} xent:{}".format(x, g))
+                print("global_step:{} xent:{}".format(g, x))
 
             if sv.should_stop() or step >= args.steps:
                 tf_feed.terminate()
@@ -168,7 +168,7 @@ df = transformer.transform(documentDF)
 
 # create a estimator to training where map_fun contains tensorflow's code
 estimator = TFTextFileEstimator(inputCol="sentence_matrix", outputCol="sentence_matrix", labelCol="preds",
-                                fitParam=[{"epochs": 1, "cluster_size": 2, "batch_size": 64, "model": "/tmp/model"}],
+                                fitParam=[{"epochs": 1, "cluster_size": 2, "batch_size": 1, "model": "/tmp/model"}],
                                 runningMode="TFoS",
                                 mapFnParam=map_fun)
 estimator.fit(df).collect()
