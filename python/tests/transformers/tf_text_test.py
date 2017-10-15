@@ -16,9 +16,12 @@ import cPickle as pickle
 import shutil
 import threading
 
+from tensorflowonspark import TFNode
+
 from sparkdl.estimators.tf_text_file_estimator import TFTextFileEstimator, KafkaMockServer
 from sparkdl.transformers.tf_text import TFTextTransformer
 from sparkdl.tf_fun import map_fun
+from ..tests import TFoSBaseSparkTest
 from ..tests import SparkDLTestCase
 
 
@@ -72,6 +75,57 @@ class TFTextFileEstimatorTest(SparkDLTestCase):
                                                     "group_id": "sdl_1", "test_mode": True},
                                         fitParam=[{"epochs": 5, "batch_size": 64}, {"epochs": 5, "batch_size": 1}],
                                         runningMode="Normal",
+                                        mapFnParam=map_fun)
+        estimator.fit(df).collect()
+
+
+class TFTextFileEstimatorOnTFoSTest(TFoSBaseSparkTest):
+    def trainText(self):
+        """
+         To make this test work,Please:
+          1. Start a Spark standalone cluster and export MASTER to your env,
+          2. Make sure spark-deep-learning assembly  in spark classpath.
+          3. Change method 'trainText' to 'test_trainText'
+        """
+        input_col = "text"
+        output_col = "sentence_matrix"
+
+        documentDF = self.session.createDataFrame([
+            ("Hi I heard about Spark", 1),
+            ("I wish Java could use case classes", 0),
+            ("Logistic regression models are neat", 2)
+        ], ["text", "preds"])
+
+        # transform text column to sentence_matrix column which contains 2-D array.
+        transformer = TFTextTransformer(
+            inputCol=input_col, outputCol=output_col, embeddingSize=100, sequenceLength=64)
+
+        df = transformer.transform(documentDF)
+
+        def map_fun(args={}, ctx=None, _read_data=None):
+            import time
+            self.assertTrue(ctx is not None)
+            self.assertTrue(_read_data is None)
+            self.assertTrue(args["params"]["fitParam"][0]["cluster_size"] == 2)
+            clusterMode = ctx is not None
+            if clusterMode and ctx.job_name == "ps":
+                time.sleep((ctx.worker_num + 1) * 5)
+
+            if clusterMode:
+                cluster, server = TFNode.start_cluster_server(ctx, 1)
+
+            data = TFNode.DataFeed(ctx.mgr, True)
+            batch1 = data.next_batch(1)
+            self.assertTrue(len(batch1) == 1)
+            self.assertTrue(len(batch1[0]) == 64)
+            self.assertTrue(len(batch1[0][0]) == 100)
+            # consume all
+            data.next_batch(100)
+
+        estimator = TFTextFileEstimator(inputCol="sentence_matrix", outputCol="sentence_matrix", labelCol="preds",
+                                        fitParam=[
+                                            {"epochs": 1, "cluster_size": 2, "batch_size": 1, "model": "/tmp/model"}],
+                                        runningMode="TFoS",
                                         mapFnParam=map_fun)
         estimator.fit(df).collect()
 
