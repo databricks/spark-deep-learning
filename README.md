@@ -244,4 +244,6 @@ registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"),
 ### Estimator
 
 ## Releases:
+* 0.2.x Feature
+  - Developer tools
 * 0.1.0 initial release
