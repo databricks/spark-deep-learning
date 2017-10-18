@@ -21,9 +21,7 @@ import logging
 import threading
 import time
 import os
-import shutil
-
-import cPickle as pickle
+import sys
 
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
@@ -33,6 +31,11 @@ from sparkdl.param import (
     keyword_only, HasLabelCol, HasInputCol, HasOutputCol)
 from sparkdl.param.shared_params import KafkaParam, FitParam, MapFnParam
 import sparkdl.utils.jvmapi as JVMAPI
+
+if sys.version_info[:2] <= (2, 7):
+    import cPickle as pickle
+else:
+    import _pickle as pickle
 
 __all__ = ['TFTextFileEstimator']
 
