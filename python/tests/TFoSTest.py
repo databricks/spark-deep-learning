@@ -132,6 +132,7 @@ def map_fun(args={}, ctx=None, _read_data=None):
 
         with tf.Session() as sess:
             sess.run(init_op)
+            ## for i in range(echo)
             for data in _read_data(max_records=params["batch_size"]):
                 batch_data = feed_dict(data)
                 _, x, g = sess.run([train_step, xent, global_step], feed_dict={input_x: batch_data})

@@ -65,7 +65,7 @@ class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, Kaf
      Then we create a tensorflow function.
 
      .. code-block:: python
-         def map_fun(_read_data, **args):
+         def map_fun(args={}, ctx=None, _read_data=None):
             import tensorflow as tf
             EMBEDDING_SIZE = args["embedding_size"]
             feature = args['feature']
