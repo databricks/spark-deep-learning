@@ -286,7 +286,7 @@ class KafkaMockServer(object):
         self.queue.append(pickle.loads(msg))
 
     def flush(self):
-        with open(self._kafka_mock_server_tmp_file_ + "/" + str(self.index), "w") as f:
+        with open(self._kafka_mock_server_tmp_file_ + "/" + str(self.index), "wb") as f:
             pickle.dump(self.queue, f)
         self.queue = []
 
