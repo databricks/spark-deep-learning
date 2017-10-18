@@ -140,10 +140,6 @@ class TFTextTransformerTest(SparkDLTestCase):
 
 class TFTextFileEstimatorTest(SparkDLTestCase):
     def test_trainText(self):
-        import os
-        if os.path.exists(KafkaMockServer()._kafka_mock_server_tmp_file_):
-            shutil.rmtree(KafkaMockServer()._kafka_mock_server_tmp_file_)
-
         input_col = "text"
         output_col = "sentence_matrix"
 
@@ -158,22 +154,23 @@ class TFTextFileEstimatorTest(SparkDLTestCase):
             inputCol=input_col, outputCol=output_col, embeddingSize=100, sequenceLength=64)
 
         df = transformer.transform(documentDF)
-
+        import tempfile
+        mock_kafka_file = tempfile.mkdtemp()
         # create a estimator to training where map_fun contains tensorflow's code
         estimator = TFTextFileEstimator(inputCol="sentence_matrix", outputCol="sentence_matrix", labelCol="preds",
                                         kafkaParam={"bootstrap_servers": ["127.0.0.1"], "topic": "test",
+                                                    "mock_kafka_file": mock_kafka_file,
                                                     "group_id": "sdl_1", "test_mode": True},
                                         fitParam=[{"epochs": 5, "batch_size": 64}, {"epochs": 5, "batch_size": 1}],
                                         mapFnParam=map_fun)
         estimator.fit(df).collect()
+        shutil.rmtree(mock_kafka_file)
 
 
 class MockKakfaServerTest(SparkDLTestCase):
     def test_mockKafkaServerProduce(self):
-        import os
-        if os.path.exists(KafkaMockServer()._kafka_mock_server_tmp_file_):
-            shutil.rmtree(KafkaMockServer()._kafka_mock_server_tmp_file_)
-            
+        import tempfile
+        mock_kafka_file = tempfile.mkdtemp()
         dataset = self.session.createDataFrame([
             ("Hi I heard about Spark", 1),
             ("I wish Java could use case classes", 0),
@@ -182,7 +179,7 @@ class MockKakfaServerTest(SparkDLTestCase):
 
         def _write_data():
             def _write_partition(index, d_iter):
-                producer = KafkaMockServer(index)
+                producer = KafkaMockServer(index, mock_kafka_file)
                 try:
                     for d in d_iter:
                         producer.send("", pickle.dumps(d))
@@ -197,7 +194,7 @@ class MockKakfaServerTest(SparkDLTestCase):
         _write_data()
 
         def _consume():
-            consumer = KafkaMockServer()
+            consumer = KafkaMockServer(0, mock_kafka_file)
             stop_count = 0
             while True:
                 messages = consumer.poll(timeout_ms=1000, max_records=64)
@@ -221,3 +218,6 @@ class MockKakfaServerTest(SparkDLTestCase):
             t.start()
             t2 = threading.Thread(target=_consume)
             t2.start()
+            import time
+            time.sleep(10)
+            shutil.rmtree(mock_kafka_file)

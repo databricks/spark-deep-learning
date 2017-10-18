@@ -163,10 +163,11 @@ class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, Kaf
         group_id = kafaParams["group_id"]
         bootstrap_servers = kafaParams["bootstrap_servers"]
         kafka_test_mode = kafaParams["test_mode"] if "test_mode" in kafaParams else False
+        mock_kafka_file = kafaParams["mock_kafka_file"] if kafka_test_mode else None
 
         def _write_data():
             def _write_partition(index, d_iter):
-                producer = KafkaMockServer(index) if kafka_test_mode else KafkaProducer(
+                producer = KafkaMockServer(index, mock_kafka_file) if kafka_test_mode else KafkaProducer(
                     bootstrap_servers=bootstrap_servers)
                 try:
                     for d in d_iter:
@@ -205,12 +206,12 @@ class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, Kaf
             params["fitParam"] = override_param_map
 
             def _read_data(max_records=64):
-                consumer = KafkaMockServer() if kafka_test_mode else KafkaConsumer(topic,
-                                                                                   group_id=group_id,
-                                                                                   bootstrap_servers=bootstrap_servers,
-                                                                                   auto_offset_reset="earliest",
-                                                                                   enable_auto_commit=False
-                                                                                   )
+                consumer = KafkaMockServer(0, mock_kafka_file) if kafka_test_mode else KafkaConsumer(topic,
+                                                                                                     group_id=group_id,
+                                                                                                     bootstrap_servers=bootstrap_servers,
+                                                                                                     auto_offset_reset="earliest",
+                                                                                                     enable_auto_commit=False
+                                                                                                     )
                 try:
                     stop_count = 0
                     fail_msg_count = 0
@@ -269,14 +270,15 @@ class KafkaMockServer(object):
        * Make sure all data have been writen before consume.
        * Poll function will just ignore max_records and just return all data in queue.
     """
-    import tempfile
-    _kafka_mock_server_tmp_file_ = tempfile.mkdtemp()
+
+    _kafka_mock_server_tmp_file_ = None
     sended = False
 
-    def __init__(self, index=0):
+    def __init__(self, index=0, tmp_file=None):
         super(KafkaMockServer, self).__init__()
         self.index = index
         self.queue = []
+        self._kafka_mock_server_tmp_file_ = tmp_file
         if not os.path.exists(self._kafka_mock_server_tmp_file_):
             os.mkdir(self._kafka_mock_server_tmp_file_)
 
@@ -284,7 +286,7 @@ class KafkaMockServer(object):
         self.queue.append(pickle.loads(msg))
 
     def flush(self):
-        with open(self._kafka_mock_server_tmp_file_ + str(self.index), "w") as f:
+        with open(self._kafka_mock_server_tmp_file_ + "/" + str(self.index), "w") as f:
             pickle.dump(self.queue, f)
         self.queue = []
 
@@ -297,7 +299,7 @@ class KafkaMockServer(object):
 
         records = []
         for file in os.listdir(self._kafka_mock_server_tmp_file_):
-            with open(self._kafka_mock_server_tmp_file_ + file) as f:
+            with open(self._kafka_mock_server_tmp_file_ + "/" + file) as f:
                 tmp = pickle.load(f)
                 records += tmp
         result = {}
