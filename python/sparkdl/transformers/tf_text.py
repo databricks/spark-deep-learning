@@ -56,7 +56,6 @@ class TFTextTransformer(Transformer, HasInputCol, HasOutputCol, HasEmbeddingSize
         return self._set(**kwargs)
 
     def _transform(self, dataset):
-
         sc = JVMAPI._curr_sc()
 
         word2vec = Word2Vec(vectorSize=self.getEmbeddingSize(), minCount=1, inputCol=self.getInputCol(),
@@ -78,7 +77,6 @@ class TFTextTransformer(Transformer, HasInputCol, HasOutputCol, HasEmbeddingSize
             lambda p: (p.word, p.vector.values.tolist())).collect())
 
         word_embedding["unk"] = np.zeros(self.getEmbeddingSize()).tolist()
-
         local_word_embedding = sc.broadcast(word_embedding)
 
         def convert_word_to_index(s):
