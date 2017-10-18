@@ -11,6 +11,7 @@ README.org
 .cache/
 .history/
 .lib/
+.coverage
 dist/*
 target/
 lib_managed/

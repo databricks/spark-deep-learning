@@ -18,6 +18,8 @@ import tensorflow as tf
 # image stuff
 
 IMAGE_INPUT_PLACEHOLDER_NAME = "sparkdl_image_input"
+TEXT_INPUT_PLACEHOLDER_NAME = "sparkdl_text_input"
+
 
 def imageInputPlaceholder(nChannels=None):
     return tf.placeholder(tf.float32, [None, None, None, nChannels],
