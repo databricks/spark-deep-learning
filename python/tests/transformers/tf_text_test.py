@@ -16,6 +16,8 @@ import cPickle as pickle
 import shutil
 import threading
 
+from pyspark import SparkContext, SQLContext
+
 from sparkdl.estimators.tf_text_file_estimator import TFTextFileEstimator, KafkaMockServer
 from sparkdl.transformers.tf_text import TFTextTransformer
 from ..tests import SparkDLTestCase
@@ -115,7 +117,6 @@ class TFTextTransformerTest(SparkDLTestCase):
     def test_convertText(self):
         input_col = "text"
         output_col = "sentence_matrix"
-
         documentDF = self.session.createDataFrame([
             ("Hi I heard about Spark", 1),
             ("I wish Java could use case classes", 0),
