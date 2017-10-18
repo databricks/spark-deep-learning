@@ -27,6 +27,7 @@ from pyspark.ml.param import Param, Params, TypeConverters
 
 import sparkdl.utils.keras_model as kmutil
 
+
 # From pyspark
 
 def keyword_only(func):
@@ -36,13 +37,73 @@ def keyword_only(func):
 
     .. note:: Should only be used to wrap a method where first arg is `self`
     """
+
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         if len(args) > 0:
             raise TypeError("Method %s forces keyword arguments." % func.__name__)
         self._input_kwargs = kwargs
         return func(self, **kwargs)
+
     return wrapper
+
+
+class KafkaParam(Params):
+    kafkaParam = Param(Params._dummy(), "kafkaParam", "kafka", typeConverter=TypeConverters.identity)
+
+    def __init__(self):
+        super(KafkaParam, self).__init__()
+
+    def setKafkaParam(self, value):
+        """
+        Sets the value of :py:attr:`inputCol`.
+        """
+        return self._set(kafkaParam=value)
+
+    def getKafkaParam(self):
+        """
+        Gets the value of inputCol or its default value.
+        """
+        return self.getOrDefault(self.kafkaParam)
+
+
+class FitParam(Params):
+    fitParam = Param(Params._dummy(), "fitParam", "hyper parameter when training",
+                     typeConverter=TypeConverters.identity)
+
+    def __init__(self):
+        super(FitParam, self).__init__()
+
+    def setFitParam(self, value):
+        """
+        Sets the value of :py:attr:`inputCol`.
+        """
+        return self._set(fitParam=value)
+
+    def getFitParam(self):
+        """
+        Gets the value of inputCol or its default value.
+        """
+        return self.getOrDefault(self.fitParam)
+
+
+class MapFnParam(Params):
+    mapFnParam = Param(Params._dummy(), "mapFnParam", "Tensorflow func", typeConverter=TypeConverters.identity)
+
+    def __init__(self):
+        super(MapFnParam, self).__init__()
+
+    def setMapFnParam(self, value):
+        """
+        Sets the value of :py:attr:`inputCol`.
+        """
+        return self._set(mapFnParam=value)
+
+    def getMapFnParam(self):
+        """
+        Gets the value of inputCol or its default value.
+        """
+        return self.getOrDefault(self.mapFnParam)
 
 
 class HasInputCol(Params):
@@ -66,6 +127,63 @@ class HasInputCol(Params):
         Gets the value of inputCol or its default value.
         """
         return self.getOrDefault(self.inputCol)
+
+
+class HasEmbeddingSize(Params):
+    """
+    Mixin for param embeddingSize
+    """
+
+    embeddingSize = Param(Params._dummy(), "embeddingSize", "word embedding size",
+                          typeConverter=TypeConverters.toInt)
+
+    def __init__(self):
+        super(HasEmbeddingSize, self).__init__()
+
+    def setEmbeddingSize(self, value):
+        return self._set(embeddingSize=value)
+
+    def getEmbeddingSize(self):
+        return self.getOrDefault(self.embeddingSize)
+
+
+class RunningMode(Params):
+    """
+    Mixin for param RunningMode
+        * TFoS
+        * Normal
+    """
+
+    runningMode = Param(Params._dummy(), "runningMode", "based on TFoS or Normal which is used to "
+                                                        "hyper parameter tuning",
+                        typeConverter=TypeConverters.toString)
+
+    def __init__(self):
+        super(RunningMode, self).__init__()
+
+    def setRunningMode(self, value):
+        return self._set(runningMode=value)
+
+    def getRunningMode(self):
+        return self.getOrDefault(self.runningMode)
+
+
+class HasSequenceLength(Params):
+    """
+    Mixin for param sequenceLength
+    """
+
+    sequenceLength = Param(Params._dummy(), "sequenceLength", "sequence length",
+                           typeConverter=TypeConverters.toInt)
+
+    def __init__(self):
+        super(HasSequenceLength, self).__init__()
+
+    def setSequenceLength(self, value):
+        return self._set(sequenceLength=value)
+
+    def getSequenceLength(self):
+        return self.getOrDefault(self.sequenceLength)
 
 
 class HasOutputCol(Params):
@@ -92,12 +210,12 @@ class HasOutputCol(Params):
         """
         return self.getOrDefault(self.outputCol)
 
+
 ############################################
 # New in sparkdl
 ############################################
 
 class SparkDLTypeConverters(object):
-
     @staticmethod
     def toStringOrTFTensor(value):
         if isinstance(value, tf.Tensor):

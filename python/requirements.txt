@@ -9,3 +9,8 @@ pygments>=2.2.0
 tensorflow==1.3.0
 pandas>=0.19.1
 six>=1.10.0
+kafka-python>=1.3.5
+tensorflowonspark>=1.0.5
+tensorflow-tensorboard>=0.1.6
+
+
