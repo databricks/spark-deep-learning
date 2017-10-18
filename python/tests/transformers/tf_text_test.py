@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import cPickle as pickle
+
 import shutil
 import threading
-
-from tensorflowonspark import TFNode
-
+import sys
 from sparkdl.estimators.tf_text_file_estimator import TFTextFileEstimator, KafkaMockServer
 from sparkdl.transformers.tf_text import TFTextTransformer
 from ..tests import SparkDLTestCase
+
+if sys.version_info[:2] <= (2, 7):
+    import cPickle as pickle
+else:
+    import _pickle as pickle
 
 
 def map_fun(args={}, ctx=None, _read_data=None):
