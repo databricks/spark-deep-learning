@@ -115,7 +115,7 @@ class TFTextTransformerTest(SparkDLTestCase):
     def test_convertText(self):
         input_col = "text"
         output_col = "sentence_matrix"
-        
+
         documentDF = self.session.createDataFrame([
             ("Hi I heard about Spark", 1),
             ("I wish Java could use case classes", 0),
