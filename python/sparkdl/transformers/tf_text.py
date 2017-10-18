@@ -58,10 +58,12 @@ class TFTextTransformer(Transformer, HasInputCol, HasOutputCol, HasEmbeddingSize
     def _transform(self, dataset):
         word2vec = Word2Vec(vectorSize=self.getEmbeddingSize(), minCount=1, inputCol=self.getInputCol(),
                             outputCol="word_embedding")
-        word_embedding = dict(
-            word2vec.fit(
-                dataset.select(f.split(self.getInputCol(), "\\s+").alias(self.getInputCol()))).getVectors().rdd.map(
-                lambda p: (p.word, p.vector.values.tolist())).collect())
+        word2vecModel = word2vec.fit(
+            dataset.select(f.split(self.getInputCol(), "\\s+").alias(self.getInputCol())))
+
+        word_embedding = dict(word2vecModel.getVectors().rdd.map(
+            lambda p: (p.word, p.vector.values.tolist())).collect())
+
         word_embedding["unk"] = np.zeros(self.getEmbeddingSize()).tolist()
         sc = JVMAPI._curr_sc()
         local_word_embedding = sc.broadcast(word_embedding)
