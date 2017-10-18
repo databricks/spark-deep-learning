@@ -35,7 +35,7 @@ import sparkdl.utils.jvmapi as JVMAPI
 if sys.version_info[:2] <= (2, 7):
     import cPickle as pickle
 else:
-    import _pickle as pickle
+    import pickle
 
 __all__ = ['TFTextFileEstimator']
 
