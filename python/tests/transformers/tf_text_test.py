@@ -224,6 +224,10 @@ class TFTextFileEstimatorTest(SparkDLTestCase):
 
 class MockKakfaServerTest(SparkDLTestCase):
     def test_mockKafkaServerProduce(self):
+        import os
+        if os.path.exists(KafkaMockServer()._kafka_mock_server_tmp_file_):
+            shutil.rmtree(KafkaMockServer()._kafka_mock_server_tmp_file_)
+
         dataset = self.session.createDataFrame([
             ("Hi I heard about Spark", 1),
             ("I wish Java could use case classes", 0),
