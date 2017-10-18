@@ -245,12 +245,11 @@ class TFTextFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, Kaf
                 finally:
                     consumer.close()
 
-            self.getMapFnParam()(_read_data,
-                                 feature=inputCol,
-                                 label=labelCol,
-                                 vacab_size=vocab_s,
-                                 embedding_size=embedding_size,
-                                 params=params
+            self.getMapFnParam()(args={"feature": inputCol,
+                                       "label": labelCol,
+                                       "vacab_size": vocab_s,
+                                       "embedding_size": embedding_size,
+                                       "params": params}, ctx=None, _read_data=_read_data,
                                  )
 
         return paramMapsRDD.map(lambda paramMap: (paramMap, _local_fit(paramMap)))
