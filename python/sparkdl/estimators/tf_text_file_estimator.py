@@ -269,7 +269,8 @@ class KafkaMockServer(object):
        * Make sure all data have been writen before consume.
        * Poll function will just ignore max_records and just return all data in queue.
     """
-    _kafka_mock_server_tmp_file_ = "/tmp/mock-kafka/"
+    import tempfile
+    _kafka_mock_server_tmp_file_ = tempfile.mkdtemp()
     sended = False
 
     def __init__(self, index=0):
