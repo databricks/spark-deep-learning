@@ -299,7 +299,7 @@ class KafkaMockServer(object):
 
         records = []
         for file in os.listdir(self._kafka_mock_server_tmp_file_):
-            with open(self._kafka_mock_server_tmp_file_ + "/" + file) as f:
+            with open(self._kafka_mock_server_tmp_file_ + "/" + file, "rb") as f:
                 tmp = pickle.load(f)
                 records += tmp
         result = {}
