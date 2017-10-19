@@ -66,12 +66,15 @@ class DeepImageFeaturizerSuite extends FunSuite with TestSparkContext {
     val knownData = sqlContext.createDataFrame(rdd, dfSchema)
 
     val features = featurizer.transform(knownData)
-    val vector = features.select(col(outputColName)).first().getAs[Vector](0)
-    assert(
-      vector === Vectors.dense(59, 43, 53, 72, 43, 30, 42, 75, 53, 19, 26, 85, 81, 63, 66, 113,
-        76, 49, 56, 63, 97, 89, 84, 53),
-      "test_net featurizer did not produce the output we expect to see."
-    )
+    val expectedFeatures = Vectors.dense(59, 43, 53, 72, 43, 30, 42, 75, 53, 19, 26, 85, 81, 63,
+      66, 113, 76, 49, 56, 63, 97, 89, 84, 53)
+    val vector = features.select(col(outputColName)).collect.foreach { row =>
+      val vector = row.getAs[Vector](0)
+      assert(vector === expectedFeatures,
+        "DeepImageFeaturizer, using test_net, featurizer did not produce the output we expect " +
+          "to see."
+      )
+    }
   }
 
 }
