@@ -24,6 +24,13 @@ import org.apache.spark.sql.Row
 
 object ImageUtils {
 
+  /**
+   * Takes a Row image (spImage) and returns a Java BufferedImage. Currently supports 1 & 3
+   * channel images. If the image has 3 channels, we assume the channels are in BGR order.
+   *
+   * @param rowImage Image in spark.ml.image format.
+   * @return Java BGR BufferedImage.
+   */
   private[sparkdl] def spImageToBufferedImage(rowImage: Row): BufferedImage = {
     val height = ImageSchema.getHeight(rowImage)
     val width = ImageSchema.getWidth(rowImage)
@@ -65,6 +72,13 @@ object ImageUtils {
     image
   }
 
+
+  /**
+   * Takes a Java BufferedImage and returns a Row Image (spImage). The
+   *
+   * @param image Java BufferedImage.
+   * @return Row image in spark.ml.image format with 3 channels in BGR order.
+   */
   private[sparkdl] def spImageFromBufferedImage(image: BufferedImage): Row = {
     val channels = 3
     val height = image.getHeight
@@ -84,6 +98,7 @@ object ImageUtils {
       }
       h += 1
     }
+    // TODO: udpate mode to be Int when spark.ml.image is merged.
     Row(null, height, width, channels, "CV_U8C3", decoded)
   }
 
