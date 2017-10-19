@@ -16,60 +16,42 @@
 
 package com.databricks.sparkdl
 
-import java.nio.file.{Files, Paths}
+import java.io.File
+import javax.imageio.ImageIO
 
+import org.apache.spark.image.ImageSchema
 import org.apache.spark.sql.Row
 import org.scalatest.FunSuite
 
 object ImageUtilsSuite {
-  val SRC_HEIGHT = 500
-  val SRC_WIDTH = 336
-  val TGT_HEIGHT = 60
-  val TGT_WIDTH = 40
-  val SRC_CHANNELS, TGT_CHANNELS = 3
-
-  def sourceTestImages() = {
-    val cls = getClass()
-    val biggerImage = Files.readAllBytes(Paths.get(cls.getResource("/biggerImage.raw").getFile))
-    assert(
-      biggerImage.length == SRC_CHANNELS * SRC_HEIGHT * SRC_WIDTH,
-      "Something seems wrong with the image buffer.")
-    val smallerImage = Files.readAllBytes(Paths.get(cls.getResource("/smallerImage.raw").getFile))
-    assert(
-      smallerImage.length == TGT_CHANNELS * TGT_HEIGHT * TGT_WIDTH,
-      "Something seems wrong with the image buffer.")
-    (biggerImage, smallerImage)
+  val biggerImage: Row = {
+    val biggerFile = getClass.getResource("/images/00081101.jpg").getFile
+    val imageBuffer = ImageIO.read(new File(biggerFile))
+    ImageUtils.spImageFromBufferedImage(imageBuffer)
   }
+
+  val smallerImage: Row = {
+    val smallerFile = getClass.getResource("/smaller.png").getFile
+    val imageBuffer = ImageIO.read(new File(smallerFile))
+    ImageUtils.spImageFromBufferedImage(imageBuffer)
+  }
+
+  val tgtHeight: Int = ImageSchema.getHeight(smallerImage)
+  val tgtWidth: Int = ImageSchema.getWidth(smallerImage)
+  val tgtChannels: Int = ImageSchema.getNChannels(smallerImage)
 }
 
 class ImageUtilsSuite extends FunSuite {
   import ImageUtilsSuite._
 
   test("test binary image resize") {
-
-    val (biggerImage, smallerImage) = sourceTestImages()
-    val resizedImage = ImageUtils.resizeImage(
-      SRC_HEIGHT,
-      SRC_WIDTH,
-      SRC_CHANNELS,
-      TGT_HEIGHT,
-      TGT_WIDTH,
-      TGT_CHANNELS,
-      biggerImage)
-    assert(resizedImage.deep == smallerImage.deep, "resizeImage did not give expected result.")
-  }
-
-  test("test image resize udf helper") {
-    val (biggerImage, smallerImage) = sourceTestImages()
-    val imageResizer = ImageUtils.resizeSPImage(TGT_HEIGHT, TGT_WIDTH, TGT_CHANNELS)(_)
-    val imageAsRow = Row(null, SRC_HEIGHT, SRC_WIDTH, SRC_CHANNELS, "CV_U83C", biggerImage)
-    val resizedImage = imageResizer(imageAsRow)
-    val resizedBuffer = resizedImage.getAs[Array[Byte]](5)
-    assert(resizedBuffer.deep == smallerImage.deep, "resizeImage did not give expected result.")
-
-    val reResizedImage = imageResizer(resizedImage)
-    // We do an explicit reference equality here because src & tgt sizes match and short circuit.
-    assert(reResizedImage == resizedImage, "resizeImage did not give expected result.")
+    val testImage = ImageUtils.resizeImage(tgtHeight, tgtWidth, tgtChannels)(biggerImage)
+    assert(ImageSchema.getHeight(testImage) === tgtHeight)
+    assert(ImageSchema.getWidth(testImage) === tgtWidth)
+    assert(ImageSchema.getNChannels(testImage) === tgtChannels)
+    val testImageData = ImageSchema.getData(testImage)
+    val smallerImageData = ImageSchema.getData(smallerImage)
+    assert(testImageData.deep === smallerImageData)
   }
 
 }
