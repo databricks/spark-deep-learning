@@ -80,7 +80,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     )
 
     val imSchema = ImageSchema.columnSchema
-    val resizeUdf = udf(ImageUtils.resizeSPImage(model.height, model.width, 3) _, imSchema)
+    val resizeUdf = udf(ImageUtils.resizeImage(model.height, model.width, 3) _, imSchema)
 
     val imageDF = dataFrame
       .withColumn(RESIZED_IMAGE_COL, resizeUdf(col(getInputCol)))

@@ -50,8 +50,8 @@ class DeepImageFeaturizerSuite extends FunSuite with TestSparkContext {
   }
 
   test("Test test_net on a known data sample.") {
-    import ImageUtilsSuite.{SRC_HEIGHT => h, SRC_WIDTH => w, SRC_CHANNELS => c}
-    val (biggerImage, _) = ImageUtilsSuite.sourceTestImages()
+    import ImageUtilsSuite.biggerImage
+    import ImageUtilsSuite.smallerImage
 
     val outputColName = "myOutput"
     val featurizer = new DeepImageFeaturizer()
@@ -60,15 +60,16 @@ class DeepImageFeaturizerSuite extends FunSuite with TestSparkContext {
 
     val dfSchema = StructType(Array(StructField("myInput", ImageSchema.columnSchema, false)))
     val rdd = sc.parallelize(Seq(
-      Row(Row(null, h, w, c, "CV_U8C3", biggerImage)))
+      Row(biggerImage),
+      Row(smallerImage))
     )
     val knownData = sqlContext.createDataFrame(rdd, dfSchema)
 
     val features = featurizer.transform(knownData)
     val vector = features.select(col(outputColName)).first().getAs[Vector](0)
     assert(
-      vector === Vectors.dense(110, 142, 153, 156, 108,  86,  83, 155, 135, 62, 101,
-        152,  94,  52,  55, 139,  55,  60, 92, 135,  74, 102, 100, 132),
+      vector === Vectors.dense(59, 43, 53, 72, 43, 30, 42, 75, 53, 19, 26, 85, 81, 63, 66, 113,
+        76, 49, 56, 63, 97, 89, 84, 53),
       "test_net featurizer did not produce the output we expect to see."
     )
   }
