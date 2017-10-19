@@ -56,11 +56,11 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
   }
 
   def getInputCol: String = {
-    $(inputCol)
+    getOrDefault(inputCol)
   }
 
   def getOutputCol: String = {
-    $(outputCol)
+    getOrDefault(outputCol)
   }
 
   def setInputCol(value: String): this.type = {
@@ -74,8 +74,6 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
   }
 
   def transform(dataFrame: Dataset[_]): DataFrame = {
-    val inputColName = getInputCol
-
     val model = DeepImageFeaturizer._supportedModels.getOrElse(
       getModelName,
       throw new IllegalArgumentException(s"Unknown model: $getModelName")
@@ -85,7 +83,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     val resizeUdf = udf(ImageUtils.resizeSPImage(model.height, model.width, 3) _, imSchema)
 
     val imageDF = dataFrame
-      .withColumn(RESIZED_IMAGE_COL, resizeUdf(col(inputColName)))
+      .withColumn(RESIZED_IMAGE_COL, resizeUdf(col(getInputCol)))
       .withColumn(INPUT_BUFFER_COL, col(s"$RESIZED_IMAGE_COL.data"))
 
     val shapeHints = new ShapeDescription(
