@@ -19,7 +19,7 @@ scalaVersion := scalaVer
 spName := "databricks/spark-deep-learning"
 
 // Don't forget to set the version
-version := s"0.1.0-spark$sparkBranch"
+version := s"0.2.0-spark$sparkBranch"
 
 // All Spark Packages need a license
 licenses := Seq("Apache-2.0" -> url("http://opensource.org/licenses/Apache-2.0"))
