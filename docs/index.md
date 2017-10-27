@@ -9,7 +9,7 @@ description: Deep Learning Pipelines SPARKDL_VERSION documentation homepage
 # Downloading
 
 Deep Learning Pipelines is available as a Spark Package ([link](https://spark-packages.org/package/databricks/spark-deep-learning)).
-See the [Deep Learning Pipeline Github page](https://github.com/databricks/spark-deep-learning) for
+See the [Deep Learning Pipelines Github page](https://github.com/databricks/spark-deep-learning) for
 usage examples & information about library dependencies.
 
 # Where to Go from Here
