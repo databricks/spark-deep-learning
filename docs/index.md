@@ -8,6 +8,11 @@ description: Deep Learning Pipelines SPARKDL_VERSION documentation homepage
 
 # Downloading
 
+Get Deep Learning Pipelines from the [Spark Packages website](https://spark-packages.org/package/databricks/spark-deep-learning)
+
+See the [Deep Learning Pipeline Github page](https://github.com/databricks/spark-deep-learning) for
+usage examples & information about library dependencies.
+
 # Where to Go from Here
 
 **API Docs:**
@@ -17,7 +22,8 @@ description: Deep Learning Pipelines SPARKDL_VERSION documentation homepage
 
 **External Resources:**
 
-* [Deep Learning Pipelines Github](http://github.com/databricks/spark-deep-learning)
+* [Deep Learning Pipelines on Spark Packages](https://spark-packages.org/package/databricks/spark-deep-learning)
+* [Deep Learning Pipelines on Github](http://github.com/databricks/spark-deep-learning)
 * [Apache Spark Homepage](http://spark.apache.org)
 * [Apache Spark Wiki](https://cwiki.apache.org/confluence/display/SPARK)
 * [Mailing Lists](http://spark.apache.org/mailing-lists.html): Ask questions about Spark here
