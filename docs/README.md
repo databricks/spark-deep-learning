@@ -50,7 +50,7 @@ Note that `SPARK_HOME` must be set to your local Spark installation in order to 
 ## Uploading to Github Pages
 
 To upload the docs to Github pages, copy the generated doc files (besides this README) into the
-project root (run `$ shopt -s extglob; cp -r !(docs/README.md) docs/_site/* .` from the project
+project root (run `$ rsync -av ./docs/_site/* . --exclude="*README.md"` from the project
 root directory) and make a pull request against the
 gh-pages branch](https://github.com/databricks/spark-deep-learning/tree/gh-pages)
 
