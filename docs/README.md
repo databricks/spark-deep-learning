@@ -49,10 +49,16 @@ Note that `SPARK_HOME` must be set to your local Spark installation in order to 
 
 ## Uploading to Github Pages
 
-To upload the docs to Github pages, copy the generated doc files (besides this README) into the
-project root (run `$ rsync -av ./docs/_site/* . --exclude="*README.md"` from the project
-root directory) and make a pull request against the
-gh-pages branch](https://github.com/databricks/spark-deep-learning/tree/gh-pages)
+To upload the docs to Github pages, first make sure this branch is up-to-date with the
+spark-deep-learning master branch (e.g. merge the latest master into your local gh-pages branch).
+
+Build the docs as described above, then run
+`$ rsync -av ./docs/_site/* . --exclude "*README.md" --exclude "*prepare" --exclude "*jekyll"`
+from the project root directory to copy the generated doc files (excluding this README) into the
+project root.
+
+Finally, make a pull request against the
+[gh-pages branch](https://github.com/databricks/spark-deep-learning/tree/gh-pages)
 
 ## Pygments
 
