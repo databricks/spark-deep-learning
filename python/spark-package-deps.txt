@@ -1,3 +1,0 @@
-# This file should list any spark package dependencies as:
-# :package_name==:version   e.g. databricks/spark-csv==0.1
-databricks/tensorframes==0.2.9
