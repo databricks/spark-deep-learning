@@ -1,0 +1,209 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.param.image_params &#8212; pysparkdl 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.param.image_params</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Some parts are copied from pyspark.ml.param.shared and some are complementary</span>
+<span class="sd">to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being</span>
+<span class="sd">private APIs.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">pyspark.ml.param</span> <span class="k">import</span> <span class="n">Param</span><span class="p">,</span> <span class="n">Params</span><span class="p">,</span> <span class="n">TypeConverters</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.functions</span> <span class="k">import</span> <span class="n">udf</span>
+
+<span class="kn">from</span> <span class="nn">sparkdl.image.imageIO</span> <span class="k">import</span> <span class="n">imageArrayToStruct</span><span class="p">,</span> <span class="n">imageSchema</span>
+<span class="kn">from</span> <span class="nn">sparkdl.param</span> <span class="k">import</span> <span class="n">SparkDLTypeConverters</span>
+
+<span class="n">OUTPUT_MODES</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;vector&quot;</span><span class="p">,</span> <span class="s2">&quot;image&quot;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="HasInputImageNodeName"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.HasInputImageNodeName">[docs]</a><span class="k">class</span> <span class="nc">HasInputImageNodeName</span><span class="p">(</span><span class="n">Params</span><span class="p">):</span>
+    <span class="c1"># TODO: docs</span>
+    <span class="n">inputImageNodeName</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;inputImageNodeName&quot;</span><span class="p">,</span>
+                               <span class="s2">&quot;name of the graph element/node corresponding to the input&quot;</span><span class="p">,</span>
+                               <span class="n">typeConverter</span><span class="o">=</span><span class="n">TypeConverters</span><span class="o">.</span><span class="n">toString</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HasInputImageNodeName.setInputImageNodeName"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.HasInputImageNodeName.setInputImageNodeName">[docs]</a>    <span class="k">def</span> <span class="nf">setInputImageNodeName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">inputImageNodeName</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="HasInputImageNodeName.getInputImageNodeName"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.HasInputImageNodeName.getInputImageNodeName">[docs]</a>    <span class="k">def</span> <span class="nf">getInputImageNodeName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inputImageNodeName</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="CanLoadImage"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.CanLoadImage">[docs]</a><span class="k">class</span> <span class="nc">CanLoadImage</span><span class="p">(</span><span class="n">Params</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    In standard Keras workflow, we use provides an image loading function</span>
+<span class="sd">    that takes a file path URI and convert it to an image tensor ready</span>
+<span class="sd">    to be fed to the desired Keras model.</span>
+
+<span class="sd">    This parameter allows users to specify such an image loading function.</span>
+<span class="sd">    When using inside a pipeline stage, calling this function on an input DataFrame</span>
+<span class="sd">    will load each image from the image URI column, encode the image in</span>
+<span class="sd">    our :py:obj:`~sparkdl.imageIO.imageSchema` format and store it in the :py:meth:`~_loadedImageCol` column.</span>
+
+<span class="sd">    Below is an example ``image_loader`` function to load Xception https://arxiv.org/abs/1610.02357</span>
+<span class="sd">    compatible images.</span>
+
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from keras.applications.xception import preprocess_input</span>
+<span class="sd">        import numpy as np</span>
+<span class="sd">        import PIL.Image</span>
+
+<span class="sd">        def image_loader(uri):</span>
+<span class="sd">            img = PIL.Image.open(uri).convert(&#39;RGB&#39;)</span>
+<span class="sd">            img_resized = img.resize((299, 299), PIL.Image.ANTIALIAS))</span>
+<span class="sd">            img_arr = np.array(img_resized).astype(np.float32)</span>
+<span class="sd">            img_tnsr = preprocess_input(img_arr[np.newaxis, :])</span>
+<span class="sd">            return img_tnsr</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">imageLoader</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;imageLoader&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Function containing the logic for loading and pre-processing images. &quot;</span> <span class="o">+</span>
+                        <span class="s2">&quot;The function should take in a URI string and return a 4-d numpy.array &quot;</span> <span class="o">+</span>
+                        <span class="s2">&quot;with shape (batch_size (1), height, width, num_channels).&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CanLoadImage.setImageLoader"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.CanLoadImage.setImageLoader">[docs]</a>    <span class="k">def</span> <span class="nf">setImageLoader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">imageLoader</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="CanLoadImage.getImageLoader"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.CanLoadImage.getImageLoader">[docs]</a>    <span class="k">def</span> <span class="nf">getImageLoader</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageLoader</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_loadedImageCol</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;__sdl_img&quot;</span>
+
+<div class="viewcode-block" id="CanLoadImage.loadImagesInternal"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.CanLoadImage.loadImagesInternal">[docs]</a>    <span class="k">def</span> <span class="nf">loadImagesInternal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataframe</span><span class="p">,</span> <span class="n">inputCol</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load image files specified in dataset as image format specified in `sparkdl.image.imageIO`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># plan 1: udf(loader() + convert from np.array to imageSchema) -&gt; call TFImageTransformer</span>
+        <span class="c1"># plan 2: udf(loader()) ... we don&#39;t support np.array as a dataframe column type...</span>
+        <span class="n">loader</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getImageLoader</span><span class="p">()</span>
+
+        <span class="c1"># Load from external resources can fail, so we should allow None to be returned</span>
+        <span class="k">def</span> <span class="nf">load_image_uri_impl</span><span class="p">(</span><span class="n">uri</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">imageArrayToStruct</span><span class="p">(</span><span class="n">loader</span><span class="p">(</span><span class="n">uri</span><span class="p">))</span>
+            <span class="k">except</span><span class="p">:</span>  <span class="c1"># pylint: disable=bare-except</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">load_udf</span> <span class="o">=</span> <span class="n">udf</span><span class="p">(</span><span class="n">load_image_uri_impl</span><span class="p">,</span> <span class="n">imageSchema</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_loadedImageCol</span><span class="p">(),</span> <span class="n">load_udf</span><span class="p">(</span><span class="n">dataframe</span><span class="p">[</span><span class="n">inputCol</span><span class="p">]))</span></div></div>
+
+
+<div class="viewcode-block" id="HasOutputMode"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.HasOutputMode">[docs]</a><span class="k">class</span> <span class="nc">HasOutputMode</span><span class="p">(</span><span class="n">Params</span><span class="p">):</span>
+    <span class="c1"># TODO: docs</span>
+    <span class="n">outputMode</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;outputMode&quot;</span><span class="p">,</span>
+                       <span class="s2">&quot;How the output column should be formatted. &#39;vector&#39; for a 1-d MLlib &quot;</span> <span class="o">+</span>
+                       <span class="s2">&quot;Vector of floats. &#39;image&#39; to format the output to work with the image &quot;</span> <span class="o">+</span>
+                       <span class="s2">&quot;tools in this package.&quot;</span><span class="p">,</span>
+                       <span class="n">typeConverter</span><span class="o">=</span><span class="n">SparkDLTypeConverters</span><span class="o">.</span><span class="n">supportedNameConverter</span><span class="p">(</span><span class="n">OUTPUT_MODES</span><span class="p">))</span>
+
+<div class="viewcode-block" id="HasOutputMode.setOutputMode"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.HasOutputMode.setOutputMode">[docs]</a>    <span class="k">def</span> <span class="nf">setOutputMode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">outputMode</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="HasOutputMode.getOutputMode"><a class="viewcode-back" href="../../../sparkdl.param.html#sparkdl.param.image_params.HasOutputMode.getOutputMode">[docs]</a>    <span class="k">def</span> <span class="nf">getOutputMode</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outputMode</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>
