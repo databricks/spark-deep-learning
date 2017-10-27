@@ -1,0 +1,7 @@
+*.pyc
+docs/_build/
+build/
+dist/
+docs/sparkdl*.rst
+docs/modules.rst
+tensorframes
