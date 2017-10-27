@@ -245,5 +245,5 @@ registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"),
 - 0.1.0 Alpha release
 - 0.2.0 release:
     1. KerasImageFileEstimator API (train a Keras model on image files)
-    2. Scala SQL UDF Support
+    2. SQL UDF support for Keras models
     3. Added Xception, Resnet50 models to DeepImageFeaturizer/DeepImagePredictor.
