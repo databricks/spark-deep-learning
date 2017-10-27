@@ -1,0 +1,460 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.param package &#8212; pysparkdl 0.2.0 documentation</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pysparkdl.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="sparkdl.transformers package" href="sparkdl.transformers.html" />
+    <link rel="prev" title="sparkdl.image package" href="sparkdl.image.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="sparkdl.transformers.html" title="sparkdl.transformers package"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="sparkdl.image.html" title="sparkdl.image package"
+             accesskey="P">previous</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="sparkdl.html" accesskey="U">sparkdl package</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="sparkdl-param-package">
+<h1>sparkdl.param package<a class="headerlink" href="#sparkdl-param-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-sparkdl.param.image_params">
+<span id="sparkdl-param-image-params-module"></span><h2>sparkdl.param.image_params module<a class="headerlink" href="#module-sparkdl.param.image_params" title="Permalink to this headline">¶</a></h2>
+<p>Some parts are copied from pyspark.ml.param.shared and some are complementary
+to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being
+private APIs.</p>
+<dl class="class">
+<dt id="sparkdl.param.image_params.CanLoadImage">
+<em class="property">class </em><code class="descclassname">sparkdl.param.image_params.</code><code class="descname">CanLoadImage</code><a class="reference internal" href="_modules/sparkdl/param/image_params.html#CanLoadImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.CanLoadImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<p>In standard Keras workflow, we use provides an image loading function
+that takes a file path URI and convert it to an image tensor ready
+to be fed to the desired Keras model.</p>
+<p>This parameter allows users to specify such an image loading function.
+When using inside a pipeline stage, calling this function on an input DataFrame
+will load each image from the image URI column, encode the image in
+our <code class="xref py py-obj docutils literal"><span class="pre">imageSchema</span></code> format and store it in the <code class="xref py py-meth docutils literal"><span class="pre">_loadedImageCol()</span></code> column.</p>
+<p>Below is an example <code class="docutils literal"><span class="pre">image_loader</span></code> function to load Xception <a class="reference external" href="https://arxiv.org/abs/1610.02357">https://arxiv.org/abs/1610.02357</a>
+compatible images.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">keras.applications.xception</span> <span class="kn">import</span> <span class="n">preprocess_input</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">PIL.Image</span>
+
+<span class="k">def</span> <span class="nf">image_loader</span><span class="p">(</span><span class="n">uri</span><span class="p">):</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s1">&#39;RGB&#39;</span><span class="p">)</span>
+    <span class="n">img_resized</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">resize</span><span class="p">((</span><span class="mi">299</span><span class="p">,</span> <span class="mi">299</span><span class="p">),</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">ANTIALIAS</span><span class="p">))</span>
+    <span class="n">img_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img_resized</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">img_tnsr</span> <span class="o">=</span> <span class="n">preprocess_input</span><span class="p">(</span><span class="n">img_arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:])</span>
+    <span class="k">return</span> <span class="n">img_tnsr</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="sparkdl.param.image_params.CanLoadImage.getImageLoader">
+<code class="descname">getImageLoader</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/image_params.html#CanLoadImage.getImageLoader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.CanLoadImage.getImageLoader" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.image_params.CanLoadImage.imageLoader">
+<code class="descname">imageLoader</code><em class="property"> = Param(parent='undefined', name='imageLoader', doc='Function containing the logic for loading and pre-processing images. The function should take in a URI string and return a 4-d numpy.array with shape (batch_size (1), height, width, num_channels).')</em><a class="headerlink" href="#sparkdl.param.image_params.CanLoadImage.imageLoader" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.image_params.CanLoadImage.loadImagesInternal">
+<code class="descname">loadImagesInternal</code><span class="sig-paren">(</span><em>dataframe</em>, <em>inputCol</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/image_params.html#CanLoadImage.loadImagesInternal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.CanLoadImage.loadImagesInternal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load image files specified in dataset as image format specified in <cite>sparkdl.image.imageIO</cite>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.image_params.CanLoadImage.setImageLoader">
+<code class="descname">setImageLoader</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/image_params.html#CanLoadImage.setImageLoader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.CanLoadImage.setImageLoader" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.param.image_params.HasInputImageNodeName">
+<em class="property">class </em><code class="descclassname">sparkdl.param.image_params.</code><code class="descname">HasInputImageNodeName</code><a class="reference internal" href="_modules/sparkdl/param/image_params.html#HasInputImageNodeName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.HasInputImageNodeName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<dl class="method">
+<dt id="sparkdl.param.image_params.HasInputImageNodeName.getInputImageNodeName">
+<code class="descname">getInputImageNodeName</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/image_params.html#HasInputImageNodeName.getInputImageNodeName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.HasInputImageNodeName.getInputImageNodeName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.image_params.HasInputImageNodeName.inputImageNodeName">
+<code class="descname">inputImageNodeName</code><em class="property"> = Param(parent='undefined', name='inputImageNodeName', doc='name of the graph element/node corresponding to the input')</em><a class="headerlink" href="#sparkdl.param.image_params.HasInputImageNodeName.inputImageNodeName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.image_params.HasInputImageNodeName.setInputImageNodeName">
+<code class="descname">setInputImageNodeName</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/image_params.html#HasInputImageNodeName.setInputImageNodeName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.HasInputImageNodeName.setInputImageNodeName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.param.image_params.HasOutputMode">
+<em class="property">class </em><code class="descclassname">sparkdl.param.image_params.</code><code class="descname">HasOutputMode</code><a class="reference internal" href="_modules/sparkdl/param/image_params.html#HasOutputMode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.HasOutputMode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<dl class="method">
+<dt id="sparkdl.param.image_params.HasOutputMode.getOutputMode">
+<code class="descname">getOutputMode</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/image_params.html#HasOutputMode.getOutputMode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.HasOutputMode.getOutputMode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.image_params.HasOutputMode.outputMode">
+<code class="descname">outputMode</code><em class="property"> = Param(parent='undefined', name='outputMode', doc=&quot;How the output column should be formatted. 'vector' for a 1-d MLlib Vector of floats. 'image' to format the output to work with the image tools in this package.&quot;)</em><a class="headerlink" href="#sparkdl.param.image_params.HasOutputMode.outputMode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.image_params.HasOutputMode.setOutputMode">
+<code class="descname">setOutputMode</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/image_params.html#HasOutputMode.setOutputMode"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.image_params.HasOutputMode.setOutputMode" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-sparkdl.param.shared_params">
+<span id="sparkdl-param-shared-params-module"></span><h2>sparkdl.param.shared_params module<a class="headerlink" href="#module-sparkdl.param.shared_params" title="Permalink to this headline">¶</a></h2>
+<p>Some parts are copied from pyspark.ml.param.shared and some are complementary
+to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being
+private APIs.</p>
+<dl class="class">
+<dt id="sparkdl.param.shared_params.HasInputCol">
+<em class="property">class </em><code class="descclassname">sparkdl.param.shared_params.</code><code class="descname">HasInputCol</code><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasInputCol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasInputCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<p>Mixin for param inputCol: input column name.</p>
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasInputCol.getInputCol">
+<code class="descname">getInputCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasInputCol.getInputCol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasInputCol.getInputCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of inputCol or its default value.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.shared_params.HasInputCol.inputCol">
+<code class="descname">inputCol</code><em class="property"> = Param(parent='undefined', name='inputCol', doc='input column name.')</em><a class="headerlink" href="#sparkdl.param.shared_params.HasInputCol.inputCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasInputCol.setInputCol">
+<code class="descname">setInputCol</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasInputCol.setInputCol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasInputCol.setInputCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the value of <a class="reference internal" href="#sparkdl.param.shared_params.HasInputCol.inputCol" title="sparkdl.param.shared_params.HasInputCol.inputCol"><code class="xref py py-attr docutils literal"><span class="pre">inputCol</span></code></a>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.param.shared_params.HasKerasLoss">
+<em class="property">class </em><code class="descclassname">sparkdl.param.shared_params.</code><code class="descname">HasKerasLoss</code><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasLoss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasLoss" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasKerasLoss.getKerasLoss">
+<code class="descname">getKerasLoss</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasLoss.getKerasLoss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasLoss.getKerasLoss" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.shared_params.HasKerasLoss.kerasLoss">
+<code class="descname">kerasLoss</code><em class="property"> = Param(parent='undefined', name='kerasLoss', doc='Name of the loss (objective function) for training a Keras model')</em><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasLoss.kerasLoss" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasKerasLoss.seKerasLoss">
+<code class="descname">seKerasLoss</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasLoss.seKerasLoss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasLoss.seKerasLoss" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.param.shared_params.HasKerasModel">
+<em class="property">class </em><code class="descclassname">sparkdl.param.shared_params.</code><code class="descname">HasKerasModel</code><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<p>This parameter allows users to provide Keras model file</p>
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasKerasModel.getKerasFitParams">
+<code class="descname">getKerasFitParams</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasModel.getKerasFitParams"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasModel.getKerasFitParams" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasKerasModel.getModelFile">
+<code class="descname">getModelFile</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasModel.getModelFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasModel.getModelFile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.shared_params.HasKerasModel.kerasFitParams">
+<code class="descname">kerasFitParams</code><em class="property"> = Param(parent='undefined', name='kerasFitParams', doc='dict with parameters passed to Keras model fit method')</em><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasModel.kerasFitParams" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.shared_params.HasKerasModel.modelFile">
+<code class="descname">modelFile</code><em class="property"> = Param(parent='undefined', name='modelFile', doc='HDF5 file containing the Keras model (architecture and weights)')</em><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasModel.modelFile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasKerasModel.setKerasFitParams">
+<code class="descname">setKerasFitParams</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasModel.setKerasFitParams"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasModel.setKerasFitParams" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasKerasModel.setModelFile">
+<code class="descname">setModelFile</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasModel.setModelFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasModel.setModelFile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.param.shared_params.HasKerasOptimizer">
+<em class="property">class </em><code class="descclassname">sparkdl.param.shared_params.</code><code class="descname">HasKerasOptimizer</code><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasOptimizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasOptimizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasKerasOptimizer.getKerasOptimizer">
+<code class="descname">getKerasOptimizer</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasOptimizer.getKerasOptimizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasOptimizer.getKerasOptimizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.shared_params.HasKerasOptimizer.kerasOptimizer">
+<code class="descname">kerasOptimizer</code><em class="property"> = Param(parent='undefined', name='kerasOptimizer', doc='Name of the optimizer for training a Keras model')</em><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasOptimizer.kerasOptimizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasKerasOptimizer.setKerasOptimizer">
+<code class="descname">setKerasOptimizer</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasKerasOptimizer.setKerasOptimizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasKerasOptimizer.setKerasOptimizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.param.shared_params.HasLabelCol">
+<em class="property">class </em><code class="descclassname">sparkdl.param.shared_params.</code><code class="descname">HasLabelCol</code><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasLabelCol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasLabelCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<p>When training Keras image models in a supervised learning setting,
+users will provide a <code class="xref py py-obj docutils literal"><span class="pre">DataFrame</span></code> column with the labels.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The Estimator expect this columnd to contain data directly usable for the Keras model.
+This usually means that the labels are already encoded in one-hot format.
+Please consider adding a <code class="xref py py-obj docutils literal"><span class="pre">OneHotEncoder</span></code> to transform the label column.</p>
+</div>
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasLabelCol.getLabelCol">
+<code class="descname">getLabelCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasLabelCol.getLabelCol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasLabelCol.getLabelCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.shared_params.HasLabelCol.labelCol">
+<code class="descname">labelCol</code><em class="property"> = Param(parent='undefined', name='labelCol', doc='name of the column storing the training data labels')</em><a class="headerlink" href="#sparkdl.param.shared_params.HasLabelCol.labelCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasLabelCol.setLabelCol">
+<code class="descname">setLabelCol</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasLabelCol.setLabelCol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasLabelCol.setLabelCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.param.shared_params.HasOutputCol">
+<em class="property">class </em><code class="descclassname">sparkdl.param.shared_params.</code><code class="descname">HasOutputCol</code><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasOutputCol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasOutputCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<p>Mixin for param outputCol: output column name.</p>
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasOutputCol.getOutputCol">
+<code class="descname">getOutputCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasOutputCol.getOutputCol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasOutputCol.getOutputCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of outputCol or its default value.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.shared_params.HasOutputCol.outputCol">
+<code class="descname">outputCol</code><em class="property"> = Param(parent='undefined', name='outputCol', doc='output column name.')</em><a class="headerlink" href="#sparkdl.param.shared_params.HasOutputCol.outputCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasOutputCol.setOutputCol">
+<code class="descname">setOutputCol</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasOutputCol.setOutputCol"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasOutputCol.setOutputCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the value of <a class="reference internal" href="#sparkdl.param.shared_params.HasOutputCol.outputCol" title="sparkdl.param.shared_params.HasOutputCol.outputCol"><code class="xref py py-attr docutils literal"><span class="pre">outputCol</span></code></a>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.param.shared_params.HasOutputNodeName">
+<em class="property">class </em><code class="descclassname">sparkdl.param.shared_params.</code><code class="descname">HasOutputNodeName</code><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasOutputNodeName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasOutputNodeName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.param.Params</span></code></p>
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasOutputNodeName.getOutputNodeName">
+<code class="descname">getOutputNodeName</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasOutputNodeName.getOutputNodeName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasOutputNodeName.getOutputNodeName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.param.shared_params.HasOutputNodeName.outputNodeName">
+<code class="descname">outputNodeName</code><em class="property"> = Param(parent='undefined', name='outputNodeName', doc='name of the graph element/node corresponding to the output')</em><a class="headerlink" href="#sparkdl.param.shared_params.HasOutputNodeName.outputNodeName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.param.shared_params.HasOutputNodeName.setOutputNodeName">
+<code class="descname">setOutputNodeName</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#HasOutputNodeName.setOutputNodeName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.HasOutputNodeName.setOutputNodeName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.param.shared_params.SparkDLTypeConverters">
+<em class="property">class </em><code class="descclassname">sparkdl.param.shared_params.</code><code class="descname">SparkDLTypeConverters</code><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#SparkDLTypeConverters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.SparkDLTypeConverters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="staticmethod">
+<dt id="sparkdl.param.shared_params.SparkDLTypeConverters.supportedNameConverter">
+<em class="property">static </em><code class="descname">supportedNameConverter</code><span class="sig-paren">(</span><em>supportedList</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#SparkDLTypeConverters.supportedNameConverter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.SparkDLTypeConverters.supportedNameConverter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="sparkdl.param.shared_params.SparkDLTypeConverters.toKerasLoss">
+<em class="property">static </em><code class="descname">toKerasLoss</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#SparkDLTypeConverters.toKerasLoss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.SparkDLTypeConverters.toKerasLoss" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="sparkdl.param.shared_params.SparkDLTypeConverters.toKerasOptimizer">
+<em class="property">static </em><code class="descname">toKerasOptimizer</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#SparkDLTypeConverters.toKerasOptimizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.SparkDLTypeConverters.toKerasOptimizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="sparkdl.param.shared_params.SparkDLTypeConverters.toStringOrTFTensor">
+<em class="property">static </em><code class="descname">toStringOrTFTensor</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#SparkDLTypeConverters.toStringOrTFTensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.SparkDLTypeConverters.toStringOrTFTensor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="sparkdl.param.shared_params.SparkDLTypeConverters.toTFGraph">
+<em class="property">static </em><code class="descname">toTFGraph</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#SparkDLTypeConverters.toTFGraph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.SparkDLTypeConverters.toTFGraph" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="sparkdl.param.shared_params.keyword_only">
+<code class="descclassname">sparkdl.param.shared_params.</code><code class="descname">keyword_only</code><span class="sig-paren">(</span><em>func</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/param/shared_params.html#keyword_only"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.param.shared_params.keyword_only" title="Permalink to this definition">¶</a></dt>
+<dd><p>A decorator that forces keyword arguments in the wrapped method
+and saves actual input keyword arguments in <cite>_input_kwargs</cite>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Should only be used to wrap a method where first arg is <cite>self</cite></p>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="module-sparkdl.param">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-sparkdl.param" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">sparkdl.param package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-sparkdl.param.image_params">sparkdl.param.image_params module</a></li>
+<li><a class="reference internal" href="#module-sparkdl.param.shared_params">sparkdl.param.shared_params module</a></li>
+<li><a class="reference internal" href="#module-sparkdl.param">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="sparkdl.image.html"
+                        title="previous chapter">sparkdl.image package</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="sparkdl.transformers.html"
+                        title="next chapter">sparkdl.transformers package</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/sparkdl.param.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="sparkdl.transformers.html" title="sparkdl.transformers package"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="sparkdl.image.html" title="sparkdl.image package"
+             >previous</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="sparkdl.html" >sparkdl package</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>
