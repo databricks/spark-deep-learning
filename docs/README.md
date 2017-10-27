@@ -28,11 +28,13 @@ in some cases (`Jekyll 3.4.3`):
     $ sudo gem install jekyll-redirect-from pygments.rb
 
 
-Then run the prepare script to setup prerequisites and generate a wrapper "jekyll" script
+Then run the prepare script (from within the `docs/` directory)
+ to setup prerequisites and generate a wrapper "jekyll" script
 	$ ./prepare -s <path_to_spark_home> -t <path_to_tensorframes_home>
 
-Execute `./jekyll build` from the `docs/` directory to compile the site. Compiling the site with Jekyll will create a directory
-called `_site` containing index.html as well as the rest of the compiled files.
+Execute `./jekyll build` from the `docs/` directory to compile the site. Compiling the site with
+Jekyll will create a directory called `_site` containing index.html as well as the rest of the
+compiled files.
 
 You can modify the default Jekyll build as follows:
 
@@ -44,6 +46,11 @@ You can modify the default Jekyll build as follows:
     $ PRODUCTION=1 ./jekyll build
 
 Note that `SPARK_HOME` must be set to your local Spark installation in order to generate the docs.
+
+## Uploading to Github Pages
+To upload the docs to Github pages, copy the generated docs into the project root
+(e.g. run `$ cp -r /docs/_site/* .` from the project root directory) and make a pull request
+against the [gh-pages branch](https://github.com/databricks/spark-deep-learning/tree/gh-pages)
 
 ## Pygments
 
