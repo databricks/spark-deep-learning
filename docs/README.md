@@ -48,9 +48,11 @@ You can modify the default Jekyll build as follows:
 Note that `SPARK_HOME` must be set to your local Spark installation in order to generate the docs.
 
 ## Uploading to Github Pages
-To upload the docs to Github pages, copy the generated docs into the project root
-(e.g. run `$ cp -r /docs/_site/* .` from the project root directory) and make a pull request
-against the [gh-pages branch](https://github.com/databricks/spark-deep-learning/tree/gh-pages)
+
+To upload the docs to Github pages, copy the generated doc files (besides this README) into the
+project root (run `$ shopt -s extglob; cp -r !(docs/README.md) docs/_site/* .` from the project
+root directory) and make a pull request against the
+gh-pages branch](https://github.com/databricks/spark-deep-learning/tree/gh-pages)
 
 ## Pygments
 
