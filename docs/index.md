@@ -17,7 +17,7 @@ description: Deep Learning Pipelines SPARKDL_VERSION documentation homepage
 
 **External Resources:**
 
-* [Deep Learning Pipelines](http://github.com/databricks/spark-deep-learning)
+* [Deep Learning Pipelines Github](http://github.com/databricks/spark-deep-learning)
 * [Apache Spark Homepage](http://spark.apache.org)
 * [Apache Spark Wiki](https://cwiki.apache.org/confluence/display/SPARK)
 * [Mailing Lists](http://spark.apache.org/mailing-lists.html): Ask questions about Spark here
