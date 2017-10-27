@@ -1,0 +1,364 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.graph.builder &#8212; pysparkdl 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.graph.builder</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">six</span>
+<span class="kn">from</span> <span class="nn">tempfile</span> <span class="k">import</span> <span class="n">mkdtemp</span>
+
+<span class="kn">import</span> <span class="nn">keras.backend</span> <span class="k">as</span> <span class="nn">K</span>
+<span class="kn">from</span> <span class="nn">keras.models</span> <span class="k">import</span> <span class="n">Model</span> <span class="k">as</span> <span class="n">KerasModel</span><span class="p">,</span> <span class="n">load_model</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">import</span> <span class="nn">sparkdl.graph.utils</span> <span class="k">as</span> <span class="nn">tfx</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;sparkdl&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="IsolatedSession"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.graph.builder.IsolatedSession">[docs]</a><span class="k">class</span> <span class="nc">IsolatedSession</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provide an isolated session to work with mixed Keras and TensorFlow</span>
+<span class="sd">    graph segments.</span>
+
+<span class="sd">    It provides utility functions to</span>
+<span class="sd">    - importing existing `GraphFunction` object as a subgraph</span>
+<span class="sd">    - exporting current graph as an `GraphFunction` object</span>
+
+<span class="sd">    This is a thin layer on top of `tf.Session`.</span>
+
+<span class="sd">    :param graph: `tf.Graph`, use the provided TensorFlow graph as default graph</span>
+<span class="sd">    :param using_keras: bool, when set to True, attach Keras TensorFlow backend to this session.</span>
+<span class="sd">                        In this case, all Keras models loaded in this session will be accessible</span>
+<span class="sd">                        as a subgraph of of `graph`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">using_keras</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="o">=</span> <span class="n">graph</span> <span class="ow">or</span> <span class="n">tf</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">using_keras</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">keras_prev_sess</span> <span class="o">=</span> <span class="n">K</span><span class="o">.</span><span class="n">get_session</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">keras_prev_sess</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="fm">__enter__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">keras_prev_sess</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">K</span><span class="o">.</span><span class="n">set_session</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">keras_prev_sess</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">K</span><span class="o">.</span><span class="n">set_session</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keras_prev_sess</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+
+<div class="viewcode-block" id="IsolatedSession.run"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.graph.builder.IsolatedSession.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method delegate the TensorFlow graph execution</span>
+<span class="sd">        to the underlying tf.Session object to perform</span>
+<span class="sd">        one step of graph computation.</span>
+
+<span class="sd">        All the parameters are defined according to `tf.Session.run`</span>
+<span class="sd">        Reference: https://www.tensorflow.org/api_docs/python/tf/Session#run</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="IsolatedSession.asGraphFunction"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.graph.builder.IsolatedSession.asGraphFunction">[docs]</a>    <span class="k">def</span> <span class="nf">asGraphFunction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">strip_and_freeze</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Export the graph in this session as a :py:class:`GraphFunction` object</span>
+
+<span class="sd">        :param inputs: list, graph elements representing the inputs</span>
+<span class="sd">        :param outputs: list, graph elements representing the outputs</span>
+<span class="sd">        :param strip_and_freeze: bool, should we remove unused part of the graph and freee its values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">strip_and_freeze</span><span class="p">:</span>
+            <span class="n">gdef</span> <span class="o">=</span> <span class="n">tfx</span><span class="o">.</span><span class="n">strip_and_freeze_until</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">gdef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">as_graph_def</span><span class="p">(</span><span class="n">add_shapes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">GraphFunction</span><span class="p">(</span><span class="n">graph_def</span><span class="o">=</span><span class="n">gdef</span><span class="p">,</span>
+                             <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="n">tfx</span><span class="o">.</span><span class="n">validated_input</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">elem</span><span class="p">)</span> <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">inputs</span><span class="p">],</span>
+                             <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="n">tfx</span><span class="o">.</span><span class="n">validated_output</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">elem</span><span class="p">)</span> <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="IsolatedSession.importGraphFunction"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.graph.builder.IsolatedSession.importGraphFunction">[docs]</a>    <span class="k">def</span> <span class="nf">importGraphFunction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gfn</span><span class="p">,</span> <span class="n">input_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;GFN-IMPORT&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">gdef_kargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Import a GraphFunction object into the current session.</span>
+<span class="sd">        The API is similar to :py:meth:`tf.import_graph_def`</span>
+
+<span class="sd">        .. _a link: https://www.tensorflow.org/api_docs/python/tf/import_graph_def</span>
+
+<span class="sd">        :param gfn: GraphFunction, an object representing a TensorFlow graph and its inputs and outputs</span>
+<span class="sd">        :param input_map: dict, mapping from input names to existing graph elements</span>
+<span class="sd">        :param prefix: str, the scope for all the variables in the :py:class:`GraphFunction` elements</span>
+
+<span class="sd">                       .. _a link: https://www.tensorflow.org/programmers_guide/variable_scope</span>
+
+<span class="sd">        :param gdef_kargs: other keyword elements for TensorFlow&#39;s `import_graph_def`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">gdef_kargs</span><span class="p">[</span><span class="s2">&quot;return_elements&quot;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">if</span> <span class="n">input_map</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">input_map</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">&lt;=</span> <span class="nb">set</span><span class="p">(</span><span class="n">gfn</span><span class="o">.</span><span class="n">input_names</span><span class="p">),</span> \
+                <span class="s2">&quot;cannot locate provided input elements in the graph&quot;</span>
+
+        <span class="n">input_names</span> <span class="o">=</span> <span class="n">gfn</span><span class="o">.</span><span class="n">input_names</span>
+        <span class="n">output_names</span> <span class="o">=</span> <span class="n">gfn</span><span class="o">.</span><span class="n">output_names</span>
+        <span class="n">scope_name</span> <span class="o">=</span> <span class="n">prefix</span>
+        <span class="k">if</span> <span class="n">prefix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">scope_name</span> <span class="o">=</span> <span class="n">prefix</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">scope_name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">output_names</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">scope_name</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">op_name</span> <span class="k">for</span> <span class="n">op_name</span> <span class="ow">in</span> <span class="n">gfn</span><span class="o">.</span><span class="n">output_names</span><span class="p">]</span>
+                <span class="n">input_names</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">scope_name</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">op_name</span> <span class="k">for</span> <span class="n">op_name</span> <span class="ow">in</span> <span class="n">gfn</span><span class="o">.</span><span class="n">input_names</span><span class="p">]</span>
+
+        <span class="c1"># When importing, provide the original output op names</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">import_graph_def</span><span class="p">(</span><span class="n">gfn</span><span class="o">.</span><span class="n">graph_def</span><span class="p">,</span>
+                            <span class="n">input_map</span><span class="o">=</span><span class="n">input_map</span><span class="p">,</span>
+                            <span class="n">return_elements</span><span class="o">=</span><span class="n">gfn</span><span class="o">.</span><span class="n">output_names</span><span class="p">,</span>
+                            <span class="n">name</span><span class="o">=</span><span class="n">scope_name</span><span class="p">,</span>
+                            <span class="o">**</span><span class="n">gdef_kargs</span><span class="p">)</span>
+        <span class="n">feeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">tfx</span><span class="o">.</span><span class="n">get_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">input_names</span><span class="p">]</span>
+        <span class="n">fetches</span> <span class="o">=</span> <span class="p">[</span><span class="n">tfx</span><span class="o">.</span><span class="n">get_tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">output_names</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">feeds</span><span class="p">,</span> <span class="n">fetches</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="GraphFunction"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.graph.builder.GraphFunction">[docs]</a><span class="k">class</span> <span class="nc">GraphFunction</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represent a TensorFlow graph with its GraphDef, input and output operation names.</span>
+
+<span class="sd">    :param graph_def: GraphDef, a static ProtocolBuffer object holding informations of a TensorFlow graph</span>
+<span class="sd">    :param input_names: names to the input graph elements (must be of Placeholder type)</span>
+<span class="sd">    :param output_names: names to the output graph elements</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph_def</span><span class="p">,</span> <span class="n">input_names</span><span class="p">,</span> <span class="n">output_names</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param graph_def: GraphDef object</span>
+<span class="sd">        :param input_names: list of input (operation) names (must be typed `Placeholder`)</span>
+<span class="sd">        :param output_names: list of output (operation) names</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph_def</span> <span class="o">=</span> <span class="n">graph_def</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_names</span> <span class="o">=</span> <span class="n">input_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_names</span> <span class="o">=</span> <span class="n">output_names</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_fromKerasModelFile</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">file_path</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load a Keras model from a file path into a `GraphFunction`.</span>
+
+<span class="sd">        :param file_path: the (HDF5) file path</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">file_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.h5&#39;</span><span class="p">),</span> \
+            <span class="s1">&#39;Keras model must be specified as HDF5 file&#39;</span>
+
+        <span class="k">with</span> <span class="n">IsolatedSession</span><span class="p">(</span><span class="n">using_keras</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">issn</span><span class="p">:</span>
+            <span class="n">K</span><span class="o">.</span><span class="n">set_learning_phase</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># Testing phase</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">load_model</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+            <span class="n">gfn</span> <span class="o">=</span> <span class="n">issn</span><span class="o">.</span><span class="n">asGraphFunction</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">outputs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">gfn</span>
+
+<div class="viewcode-block" id="GraphFunction.fromKeras"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.graph.builder.GraphFunction.fromKeras">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">fromKeras</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">model_or_file_path</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a GraphFunction from a Keras model</span>
+
+<span class="sd">        :param model_or_file_path: KerasModel or str, either a Keras model or the file path name to one</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model_or_file_path</span><span class="p">,</span> <span class="n">KerasModel</span><span class="p">):</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">model_or_file_path</span>
+            <span class="n">_tmpdir</span> <span class="o">=</span> <span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;kera-&#39;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>  <span class="c1"># Save to tempdir and restore in a new session</span>
+                <span class="n">model_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_tmpdir</span><span class="p">,</span> <span class="s2">&quot;model.h5&quot;</span><span class="p">)</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">gfn</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_fromKerasModelFile</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">model_path</span><span class="p">))</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">_tmpdir</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">gfn</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model_or_file_path</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_fromKerasModelFile</span><span class="p">(</span><span class="n">model_or_file_path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;input must be a Keras model of a file path&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GraphFunction.fromList"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.graph.builder.GraphFunction.fromList">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">fromList</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">functions</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a single GraphFunction from a list of graph functions.</span>
+<span class="sd">        Each function in the list corresponds to a stage.</span>
+
+<span class="sd">        Each function is also scoped by a scope name, in order to avoid</span>
+<span class="sd">        variable name conflict and also to make the graph cleaner for visualization.</span>
+<span class="sd">        If a scope name is not provided, we generate one as `GFN-BLK-&lt;stage_index&gt;`.</span>
+
+<span class="sd">        The inputs and outputs are picked out of the scopes, so that users</span>
+<span class="sd">        will still be able to call the function with the expected inputs/outputs names.</span>
+
+<span class="sd">        It is assumed that there is only one input and one output in the intermediary layers</span>
+
+<span class="sd">        :param functions: a list of tuples (scope name, GraphFunction object).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">functions</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;must provide at least one function&quot;</span><span class="p">,</span> <span class="n">functions</span><span class="p">)</span>
+        <span class="k">if</span> <span class="mi">1</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">functions</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">functions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># Check against each intermediary layer input output function pairs</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">scope_in</span><span class="p">,</span> <span class="n">gfn_in</span><span class="p">),</span> <span class="p">(</span><span class="n">scope_out</span><span class="p">,</span> <span class="n">gfn_out</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">functions</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">functions</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+            <span class="c1"># For stage F =&gt; G, the composition G(F(.)) must work, which means</span>
+            <span class="c1"># the number of outputs for F is equal to the number of inputs for G</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">gfn_in</span><span class="o">.</span><span class="n">output_names</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">gfn_out</span><span class="o">.</span><span class="n">input_names</span><span class="p">),</span> \
+                <span class="s2">&quot;graph function link </span><span class="si">{}</span><span class="s2"> -&gt; </span><span class="si">{}</span><span class="s2"> require compatible layers&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">scope_in</span><span class="p">,</span> <span class="n">scope_out</span><span class="p">)</span>
+            <span class="c1"># We currently only support single input/output for intermediary stages</span>
+            <span class="c1"># The functions could still take multi-dimensional tensor, but only one</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">gfn_out</span><span class="o">.</span><span class="n">input_names</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Only support single input/output for intermediary layers&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Acquire initial placeholders&#39; properties</span>
+        <span class="c1"># We want the input names of the merged function are not under scoped</span>
+        <span class="c1"># In this way users of the merged function could still use the input names</span>
+        <span class="c1"># of the first function to get the correct input tensors.</span>
+        <span class="n">first_input_info</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">with</span> <span class="n">IsolatedSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">issn</span><span class="p">:</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">first_gfn</span> <span class="o">=</span> <span class="n">functions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">feeds</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">issn</span><span class="o">.</span><span class="n">importGraphFunction</span><span class="p">(</span><span class="n">first_gfn</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">tnsr</span> <span class="ow">in</span> <span class="n">feeds</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">tfx</span><span class="o">.</span><span class="n">op_name</span><span class="p">(</span><span class="n">issn</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">tnsr</span><span class="p">)</span>
+                <span class="n">first_input_info</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">tnsr</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">tnsr</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+            <span class="c1"># TODO: make sure that this graph is not reused to prevent name conflict</span>
+            <span class="c1"># Report error if the graph is not manipulated by anyone else</span>
+            <span class="c1"># https://www.tensorflow.org/api_docs/python/tf/Graph#finalize</span>
+            <span class="n">issn</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+
+        <span class="c1"># Build a linear chain of all the provide functions</span>
+        <span class="k">with</span> <span class="n">IsolatedSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">issn</span><span class="p">:</span>
+            <span class="n">first_inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                            <span class="k">for</span> <span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="ow">in</span> <span class="n">first_input_info</span><span class="p">]</span>
+            <span class="n">prev_outputs</span> <span class="o">=</span> <span class="n">first_inputs</span>
+
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">gfn</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">functions</span><span class="p">):</span>
+                <span class="c1"># Give a scope to each function to avoid name conflict</span>
+                <span class="k">if</span> <span class="n">scope</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">scope</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">scope</span> <span class="o">=</span> <span class="s1">&#39;GFN-BLK-</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+                <span class="n">_msg</span> <span class="o">=</span> <span class="s1">&#39;merge: stage </span><span class="si">{}</span><span class="s1">, scope </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">scope</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">_msg</span><span class="p">)</span>
+                <span class="n">input_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">gfn</span><span class="o">.</span><span class="n">input_names</span><span class="p">,</span> <span class="n">prev_outputs</span><span class="p">))</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">fetches</span> <span class="o">=</span> <span class="n">issn</span><span class="o">.</span><span class="n">importGraphFunction</span><span class="p">(</span>
+                    <span class="n">gfn</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="n">scope</span><span class="p">,</span> <span class="n">input_map</span><span class="o">=</span><span class="n">input_map</span><span class="p">)</span>
+                <span class="n">prev_outputs</span> <span class="o">=</span> <span class="n">fetches</span>
+
+            <span class="c1"># Add a non-scoped output name as the output node</span>
+            <span class="c1"># So that users can still use the output name of the last function&#39;s output</span>
+            <span class="c1"># to fetch the correct output tensors</span>
+            <span class="n">last_output_names</span> <span class="o">=</span> <span class="n">functions</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">output_names</span>
+            <span class="n">last_outputs</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">tnsr</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">prev_outputs</span><span class="p">,</span> <span class="n">last_output_names</span><span class="p">):</span>
+                <span class="n">last_outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">tnsr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">))</span>
+
+            <span class="n">gfn</span> <span class="o">=</span> <span class="n">issn</span><span class="o">.</span><span class="n">asGraphFunction</span><span class="p">(</span><span class="n">first_inputs</span><span class="p">,</span> <span class="n">last_outputs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">gfn</span></div></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

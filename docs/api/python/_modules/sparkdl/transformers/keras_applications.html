@@ -1,0 +1,238 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.transformers.keras_applications &#8212; pysparkdl 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.transformers.keras_applications</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractmethod</span>
+
+<span class="kn">import</span> <span class="nn">keras.backend</span> <span class="k">as</span> <span class="nn">K</span>
+<span class="kn">from</span> <span class="nn">keras.applications</span> <span class="k">import</span> <span class="n">inception_v3</span><span class="p">,</span> <span class="n">xception</span><span class="p">,</span> <span class="n">resnet50</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">sparkdl.transformers.utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">imageInputPlaceholder</span><span class="p">,</span> <span class="n">InceptionV3Constants</span><span class="p">)</span>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Essentially a factory function for getting the correct KerasApplicationModel class</span>
+<span class="sd">for the network name.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="getKerasApplicationModel"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.getKerasApplicationModel">[docs]</a><span class="k">def</span> <span class="nf">getKerasApplicationModel</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">KERAS_APPLICATION_MODELS</span><span class="p">[</span><span class="n">name</span><span class="p">]()</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> is not a supported model. Supported models: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
+                         <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">KERAS_APPLICATION_MODELS</span><span class="o">.</span><span class="n">keys</span><span class="p">())))</span></div>
+
+
+<div class="viewcode-block" id="KerasApplicationModel"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.KerasApplicationModel">[docs]</a><span class="k">class</span> <span class="nc">KerasApplicationModel</span><span class="p">:</span>
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span>
+
+<div class="viewcode-block" id="KerasApplicationModel.getModelData"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.KerasApplicationModel.getModelData">[docs]</a>    <span class="k">def</span> <span class="nf">getModelData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">featurize</span><span class="p">):</span>
+        <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+            <span class="n">K</span><span class="o">.</span><span class="n">set_learning_phase</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">inputImage</span> <span class="o">=</span> <span class="n">imageInputPlaceholder</span><span class="p">(</span><span class="n">nChannels</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">preprocessed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="n">inputImage</span><span class="p">)</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">preprocessed</span><span class="p">,</span> <span class="n">featurize</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">inputTensorName</span><span class="o">=</span><span class="n">inputImage</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">outputTensorName</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">session</span><span class="o">=</span><span class="n">sess</span><span class="p">,</span>
+                    <span class="n">inputTensorSize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">inputShape</span><span class="p">(),</span>
+                    <span class="n">outputMode</span><span class="o">=</span><span class="s2">&quot;vector&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="KerasApplicationModel.preprocess"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.KerasApplicationModel.preprocess">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputImage</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="KerasApplicationModel.model"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.KerasApplicationModel.model">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">preprocessed</span><span class="p">,</span> <span class="n">featurize</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="KerasApplicationModel.inputShape"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.KerasApplicationModel.inputShape">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">inputShape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+    <span class="k">def</span> <span class="nf">_testPreprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputImage</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For testing only. The preprocess function to be called before kerasModel.predict().</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">(</span><span class="n">inputImage</span><span class="p">)</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">_testKerasModel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_top</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        For testing only. The keras model object to compare to.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="InceptionV3Model"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.InceptionV3Model">[docs]</a><span class="k">class</span> <span class="nc">InceptionV3Model</span><span class="p">(</span><span class="n">KerasApplicationModel</span><span class="p">):</span>
+<div class="viewcode-block" id="InceptionV3Model.preprocess"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.InceptionV3Model.preprocess">[docs]</a>    <span class="k">def</span> <span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputImage</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">inception_v3</span><span class="o">.</span><span class="n">preprocess_input</span><span class="p">(</span><span class="n">inputImage</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="InceptionV3Model.model"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.InceptionV3Model.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">preprocessed</span><span class="p">,</span> <span class="n">featurize</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">inception_v3</span><span class="o">.</span><span class="n">InceptionV3</span><span class="p">(</span><span class="n">input_tensor</span><span class="o">=</span><span class="n">preprocessed</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="s2">&quot;imagenet&quot;</span><span class="p">,</span>
+                                        <span class="n">include_top</span><span class="o">=</span><span class="p">(</span><span class="ow">not</span> <span class="n">featurize</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="InceptionV3Model.inputShape"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.InceptionV3Model.inputShape">[docs]</a>    <span class="k">def</span> <span class="nf">inputShape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">InceptionV3Constants</span><span class="o">.</span><span class="n">INPUT_SHAPE</span></div>
+
+    <span class="k">def</span> <span class="nf">_testKerasModel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_top</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">inception_v3</span><span class="o">.</span><span class="n">InceptionV3</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="s2">&quot;imagenet&quot;</span><span class="p">,</span> <span class="n">include_top</span><span class="o">=</span><span class="n">include_top</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="XceptionModel"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.XceptionModel">[docs]</a><span class="k">class</span> <span class="nc">XceptionModel</span><span class="p">(</span><span class="n">KerasApplicationModel</span><span class="p">):</span>
+<div class="viewcode-block" id="XceptionModel.preprocess"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.XceptionModel.preprocess">[docs]</a>    <span class="k">def</span> <span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputImage</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">xception</span><span class="o">.</span><span class="n">preprocess_input</span><span class="p">(</span><span class="n">inputImage</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="XceptionModel.model"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.XceptionModel.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">preprocessed</span><span class="p">,</span> <span class="n">featurize</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">xception</span><span class="o">.</span><span class="n">Xception</span><span class="p">(</span><span class="n">input_tensor</span><span class="o">=</span><span class="n">preprocessed</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="s2">&quot;imagenet&quot;</span><span class="p">,</span>
+                                 <span class="n">include_top</span><span class="o">=</span><span class="p">(</span><span class="ow">not</span> <span class="n">featurize</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="XceptionModel.inputShape"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.XceptionModel.inputShape">[docs]</a>    <span class="k">def</span> <span class="nf">inputShape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mi">299</span><span class="p">,</span> <span class="mi">299</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_testKerasModel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_top</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">xception</span><span class="o">.</span><span class="n">Xception</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="s2">&quot;imagenet&quot;</span><span class="p">,</span> <span class="n">include_top</span><span class="o">=</span><span class="n">include_top</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ResNet50Model"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.ResNet50Model">[docs]</a><span class="k">class</span> <span class="nc">ResNet50Model</span><span class="p">(</span><span class="n">KerasApplicationModel</span><span class="p">):</span>
+<div class="viewcode-block" id="ResNet50Model.preprocess"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.ResNet50Model.preprocess">[docs]</a>    <span class="k">def</span> <span class="nf">preprocess</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputImage</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_imagenet_preprocess_input</span><span class="p">(</span><span class="n">inputImage</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputShape</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="ResNet50Model.model"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.ResNet50Model.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">preprocessed</span><span class="p">,</span> <span class="n">featurize</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">resnet50</span><span class="o">.</span><span class="n">ResNet50</span><span class="p">(</span><span class="n">input_tensor</span><span class="o">=</span><span class="n">preprocessed</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="s2">&quot;imagenet&quot;</span><span class="p">,</span>
+                                 <span class="n">include_top</span><span class="o">=</span><span class="p">(</span><span class="ow">not</span> <span class="n">featurize</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="ResNet50Model.inputShape"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.transformers.keras_applications.ResNet50Model.inputShape">[docs]</a>    <span class="k">def</span> <span class="nf">inputShape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mi">224</span><span class="p">,</span> <span class="mi">224</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_testKerasModel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">include_top</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">resnet50</span><span class="o">.</span><span class="n">ResNet50</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="s2">&quot;imagenet&quot;</span><span class="p">,</span> <span class="n">include_top</span><span class="o">=</span><span class="n">include_top</span><span class="p">)</span></div>
+
+<span class="k">def</span> <span class="nf">_imagenet_preprocess_input</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    For ResNet50, VGG models. For InceptionV3 and Xception it&#39;s okay to use the</span>
+<span class="sd">    keras version (e.g. InceptionV3.preprocess_input) as the code path they hit</span>
+<span class="sd">    works okay with tf.Tensor inputs. The following was translated to tf ops from</span>
+<span class="sd">    https://github.com/fchollet/keras/blob/fb4a0849cf4dc2965af86510f02ec46abab1a6a4/keras/applications/imagenet_utils.py#L52</span>
+<span class="sd">    It&#39;s a possibility to change the implementation in keras to look like the</span>
+<span class="sd">    following, but not doing it for now.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># &#39;RGB&#39;-&gt;&#39;BGR&#39;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># Zero-center by mean pixel</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">input_shape</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">mean</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">103.939</span>
+    <span class="n">mean</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">116.779</span>
+    <span class="n">mean</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mf">123.68</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="n">mean</span>
+
+<span class="n">KERAS_APPLICATION_MODELS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;InceptionV3&quot;</span><span class="p">:</span> <span class="n">InceptionV3Model</span><span class="p">,</span>
+    <span class="s2">&quot;Xception&quot;</span><span class="p">:</span> <span class="n">XceptionModel</span><span class="p">,</span>
+    <span class="s2">&quot;ResNet50&quot;</span><span class="p">:</span> <span class="n">ResNet50Model</span><span class="p">,</span>
+<span class="p">}</span>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

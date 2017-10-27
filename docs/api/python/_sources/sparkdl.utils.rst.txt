@@ -1,0 +1,30 @@
+sparkdl\.utils package
+======================
+
+Submodules
+----------
+
+sparkdl\.utils\.jvmapi module
+-----------------------------
+
+.. automodule:: sparkdl.utils.jvmapi
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+sparkdl\.utils\.keras\_model module
+-----------------------------------
+
+.. automodule:: sparkdl.utils.keras_model
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: sparkdl.utils
+    :members:
+    :undoc-members:
+    :show-inheritance:
