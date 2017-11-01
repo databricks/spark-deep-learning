@@ -16,7 +16,7 @@
 from abc import ABCMeta, abstractmethod
 
 import keras.backend as K
-from keras.applications import inception_v3, xception, resnet50
+from keras.applications import inception_v3, xception, resnet50, vgg16, vgg19
 import numpy as np
 import tensorflow as tf
 
@@ -119,6 +119,35 @@ class ResNet50Model(KerasApplicationModel):
     def _testKerasModel(self, include_top):
         return resnet50.ResNet50(weights="imagenet", include_top=include_top)
 
+class VGG16Model(KerasApplicationModel):
+    def preprocess(self, inputImage):
+        return _imagenet_preprocess_input(inputImage, self.inputShape())
+
+    def model(self, preprocessed, featurize):
+        return vgg16.VGG16(input_tensor=preprocessed, weights="imagenet",
+                                 include_top=(not featurize))
+
+    def inputShape(self):
+        return (224, 224)
+
+    def _testKerasModel(self, include_top):
+        return vgg16.VGG16(weights="imagenet", include_top=include_top)
+
+class VGG19Model(KerasApplicationModel):
+    def preprocess(self, inputImage):
+        return _imagenet_preprocess_input(inputImage, self.inputShape())
+
+    def model(self, preprocessed, featurize):
+        return vgg19.VGG19(input_tensor=preprocessed, weights="imagenet",
+                                 include_top=(not featurize))
+
+    def inputShape(self):
+        return (224, 224)
+
+    def _testKerasModel(self, include_top):
+        return vgg19.VGG19(weights="imagenet", include_top=include_top)
+
+
 def _imagenet_preprocess_input(x, input_shape):
     """
     For ResNet50, VGG models. For InceptionV3 and Xception it's okay to use the
@@ -141,5 +170,7 @@ KERAS_APPLICATION_MODELS = {
     "InceptionV3": InceptionV3Model,
     "Xception": XceptionModel,
     "ResNet50": ResNet50Model,
+    "VGG16": VGG16Model,
+    "VGG19": VGG19Model,
 }
 
