@@ -103,8 +103,8 @@ object ImageUtils {
   }
 
   /**
-   * Resizes and image and returns it as an Array[Byte]. Only 1 and 3 channel inputs, where each
-   * channel is a single Byte, are currently supported. Only BGR channel order is supporte but
+   * Resizes an image and returns it as an Array[Byte]. Only 1 and 3 channel inputs, where each
+   * channel is a single Byte, are currently supported. Only BGR channel order is supported but
    * this might work for other channel orders.
    *
    * @param tgtHeight   desired height of output image.
@@ -117,7 +117,8 @@ object ImageUtils {
   private[sparkdl] def resizeImage(
     tgtHeight: Int,
     tgtWidth: Int,
-    tgtChannels: Int)(spImage: Row): Row = {
+    tgtChannels: Int,
+    spImage: Row): Row = {
     require(tgtChannels == 3, s"`tgtChannels` was set to $tgtChannels, must be 3.")
 
     val height = ImageSchema.getHeight(spImage)
@@ -130,9 +131,10 @@ object ImageUtils {
       val srcImg = spImageToBufferedImage(spImage)
       val tgtImg = new BufferedImage(tgtWidth, tgtHeight, BufferedImage.TYPE_3BYTE_BGR)
 
-      // Draw srcImage onto resized (usually smaller) tgtImg
-      val graphic = tgtImg.createGraphics()
+      // scaledImg is a java.awt.Image which supports drawing but not pixel lookup by index.
       val scaledImg = srcImg.getScaledInstance(tgtWidth, tgtHeight, Image.SCALE_AREA_AVERAGING)
+      // Draw scaledImage onto resized (usually smaller) tgtImg so extract individual pixel values.
+      val graphic = tgtImg.createGraphics()
       graphic.drawImage(scaledImg, 0, 0, null)
       graphic.dispose()
 

@@ -49,7 +49,7 @@ class ImageUtilsSuite extends FunSuite {
     val tgtWidth: Int = ImageSchema.getWidth(smallerImage)
     val tgtChannels: Int = ImageSchema.getNChannels(smallerImage)
 
-    val testImage = ImageUtils.resizeImage(tgtHeight, tgtWidth, tgtChannels)(biggerImage)
+    val testImage = ImageUtils.resizeImage(tgtHeight, tgtWidth, tgtChannels, biggerImage)
     assert(ImageSchema.getHeight(testImage) === tgtHeight)
     assert(ImageSchema.getWidth(testImage) === tgtWidth)
     assert(ImageSchema.getNChannels(testImage) === tgtChannels)
@@ -81,7 +81,7 @@ class ImageUtilsSuite extends FunSuite {
       // G = 10 * i + w + 4
       // R = 10 * i + w + 7
       // (  B      G      R,     B      G      R,     B      G      R  )
-      Seq(x + 1, x + 4, x + 7, x + 2, x + 5, x + 8, x + 3, x + 6, x + 9)
+      (0 until width).flatMap { j => Seq(x + j + 1, x + j + 4, x + j + 7) }
     }.map(_.toByte).toArray
 
     val spImage = Row(null, height, width, 3, "CV_U8C3", rawData)
