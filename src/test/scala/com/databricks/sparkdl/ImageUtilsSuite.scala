@@ -42,6 +42,8 @@ object ImageUtilsSuite {
 }
 
 class ImageUtilsSuite extends FunSuite {
+  // We want to make sure to test ImageUtils in headless mode to ensure it'll work on all systems.
+  assert(System.getProperty("java.awt.headless") === "true")
   import ImageUtilsSuite._
 
   test("test binary image resize") {
