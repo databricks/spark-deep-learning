@@ -20,6 +20,7 @@ project/plugins/project/
 
 # intellij
 .idea/
+*.iml
 
 # MacOS
 .DS_Store
