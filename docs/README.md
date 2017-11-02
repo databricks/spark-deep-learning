@@ -27,23 +27,17 @@ in some cases (`Jekyll 3.4.3`):
     $ sudo gem install jekyll bundler
     $ sudo gem install jekyll-redirect-from pygments.rb
 
-
 Then run the prepare script (from within the `docs/` directory)
- to setup prerequisites and generate a wrapper "jekyll" script
+to setup prerequisites and generate a wrapper "jekyll" script in the docs folder
 	$ ./prepare -s <path_to_spark_home> -t <path_to_tensorframes_home>
 
 Execute `./jekyll build` from the `docs/` directory to compile the site. Compiling the site with
-Jekyll will create a directory called `_site` containing index.html as well as the rest of the
-compiled files.
+Jekyll will create a directory called `site` in the root project directory that contains
+index.html as well as the rest of the compiled files.
 
-You can modify the default Jekyll build as follows:
-
-    # Skip generating API docs (which takes a while)
-    $ SKIP_API=1 ./jekyll build
-    # Serve content locally on port 4000
-    $ ./jekyll serve --watch
-
-Note that `SPARK_HOME` must be set to your local Spark installation in order to generate the docs.
+To view the generated docs, open site/index.html in a browser or run the following:
+    # Serve content locally on port 4000 from the "site" directory
+    $ ./jekyll serve --destination "$(pwd)/../site" --watch
 
 ## Uploading to Github Pages
 
@@ -51,7 +45,11 @@ To upload the docs to Github pages, first make sure this branch is up-to-date wi
 spark-deep-learning master branch (e.g. merge the latest master into your local gh-pages branch).
 
 Build the docs as described above, then make a pull request against the
-[gh-pages branch](https://github.com/databricks/spark-deep-learning/tree/gh-pages)
+[gh-pages branch](https://github.com/databricks/spark-deep-learning/tree/gh-pages).
+
+NOTE: Github pages serves the site from index.html in the project root directory; the index.html
+file in the root project directory currently just redirects to site/index.html, which is the actual
+homepage for the docs.
 
 ## Pygments
 

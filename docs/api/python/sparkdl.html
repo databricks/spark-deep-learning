@@ -35,6 +35,9 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="index.html" title="Welcome to the Deep Learning Pipelines Python API docs!"
              accesskey="P">previous</a> |</li>
     
@@ -50,8 +53,400 @@
             
   <div class="section" id="sparkdl-package">
 <h1>sparkdl package<a class="headerlink" href="#sparkdl-package" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-contents">
-<h2>Module contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-sparkdl">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-sparkdl" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="sparkdl.imageType">
+<code class="descclassname">sparkdl.</code><code class="descname">imageType</code><span class="sig-paren">(</span><em>imageRow</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/image/imageIO.html#imageType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.imageType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get type information about the image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>imageRow</strong> – spark image row.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">ImageType</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sparkdl.readImages">
+<code class="descclassname">sparkdl.</code><code class="descname">readImages</code><span class="sig-paren">(</span><em>imageDirectory</em>, <em>numPartition=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/image/imageIO.html#readImages"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.readImages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a directory of images (or a single image) into a DataFrame.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sc</strong> – spark context</li>
+<li><strong>imageDirectory</strong> – str, file path.</li>
+<li><strong>numPartition</strong> – int, number or partitions to use for reading files.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">DataFrame, with columns: (filepath: str, image: imageSchema).</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.TFImageTransformer">
+<em class="property">class </em><code class="descclassname">sparkdl.</code><code class="descname">TFImageTransformer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/tf_image.html#TFImageTransformer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.TFImageTransformer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.base.Transformer</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasInputCol</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasOutputCol</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.image_params.HasOutputMode</span></code></p>
+<p>Applies the Tensorflow graph to the image column in DataFrame.</p>
+<p>Restrictions of the current API:</p>
+<ul class="simple">
+<li>Does not use minibatches, which is a major low-hanging fruit for performance.</li>
+<li>Only one output node can be specified.</li>
+<li>The output is expected to be an image or a 1-d vector.</li>
+<li>All images in the dataframe are expected be of the same numerical data type
+(i.e. the dtype of the values in the numpy array representation is the same.)</li>
+</ul>
+<p>We assume all graphs have a “minibatch” dimension (i.e. an unknown leading
+dimension) in the tensor shapes.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The input tensorflow graph should have appropriate weights constantified,
+since a new session is created inside this transformer.</p>
+</div>
+<dl class="attribute">
+<dt id="sparkdl.TFImageTransformer.NEW_OUTPUT_PREFIX">
+<code class="descname">NEW_OUTPUT_PREFIX</code><em class="property"> = 'sdl_flattened'</em><a class="headerlink" href="#sparkdl.TFImageTransformer.NEW_OUTPUT_PREFIX" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.TFImageTransformer.USER_GRAPH_NAMESPACE">
+<code class="descname">USER_GRAPH_NAMESPACE</code><em class="property"> = 'given'</em><a class="headerlink" href="#sparkdl.TFImageTransformer.USER_GRAPH_NAMESPACE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.TFImageTransformer.getGraph">
+<code class="descname">getGraph</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/tf_image.html#TFImageTransformer.getGraph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.TFImageTransformer.getGraph" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.TFImageTransformer.getInputTensor">
+<code class="descname">getInputTensor</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/tf_image.html#TFImageTransformer.getInputTensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.TFImageTransformer.getInputTensor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.TFImageTransformer.getOutputTensor">
+<code class="descname">getOutputTensor</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/tf_image.html#TFImageTransformer.getOutputTensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.TFImageTransformer.getOutputTensor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.TFImageTransformer.graph">
+<code class="descname">graph</code><em class="property"> = Param(parent='undefined', name='graph', doc='A TensorFlow computation graph')</em><a class="headerlink" href="#sparkdl.TFImageTransformer.graph" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.TFImageTransformer.inputTensor">
+<code class="descname">inputTensor</code><em class="property"> = Param(parent='undefined', name='inputTensor', doc='A TensorFlow tensor object or name representing the input image')</em><a class="headerlink" href="#sparkdl.TFImageTransformer.inputTensor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.TFImageTransformer.outputTensor">
+<code class="descname">outputTensor</code><em class="property"> = Param(parent='undefined', name='outputTensor', doc='A TensorFlow tensor object or name representing the output')</em><a class="headerlink" href="#sparkdl.TFImageTransformer.outputTensor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.TFImageTransformer.setGraph">
+<code class="descname">setGraph</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/tf_image.html#TFImageTransformer.setGraph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.TFImageTransformer.setGraph" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.TFImageTransformer.setInputTensor">
+<code class="descname">setInputTensor</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/tf_image.html#TFImageTransformer.setInputTensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.TFImageTransformer.setInputTensor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.TFImageTransformer.setOutputTensor">
+<code class="descname">setOutputTensor</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/tf_image.html#TFImageTransformer.setOutputTensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.TFImageTransformer.setOutputTensor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.TFImageTransformer.setParams">
+<code class="descname">setParams</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/tf_image.html#TFImageTransformer.setParams"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.TFImageTransformer.setParams" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>setParams(self, inputCol=None, outputCol=None, graph=None,</dt>
+<dd>inputTensor=utils.IMAGE_INPUT_PLACEHOLDER_NAME, outputTensor=None,
+outputMode=”vector”)</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.DeepImagePredictor">
+<em class="property">class </em><code class="descclassname">sparkdl.</code><code class="descname">DeepImagePredictor</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/named_image.html#DeepImagePredictor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.DeepImagePredictor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.base.Transformer</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasInputCol</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasOutputCol</span></code></p>
+<p>Applies the model specified by its popular name to the image column in DataFrame.
+The input image column should be 3-channel SpImage.
+The output is a MLlib Vector.</p>
+<dl class="attribute">
+<dt id="sparkdl.DeepImagePredictor.decodePredictions">
+<code class="descname">decodePredictions</code><em class="property"> = Param(parent='undefined', name='decodePredictions', doc='If true, output predictions in the (class, description, probability) format')</em><a class="headerlink" href="#sparkdl.DeepImagePredictor.decodePredictions" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.DeepImagePredictor.getModelName">
+<code class="descname">getModelName</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/named_image.html#DeepImagePredictor.getModelName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.DeepImagePredictor.getModelName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.DeepImagePredictor.modelName">
+<code class="descname">modelName</code><em class="property"> = Param(parent='undefined', name='modelName', doc='A deep learning model name')</em><a class="headerlink" href="#sparkdl.DeepImagePredictor.modelName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.DeepImagePredictor.setModelName">
+<code class="descname">setModelName</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/named_image.html#DeepImagePredictor.setModelName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.DeepImagePredictor.setModelName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.DeepImagePredictor.setParams">
+<code class="descname">setParams</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/named_image.html#DeepImagePredictor.setParams"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.DeepImagePredictor.setParams" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>setParams(self, inputCol=None, outputCol=None, modelName=None, decodePredictions=False,</dt>
+<dd>topK=5)</dd>
+</dl>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.DeepImagePredictor.topK">
+<code class="descname">topK</code><em class="property"> = Param(parent='undefined', name='topK', doc='How many classes to return if decodePredictions is True')</em><a class="headerlink" href="#sparkdl.DeepImagePredictor.topK" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.DeepImageFeaturizer">
+<em class="property">class </em><code class="descclassname">sparkdl.</code><code class="descname">DeepImageFeaturizer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/named_image.html#DeepImageFeaturizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.DeepImageFeaturizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.base.Transformer</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasInputCol</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasOutputCol</span></code></p>
+<p>Applies the model specified by its popular name, with its prediction layer(s) chopped off,
+to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
+can be used in a MLlib Pipeline.
+The input image column should be 3-channel SpImage.</p>
+<dl class="method">
+<dt id="sparkdl.DeepImageFeaturizer.getModelName">
+<code class="descname">getModelName</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/named_image.html#DeepImageFeaturizer.getModelName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.DeepImageFeaturizer.getModelName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="sparkdl.DeepImageFeaturizer.modelName">
+<code class="descname">modelName</code><em class="property"> = Param(parent='undefined', name='modelName', doc='A deep learning model name')</em><a class="headerlink" href="#sparkdl.DeepImageFeaturizer.modelName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.DeepImageFeaturizer.setModelName">
+<code class="descname">setModelName</code><span class="sig-paren">(</span><em>value</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/named_image.html#DeepImageFeaturizer.setModelName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.DeepImageFeaturizer.setModelName" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.DeepImageFeaturizer.setParams">
+<code class="descname">setParams</code><span class="sig-paren">(</span><em>self</em>, <em>inputCol=None</em>, <em>outputCol=None</em>, <em>modelName=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/named_image.html#DeepImageFeaturizer.setParams"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.DeepImageFeaturizer.setParams" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.KerasImageFileEstimator">
+<em class="property">class </em><code class="descclassname">sparkdl.</code><code class="descname">KerasImageFileEstimator</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/estimators/keras_image_file_estimator.html#KerasImageFileEstimator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.KerasImageFileEstimator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.base.Estimator</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasInputCol</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.image_params.HasInputImageNodeName</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasOutputCol</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasOutputNodeName</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasLabelCol</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasKerasModel</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasKerasOptimizer</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasKerasLoss</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.image_params.CanLoadImage</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.image_params.HasOutputMode</span></code></p>
+<p>Build a Estimator from a Keras model.</p>
+<p>First, create a model and save it to file system</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">keras.applications.resnet50</span> <span class="kn">import</span> <span class="n">ResNet50</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">ResNet50</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;path_to_my_model.h5&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then, create a image loading function that reads image data from URI,
+preprocess them, and returns the numerical tensor.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">load_image_and_process</span><span class="p">(</span><span class="n">uri</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">PIL.Image</span>
+    <span class="kn">from</span> <span class="nn">keras.applications.imagenet_utils</span> <span class="kn">import</span> <span class="n">preprocess_input</span>
+
+    <span class="n">original_image</span> <span class="o">=</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s1">&#39;RGB&#39;</span><span class="p">)</span>
+    <span class="n">resized_image</span> <span class="o">=</span> <span class="n">original_image</span><span class="o">.</span><span class="n">resize</span><span class="p">((</span><span class="mi">224</span><span class="p">,</span> <span class="mi">224</span><span class="p">),</span> <span class="n">PIL</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">ANTIALIAS</span><span class="p">)</span>
+    <span class="n">image_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">resized_image</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">image_tensor</span> <span class="o">=</span> <span class="n">preprocess_input</span><span class="p">(</span><span class="n">image_array</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:])</span>
+    <span class="k">return</span> <span class="n">image_tensor</span>
+</pre></div>
+</div>
+<p>Assume the image URIs live in the following DataFrame.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">original_dataset</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">([</span>
+    <span class="n">Row</span><span class="p">(</span><span class="n">imageUri</span><span class="o">=</span><span class="s2">&quot;image1_uri&quot;</span><span class="p">,</span> <span class="n">imageLabel</span><span class="o">=</span><span class="s2">&quot;image1_label&quot;</span><span class="p">),</span>
+    <span class="n">Row</span><span class="p">(</span><span class="n">imageUri</span><span class="o">=</span><span class="s2">&quot;image2_uri&quot;</span><span class="p">,</span> <span class="n">imageLabel</span><span class="o">=</span><span class="s2">&quot;image2_label&quot;</span><span class="p">),</span>
+    <span class="c1"># and more rows ...</span>
+<span class="p">])</span>
+<span class="n">stringIndexer</span> <span class="o">=</span> <span class="n">StringIndexer</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="s2">&quot;imageLabel&quot;</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="s2">&quot;categoryIndex&quot;</span><span class="p">)</span>
+<span class="n">indexed_dateset</span> <span class="o">=</span> <span class="n">stringIndexer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">original_dataset</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">original_dataset</span><span class="p">)</span>
+<span class="n">encoder</span> <span class="o">=</span> <span class="n">OneHotEncoder</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="s2">&quot;categoryIndex&quot;</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="s2">&quot;categoryVec&quot;</span><span class="p">)</span>
+<span class="n">image_dataset</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">indexed_dateset</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can then create a Keras estimator that takes our saved model file and
+train it using Spark.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">estimator</span> <span class="o">=</span> <span class="n">KerasImageFileEstimator</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="s2">&quot;imageUri&quot;</span><span class="p">,</span>
+                                    <span class="n">outputCol</span><span class="o">=</span><span class="s2">&quot;name_of_result_column&quot;</span><span class="p">,</span>
+                                    <span class="n">labelCol</span><span class="o">=</span><span class="s2">&quot;categoryVec&quot;</span><span class="p">,</span>
+                                    <span class="n">imageLoader</span><span class="o">=</span><span class="n">load_image_and_process</span><span class="p">,</span>
+                                    <span class="n">kerasOptimizer</span><span class="o">=</span><span class="s2">&quot;adam&quot;</span><span class="p">,</span>
+                                    <span class="n">kerasLoss</span><span class="o">=</span><span class="s2">&quot;categorical_crossentropy&quot;</span><span class="p">,</span>
+                                    <span class="n">kerasFitParams</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;epochs&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">},</span>
+                                    <span class="n">modelFile</span><span class="o">=</span><span class="s2">&quot;path_to_my_model.h5&quot;</span><span class="p">)</span>
+
+<span class="n">transformers</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">image_dataset</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="sparkdl.KerasImageFileEstimator.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>dataset</em>, <em>params=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/estimators/keras_image_file_estimator.html#KerasImageFileEstimator.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.KerasImageFileEstimator.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fits a model to the input dataset with optional parameters.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This returns the byte serialized HDF5 file for each model to the driver.
+If the model file is large, the driver might go out-of-memory.
+As we cannot assume the existence of a sufficiently large (and writable)
+file system, users are advised to not train too many models in a single
+Spark job.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dataset</strong> – input dataset, which is an instance of <code class="xref py py-class docutils literal"><span class="pre">pyspark.sql.DataFrame</span></code>.
+The column <cite>inputCol</cite> should be of type <cite>sparkdl.image.imageIO.imgSchema</cite>.</li>
+<li><strong>params</strong> – An optional param map that overrides embedded params. If a list/tuple of
+param maps is given, this calls fit on each param map and returns a list of
+models.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">fitted model(s). If params includes a list of param maps, the order of these
+models matches the order of the param maps.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.KerasImageFileEstimator.setParams">
+<code class="descname">setParams</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/estimators/keras_image_file_estimator.html#KerasImageFileEstimator.setParams"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.KerasImageFileEstimator.setParams" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>setParams(self, inputCol=None, inputImageNodeName=None, outputCol=None,</dt>
+<dd>outputNodeName=None, outputMode=”vector”, labelCol=None,
+modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,
+kerasFitParams=None)</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="sparkdl.KerasImageFileTransformer">
+<em class="property">class </em><code class="descclassname">sparkdl.</code><code class="descname">KerasImageFileTransformer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/keras_image.html#KerasImageFileTransformer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.KerasImageFileTransformer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyspark.ml.base.Transformer</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasInputCol</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasOutputCol</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.image_params.CanLoadImage</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.shared_params.HasKerasModel</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sparkdl.param.image_params.HasOutputMode</span></code></p>
+<p>Applies the Tensorflow-backed Keras model (specified by a file name) to
+images (specified by the URI in the inputCol column) in the DataFrame.</p>
+<dl class="docutils">
+<dt>Restrictions of the current API:</dt>
+<dd><ul class="first last simple">
+<li>see TFImageTransformer.</li>
+<li>Only supports Tensorflow-backed Keras models (no Theano).</li>
+</ul>
+</dd>
+</dl>
+<dl class="method">
+<dt id="sparkdl.KerasImageFileTransformer.setParams">
+<code class="descname">setParams</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/keras_image.html#KerasImageFileTransformer.setParams"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.KerasImageFileTransformer.setParams" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>setParams(self, inputCol=None, outputCol=None, modelFile=None, imageLoader=None,</dt>
+<dd>outputMode=”vector”)</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="sparkdl.registerKerasImageUDF">
+<code class="descclassname">sparkdl.</code><code class="descname">registerKerasImageUDF</code><span class="sig-paren">(</span><em>udf_name</em>, <em>keras_model_or_file_path</em>, <em>preprocessor=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/udf/keras_image_model.html#registerKerasImageUDF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.registerKerasImageUDF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a Keras image model as a Spark SQL UDF.
+The UDF takes a column (formatted in <code class="xref py py-const docutils literal"><span class="pre">sparkdl.image.imageIO.imageSchema</span></code>)
+and produces the output of the given Keras model (e.g.
+for <a class="reference external" href="https://keras.io/applications/#inceptionv3]">Inception V3</a>
+it produces a real valued score vector over the ImageNet object categories).
+For other models, the output could have different meanings.
+Please consult the actual models specification.</p>
+<p>The user can provide an existing model in Keras as follows.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">keras.applications</span> <span class="kn">import</span> <span class="n">InceptionV3</span>
+<span class="n">registerKerasImageUDF</span><span class="p">(</span><span class="s2">&quot;udf_name&quot;</span><span class="p">,</span> <span class="n">InceptionV3</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="s2">&quot;imagenet&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>To use a customized Keras model, we can save it and pass the file path as parameter.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Assume we have a compiled and trained Keras model</span>
+<span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;path/to/my/model.h5&#39;</span><span class="p">)</span>
+
+<span class="n">registerKerasImageUDF</span><span class="p">(</span><span class="s2">&quot;my_custom_keras_model_udf&quot;</span><span class="p">,</span> <span class="s2">&quot;path/to/my/model.h5&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If there are further preprocessing steps are required to prepare the images,
+the user has the option to provide a preprocessing function <code class="xref py py-obj docutils literal"><span class="pre">preprocessor</span></code>.
+The <code class="xref py py-obj docutils literal"><span class="pre">preprocessor</span></code> converts a file path into a image array.
+This function is usually introduced in Keras workflow, as in the following example.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">There is a performance penalty to use a <code class="xref py py-obj docutils literal"><span class="pre">preprocessor</span></code> as it will
+first convert the image into a file buffer and reloaded back.
+This provides compatibility with the usual way Keras model input are preprocessed.
+Please consider directly using Keras/TensorFlow layers for this purpose.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">keras_load_img</span><span class="p">(</span><span class="n">fpath</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">keras.preprocessing.image</span> <span class="kn">import</span> <span class="n">load_img</span><span class="p">,</span> <span class="n">img_to_array</span>
+    <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+    <span class="kn">from</span> <span class="nn">pyspark.sql</span> <span class="kn">import</span> <span class="n">Row</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">load_img</span><span class="p">(</span><span class="n">fpath</span><span class="p">,</span> <span class="n">target_size</span><span class="o">=</span><span class="p">(</span><span class="mi">299</span><span class="p">,</span> <span class="mi">299</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">img_to_array</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+<span class="n">registerKerasImageUDF</span><span class="p">(</span><span class="s2">&quot;my_inception_udf&quot;</span><span class="p">,</span> <span class="n">InceptionV3</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="s2">&quot;imagenet&quot;</span><span class="p">),</span> <span class="n">keras_load_img</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If the <cite>preprocessor</cite> is not provided, we assume the function will be applied to
+a (struct) column encoded in [sparkdl.image.imageIO.imageSchema].
+The output will be a single (struct) column containing the resulting tensor data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>udf_name</strong> – str, name of the UserDefinedFunction. If the name exists, it will be overwritten.</li>
+<li><strong>keras_model_or_file_path</strong> – str or KerasModel,
+either a path to the HDF5 Keras model file
+or an actual loaded Keras model</li>
+<li><strong>preprocessor</strong> – function, optional, a function that
+converts image file path to image tensor/ndarray
+in the correct shape to be served as input to the Keras model</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><code class="xref py py-class docutils literal"><span class="pre">GraphFunction</span></code>, the graph function for the Keras image model</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="sparkdl.imageInputPlaceholder">
+<code class="descclassname">sparkdl.</code><code class="descname">imageInputPlaceholder</code><span class="sig-paren">(</span><em>nChannels=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/transformers/utils.html#imageInputPlaceholder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.imageInputPlaceholder" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </div>
 </div>
 
@@ -64,7 +459,7 @@
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">sparkdl package</a><ul>
-<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+<li><a class="reference internal" href="#module-sparkdl">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -99,6 +494,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="index.html" title="Welcome to the Deep Learning Pipelines Python API docs!"
              >previous</a> |</li>

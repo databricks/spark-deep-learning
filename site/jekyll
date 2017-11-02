@@ -1,0 +1,7 @@
+#!/bin/bash
+
+export SPARK_HOME=/Users/sid/code/spark
+
+pushd "/Users/sid/code/spark-deep-learning/docs"
+jekyll $@
+popd
