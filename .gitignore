@@ -3,8 +3,8 @@
 *.pyc
 build/*.jar
 
-docs/_site
-docs/api
+docs/jekyll
+docs/prepare
 README.org
 
 # sbt specific
