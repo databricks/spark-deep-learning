@@ -53,10 +53,6 @@ spark-deep-learning master branch (e.g. merge the latest master into your local 
 Build the docs as described above; since we don't yet have a Scala API, pass the SKIP_SCALADOC=1
 argument to jekyll.
 
-Then, run `$ rsync -av ./docs/_site/* . --exclude "*README.md" --exclude "*prepare" --exclude "*jekyll"`
-from the project root directory to copy the generated doc files (excluding this README) into the
-project root.
-
 Finally, make a pull request against the
 [gh-pages branch](https://github.com/databricks/spark-deep-learning/tree/gh-pages)
 
