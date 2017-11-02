@@ -1,0 +1,330 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.image.imageIO &#8212; pysparkdl 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.image.imageIO</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">from</span> <span class="nn">io</span> <span class="k">import</span> <span class="n">BytesIO</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">namedtuple</span>
+<span class="kn">from</span> <span class="nn">warnings</span> <span class="k">import</span> <span class="n">warn</span>
+
+<span class="c1"># 3rd party</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="k">import</span> <span class="n">Image</span>
+
+<span class="c1"># pyspark</span>
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="k">import</span> <span class="n">Row</span>
+<span class="kn">from</span> <span class="nn">pyspark</span> <span class="k">import</span> <span class="n">SparkContext</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.types</span> <span class="k">import</span> <span class="p">(</span><span class="n">BinaryType</span><span class="p">,</span> <span class="n">IntegerType</span><span class="p">,</span> <span class="n">StringType</span><span class="p">,</span> <span class="n">StructField</span><span class="p">,</span> <span class="n">StructType</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.functions</span> <span class="k">import</span> <span class="n">udf</span>
+
+
+<span class="n">imageSchema</span> <span class="o">=</span> <span class="n">StructType</span><span class="p">([</span><span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;mode&quot;</span><span class="p">,</span> <span class="n">StringType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">),</span>
+                          <span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="n">IntegerType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">),</span>
+                          <span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="n">IntegerType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">),</span>
+                          <span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;nChannels&quot;</span><span class="p">,</span> <span class="n">IntegerType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">),</span>
+                          <span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">BinaryType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">)])</span>
+
+
+<span class="c1"># ImageType class for holding metadata about images stored in DataFrames.</span>
+<span class="c1"># fields:</span>
+<span class="c1">#   nChannels - number of channels in the image</span>
+<span class="c1">#   dtype - data type of the image&#39;s &quot;data&quot; Column, sorted as a numpy compatible string.</span>
+<span class="c1">#   channelContent - info about the contents of each channel currently only &quot;I&quot; (intensity) and</span>
+<span class="c1">#     &quot;RGB&quot; are supported for 1 and 3 channel data respectively.</span>
+<span class="c1">#   pilMode - The mode that should be used to convert to a PIL image.</span>
+<span class="c1">#   sparkMode - Unique identifier string used in spark image representation.</span>
+<span class="n">ImageType</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;ImageType&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;nChannels&quot;</span><span class="p">,</span>
+                                     <span class="s2">&quot;dtype&quot;</span><span class="p">,</span>
+                                     <span class="s2">&quot;channelContent&quot;</span><span class="p">,</span>
+                                     <span class="s2">&quot;pilMode&quot;</span><span class="p">,</span>
+                                     <span class="s2">&quot;sparkMode&quot;</span><span class="p">,</span>
+                                     <span class="p">])</span>
+<span class="k">class</span> <span class="nc">SparkMode</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">RGB</span> <span class="o">=</span> <span class="s2">&quot;RGB&quot;</span>
+    <span class="n">FLOAT32</span> <span class="o">=</span> <span class="s2">&quot;float32&quot;</span>
+    <span class="n">RGB_FLOAT32</span> <span class="o">=</span> <span class="s2">&quot;RGB-float32&quot;</span>
+
+<span class="n">supportedImageTypes</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">ImageType</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;uint8&quot;</span><span class="p">,</span> <span class="s2">&quot;RGB&quot;</span><span class="p">,</span> <span class="s2">&quot;RGB&quot;</span><span class="p">,</span> <span class="n">SparkMode</span><span class="o">.</span><span class="n">RGB</span><span class="p">),</span>
+    <span class="n">ImageType</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span> <span class="s2">&quot;I&quot;</span><span class="p">,</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span> <span class="n">SparkMode</span><span class="o">.</span><span class="n">FLOAT32</span><span class="p">),</span>
+    <span class="n">ImageType</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span> <span class="s2">&quot;RGB&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">SparkMode</span><span class="o">.</span><span class="n">RGB_FLOAT32</span><span class="p">),</span>
+<span class="p">]</span>
+<span class="n">pilModeLookup</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="o">.</span><span class="n">pilMode</span><span class="p">:</span> <span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">supportedImageTypes</span>
+                 <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">pilMode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
+<span class="n">sparkModeLookup</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="o">.</span><span class="n">sparkMode</span><span class="p">:</span> <span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">supportedImageTypes</span><span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">imageArrayToStruct</span><span class="p">(</span><span class="n">imgArray</span><span class="p">,</span> <span class="n">sparkMode</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a row representation of an image from an image array and (optional) imageType.</span>
+
+<span class="sd">    to_image_udf = udf(arrayToImageRow, imageSchema)</span>
+<span class="sd">    df.withColumn(&quot;output_img&quot;, to_image_udf(df[&quot;np_arr_col&quot;])</span>
+
+<span class="sd">    :param imgArray: ndarray, image data.</span>
+<span class="sd">    :param sparkMode: spark mode, type information for the image, will be inferred from array if</span>
+<span class="sd">        the mode is not provide. See SparkMode for valid modes.</span>
+<span class="sd">    :return: Row, image as a DataFrame Row.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Sometimes tensors have a leading &quot;batch-size&quot; dimension. Assume to be 1 if it exists.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">imgArray</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">imgArray</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The first dimension of a 4-d image array is expected to be 1.&quot;</span><span class="p">)</span>
+        <span class="n">imgArray</span> <span class="o">=</span> <span class="n">imgArray</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">imgArray</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+
+    <span class="k">if</span> <span class="n">sparkMode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sparkMode</span> <span class="o">=</span> <span class="n">_arrayToSparkMode</span><span class="p">(</span><span class="n">imgArray</span><span class="p">)</span>
+    <span class="n">imageType</span> <span class="o">=</span> <span class="n">sparkModeLookup</span><span class="p">[</span><span class="n">sparkMode</span><span class="p">]</span>
+
+    <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">nChannels</span> <span class="o">=</span> <span class="n">imgArray</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">if</span> <span class="n">imageType</span><span class="o">.</span><span class="n">nChannels</span> <span class="o">!=</span> <span class="n">nChannels</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Image of type </span><span class="si">{}</span><span class="s2"> should have </span><span class="si">{}</span><span class="s2"> channels, but array has </span><span class="si">{}</span><span class="s2"> channels.&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sparkMode</span><span class="p">,</span> <span class="n">imageType</span><span class="o">.</span><span class="n">nChannels</span><span class="p">,</span> <span class="n">nChannels</span><span class="p">))</span>
+
+    <span class="c1"># Convert the array to match the image type.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">can_cast</span><span class="p">(</span><span class="n">imgArray</span><span class="p">,</span> <span class="n">imageType</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="s1">&#39;same_kind&#39;</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Array of type </span><span class="si">{}</span><span class="s2"> cannot safely be cast to image type </span><span class="si">{}</span><span class="s2">.&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">imgArray</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">imageType</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+    <span class="n">imgArray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">imgArray</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">imageType</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">(</span><span class="n">imgArray</span><span class="o">.</span><span class="n">tobytes</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">Row</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="n">sparkMode</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">nChannels</span><span class="o">=</span><span class="n">nChannels</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="imageType"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.imageType">[docs]</a><span class="k">def</span> <span class="nf">imageType</span><span class="p">(</span><span class="n">imageRow</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get type information about the image.</span>
+
+<span class="sd">    :param imageRow: spark image row.</span>
+<span class="sd">    :return: ImageType</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">sparkModeLookup</span><span class="p">[</span><span class="n">imageRow</span><span class="o">.</span><span class="n">mode</span><span class="p">]</span></div>
+
+
+<span class="k">def</span> <span class="nf">imageStructToArray</span><span class="p">(</span><span class="n">imageRow</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert an image to a numpy array.</span>
+
+<span class="sd">    :param imageRow: Row, must use imageSchema.</span>
+<span class="sd">    :return: ndarray, image data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">imType</span> <span class="o">=</span> <span class="n">imageType</span><span class="p">(</span><span class="n">imageRow</span><span class="p">)</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">imageRow</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="n">imageRow</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">imageRow</span><span class="o">.</span><span class="n">nChannels</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">imType</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">imageRow</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_arrayToSparkMode</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;Array should have 3 dimensions but has shape </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">num_channels</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">num_channels</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;incompatible dtype (</span><span class="si">%s</span><span class="s2">) for numpy array for float32 mode&quot;</span> <span class="o">%</span>
+                             <span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">string</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">SparkMode</span><span class="o">.</span><span class="n">FLOAT32</span>
+    <span class="k">elif</span> <span class="n">num_channels</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;number of channels of the input array (</span><span class="si">%d</span><span class="s2">) is not supported&quot;</span> <span class="o">%</span>
+                         <span class="n">num_channels</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">arr</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SparkMode</span><span class="o">.</span><span class="n">RGB</span>
+    <span class="k">elif</span> <span class="n">arr</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="n">SparkMode</span><span class="o">.</span><span class="n">RGB_FLOAT32</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;did not find a sparkMode for the given array with num_channels = </span><span class="si">%d</span><span class="s2"> &quot;</span> <span class="o">+</span>
+                         <span class="s2">&quot;and dtype </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">num_channels</span><span class="p">,</span> <span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">string</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">_resizeFunction</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Creates a resize function.</span>
+<span class="sd">    </span>
+<span class="sd">    :param size: tuple, size of new image: (height, width). </span>
+<span class="sd">    :return: function: image =&gt; image, a function that converts an input image to an image with </span>
+<span class="sd">    of `size`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;New image size should have for [hight, width] but got </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">size</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">resizeImageAsRow</span><span class="p">(</span><span class="n">imgAsRow</span><span class="p">):</span>
+        <span class="n">imgAsArray</span> <span class="o">=</span> <span class="n">imageStructToArray</span><span class="p">(</span><span class="n">imgAsRow</span><span class="p">)</span>
+        <span class="n">imgType</span> <span class="o">=</span> <span class="n">imageType</span><span class="p">(</span><span class="n">imgAsRow</span><span class="p">)</span>
+        <span class="n">imgAsPil</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">imgAsArray</span><span class="p">,</span> <span class="n">imgType</span><span class="o">.</span><span class="n">pilMode</span><span class="p">)</span>
+        <span class="n">imgAsPil</span> <span class="o">=</span> <span class="n">imgAsPil</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">size</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">imgAsArray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">imgAsPil</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">imageArrayToStruct</span><span class="p">(</span><span class="n">imgAsArray</span><span class="p">,</span> <span class="n">imgType</span><span class="o">.</span><span class="n">sparkMode</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">resizeImageAsRow</span>
+
+
+<span class="k">def</span> <span class="nf">resizeImage</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Create a udf for resizing image.</span>
+<span class="sd">    </span>
+<span class="sd">    Example usage:</span>
+<span class="sd">    dataFrame.select(resizeImage((height, width))(&#39;imageColumn&#39;))</span>
+<span class="sd">    </span>
+<span class="sd">    :param size: tuple, target size of new image in the form (height, width). </span>
+<span class="sd">    :return: udf, a udf for resizing an image column to `size`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">udf</span><span class="p">(</span><span class="n">_resizeFunction</span><span class="p">(</span><span class="n">size</span><span class="p">),</span> <span class="n">imageSchema</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_decodeImage</span><span class="p">(</span><span class="n">imageData</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Decode compressed image data into a DataFrame image row.</span>
+
+<span class="sd">    :param imageData: (bytes, bytearray) compressed image data in PIL compatible format.</span>
+<span class="sd">    :return: Row, decoded image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">imageData</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="n">pilModeLookup</span><span class="p">:</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="n">pilModeLookup</span><span class="p">[</span><span class="n">img</span><span class="o">.</span><span class="n">mode</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;We don&#39;t currently support images with mode: </span><span class="si">{mode}</span><span class="s2">&quot;</span>
+        <span class="n">warn</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="n">img</span><span class="o">.</span><span class="n">mode</span><span class="p">))</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">imgArray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">imageArrayToStruct</span><span class="p">(</span><span class="n">imgArray</span><span class="p">,</span> <span class="n">mode</span><span class="o">.</span><span class="n">sparkMode</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">image</span>
+
+<span class="c1"># Creating a UDF on import can cause SparkContext issues sometimes.</span>
+<span class="c1"># decodeImage = udf(_decodeImage, imageSchema)</span>
+
+<span class="k">def</span> <span class="nf">filesToDF</span><span class="p">(</span><span class="n">sc</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">numPartitions</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read files from a directory to a DataFrame.</span>
+
+<span class="sd">    :param sc: SparkContext.</span>
+<span class="sd">    :param path: str, path to files.</span>
+<span class="sd">    :param numPartition: int, number or partitions to use for reading files.</span>
+<span class="sd">    :return: DataFrame, with columns: (filePath: str, fileData: BinaryType)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">numPartitions</span> <span class="o">=</span> <span class="n">numPartitions</span> <span class="ow">or</span> <span class="n">sc</span><span class="o">.</span><span class="n">defaultParallelism</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">StructType</span><span class="p">([</span><span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;filePath&quot;</span><span class="p">,</span> <span class="n">StringType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">),</span>
+                         <span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;fileData&quot;</span><span class="p">,</span> <span class="n">BinaryType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">)])</span>
+    <span class="n">rdd</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">binaryFiles</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">minPartitions</span><span class="o">=</span><span class="n">numPartitions</span><span class="p">)</span><span class="o">.</span><span class="n">repartition</span><span class="p">(</span><span class="n">numPartitions</span><span class="p">)</span>
+    <span class="n">rdd</span> <span class="o">=</span> <span class="n">rdd</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">bytearray</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+    <span class="k">return</span> <span class="n">rdd</span><span class="o">.</span><span class="n">toDF</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="readImages"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.readImages">[docs]</a><span class="k">def</span> <span class="nf">readImages</span><span class="p">(</span><span class="n">imageDirectory</span><span class="p">,</span> <span class="n">numPartition</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read a directory of images (or a single image) into a DataFrame.</span>
+
+<span class="sd">    :param sc: spark context</span>
+<span class="sd">    :param imageDirectory: str, file path.</span>
+<span class="sd">    :param numPartition: int, number or partitions to use for reading files.</span>
+<span class="sd">    :return: DataFrame, with columns: (filepath: str, image: imageSchema).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_readImages</span><span class="p">(</span><span class="n">imageDirectory</span><span class="p">,</span> <span class="n">numPartition</span><span class="p">,</span> <span class="n">SparkContext</span><span class="o">.</span><span class="n">getOrCreate</span><span class="p">())</span></div>
+
+
+<span class="k">def</span> <span class="nf">_readImages</span><span class="p">(</span><span class="n">imageDirectory</span><span class="p">,</span> <span class="n">numPartition</span><span class="p">,</span> <span class="n">sc</span><span class="p">):</span>
+    <span class="n">decodeImage</span> <span class="o">=</span> <span class="n">udf</span><span class="p">(</span><span class="n">_decodeImage</span><span class="p">,</span> <span class="n">imageSchema</span><span class="p">)</span>
+    <span class="n">imageData</span> <span class="o">=</span> <span class="n">filesToDF</span><span class="p">(</span><span class="n">sc</span><span class="p">,</span> <span class="n">imageDirectory</span><span class="p">,</span> <span class="n">numPartitions</span><span class="o">=</span><span class="n">numPartition</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">imageData</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s2">&quot;filePath&quot;</span><span class="p">,</span> <span class="n">decodeImage</span><span class="p">(</span><span class="s2">&quot;fileData&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;image&quot;</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,328 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.transformers.named_image &#8212; pysparkdl 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.transformers.named_image</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">from</span> <span class="nn">keras.applications.imagenet_utils</span> <span class="k">import</span> <span class="n">decode_predictions</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">pyspark.ml</span> <span class="k">import</span> <span class="n">Transformer</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.param</span> <span class="k">import</span> <span class="n">Param</span><span class="p">,</span> <span class="n">Params</span><span class="p">,</span> <span class="n">TypeConverters</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.functions</span> <span class="k">import</span> <span class="n">udf</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.types</span> <span class="k">import</span> <span class="p">(</span><span class="n">ArrayType</span><span class="p">,</span> <span class="n">FloatType</span><span class="p">,</span> <span class="n">StringType</span><span class="p">,</span> <span class="n">StructField</span><span class="p">,</span> <span class="n">StructType</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">sparkdl.graph.utils</span> <span class="k">as</span> <span class="nn">tfx</span>
+<span class="kn">from</span> <span class="nn">sparkdl.image.imageIO</span> <span class="k">import</span> <span class="n">resizeImage</span>
+<span class="kn">import</span> <span class="nn">sparkdl.transformers.keras_applications</span> <span class="k">as</span> <span class="nn">keras_apps</span>
+<span class="kn">from</span> <span class="nn">sparkdl.param</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">keyword_only</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">,</span> <span class="n">SparkDLTypeConverters</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sparkdl.transformers.tf_image</span> <span class="k">import</span> <span class="n">TFImageTransformer</span>
+
+
+<span class="n">SUPPORTED_MODELS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;InceptionV3&quot;</span><span class="p">,</span> <span class="s2">&quot;Xception&quot;</span><span class="p">,</span> <span class="s2">&quot;ResNet50&quot;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="DeepImagePredictor"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImagePredictor">[docs]</a><span class="k">class</span> <span class="nc">DeepImagePredictor</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies the model specified by its popular name to the image column in DataFrame.</span>
+<span class="sd">    The input image column should be 3-channel SpImage.</span>
+<span class="sd">    The output is a MLlib Vector.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">modelName</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;modelName&quot;</span><span class="p">,</span> <span class="s2">&quot;A deep learning model name&quot;</span><span class="p">,</span>
+                      <span class="n">typeConverter</span><span class="o">=</span><span class="n">SparkDLTypeConverters</span><span class="o">.</span><span class="n">supportedNameConverter</span><span class="p">(</span><span class="n">SUPPORTED_MODELS</span><span class="p">))</span>
+    <span class="n">decodePredictions</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;decodePredictions&quot;</span><span class="p">,</span>
+                              <span class="s2">&quot;If true, output predictions in the (class, description, probability) format&quot;</span><span class="p">,</span>
+                              <span class="n">typeConverter</span><span class="o">=</span><span class="n">TypeConverters</span><span class="o">.</span><span class="n">toBoolean</span><span class="p">)</span>
+    <span class="n">topK</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;topK&quot;</span><span class="p">,</span> <span class="s2">&quot;How many classes to return if decodePredictions is True&quot;</span><span class="p">,</span>
+                 <span class="n">typeConverter</span><span class="o">=</span><span class="n">TypeConverters</span><span class="o">.</span><span class="n">toInt</span><span class="p">)</span>
+
+    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelName</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">decodePredictions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">topK</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        __init__(self, inputCol=None, outputCol=None, modelName=None, decodePredictions=False,</span>
+<span class="sd">                 topK=5)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DeepImagePredictor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setDefault</span><span class="p">(</span><span class="n">decodePredictions</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setDefault</span><span class="p">(</span><span class="n">topK</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setParams</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DeepImagePredictor.setParams"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImagePredictor.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">setParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelName</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">decodePredictions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                  <span class="n">topK</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        setParams(self, inputCol=None, outputCol=None, modelName=None, decodePredictions=False,</span>
+<span class="sd">                  topK=5)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="DeepImagePredictor.setModelName"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImagePredictor.setModelName">[docs]</a>    <span class="k">def</span> <span class="nf">setModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">modelName</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepImagePredictor.getModelName"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImagePredictor.getModelName">[docs]</a>    <span class="k">def</span> <span class="nf">getModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modelName</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="n">transformer</span> <span class="o">=</span> <span class="n">_NamedImageTransformer</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">(),</span>
+                                             <span class="n">outputCol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_getIntermediateOutputCol</span><span class="p">(),</span>
+                                             <span class="n">modelName</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getModelName</span><span class="p">(),</span> <span class="n">featurize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">transformed</span> <span class="o">=</span> <span class="n">transformer</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">decodePredictions</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decodeOutputAsPredictions</span><span class="p">(</span><span class="n">transformed</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">transformed</span><span class="o">.</span><span class="n">withColumnRenamed</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_getIntermediateOutputCol</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOutputCol</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_decodeOutputAsPredictions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+        <span class="c1"># If we start having different weights than imagenet, we&#39;ll need to</span>
+        <span class="c1"># move this logic to individual model building in NamedImageTransformer.</span>
+        <span class="c1"># Also, we could put the computation directly in the main computation</span>
+        <span class="c1"># graph or use a scala UDF for potentially better performance.</span>
+        <span class="n">topK</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">topK</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">decode</span><span class="p">(</span><span class="n">predictions</span><span class="p">):</span>
+            <span class="n">pred_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">predictions</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">decoded</span> <span class="o">=</span> <span class="n">decode_predictions</span><span class="p">(</span><span class="n">pred_arr</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="n">topK</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1"># convert numpy dtypes to python native types</span>
+            <span class="k">return</span> <span class="p">[(</span><span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">())</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">decoded</span><span class="p">]</span>
+        <span class="n">decodedSchema</span> <span class="o">=</span> <span class="n">ArrayType</span><span class="p">(</span>
+            <span class="n">StructType</span><span class="p">([</span><span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;class&quot;</span><span class="p">,</span> <span class="n">StringType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">),</span>
+                        <span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="n">StringType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">),</span>
+                        <span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;probability&quot;</span><span class="p">,</span> <span class="n">FloatType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">)]))</span>
+        <span class="n">decodeUDF</span> <span class="o">=</span> <span class="n">udf</span><span class="p">(</span><span class="n">decode</span><span class="p">,</span> <span class="n">decodedSchema</span><span class="p">)</span>
+        <span class="n">interim_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getIntermediateOutputCol</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">getOutputCol</span><span class="p">(),</span> <span class="n">decodeUDF</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">interim_output</span><span class="p">]))</span>
+              <span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">interim_output</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_getIntermediateOutputCol</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;__tmp_&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOutputCol</span><span class="p">()</span></div>
+
+
+<span class="c1"># TODO: give an option to take off multiple layers so it can be used in tuning</span>
+<span class="c1">#       (could be the name of the layer or int for how many to take off).</span>
+<div class="viewcode-block" id="DeepImageFeaturizer"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImageFeaturizer">[docs]</a><span class="k">class</span> <span class="nc">DeepImageFeaturizer</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies the model specified by its popular name, with its prediction layer(s) chopped off,</span>
+<span class="sd">    to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer</span>
+<span class="sd">    can be used in a MLlib Pipeline.</span>
+<span class="sd">    The input image column should be 3-channel SpImage.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">modelName</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;modelName&quot;</span><span class="p">,</span> <span class="s2">&quot;A deep learning model name&quot;</span><span class="p">,</span>
+                      <span class="n">typeConverter</span><span class="o">=</span><span class="n">SparkDLTypeConverters</span><span class="o">.</span><span class="n">supportedNameConverter</span><span class="p">(</span><span class="n">SUPPORTED_MODELS</span><span class="p">))</span>
+
+    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelName</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        __init__(self, inputCol=None, outputCol=None, modelName=None)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DeepImageFeaturizer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setParams</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DeepImageFeaturizer.setParams"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImageFeaturizer.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">setParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelName</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        setParams(self, inputCol=None, outputCol=None, modelName=None)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="DeepImageFeaturizer.setModelName"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImageFeaturizer.setModelName">[docs]</a>    <span class="k">def</span> <span class="nf">setModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">modelName</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepImageFeaturizer.getModelName"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImageFeaturizer.getModelName">[docs]</a>    <span class="k">def</span> <span class="nf">getModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modelName</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="n">transformer</span> <span class="o">=</span> <span class="n">_NamedImageTransformer</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">(),</span>
+                                             <span class="n">outputCol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getOutputCol</span><span class="p">(),</span>
+                                             <span class="n">modelName</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getModelName</span><span class="p">(),</span> <span class="n">featurize</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">transformer</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">_NamedImageTransformer</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    For internal use only. NamedImagePredictor and NamedImageFeaturizer are the recommended classes</span>
+<span class="sd">    to use.</span>
+
+<span class="sd">    Applies the model specified by its popular name to the image column in DataFrame. There are</span>
+<span class="sd">    two output modes: predictions or the featurization from the model. In either case the output</span>
+<span class="sd">    is a MLlib Vector.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">modelName</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;modelName&quot;</span><span class="p">,</span> <span class="s2">&quot;A deep learning model name&quot;</span><span class="p">,</span>
+                      <span class="n">typeConverter</span><span class="o">=</span><span class="n">SparkDLTypeConverters</span><span class="o">.</span><span class="n">supportedNameConverter</span><span class="p">(</span><span class="n">SUPPORTED_MODELS</span><span class="p">))</span>
+    <span class="n">featurize</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;featurize&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;If true, output features. If false, output predictions. Either way the output is a vector.&quot;</span><span class="p">,</span>
+                      <span class="n">typeConverter</span><span class="o">=</span><span class="n">TypeConverters</span><span class="o">.</span><span class="n">toBoolean</span><span class="p">)</span>
+
+    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelName</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">featurize</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        __init__(self, inputCol=None, outputCol=None, modelName=None, featurize=False)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">_NamedImageTransformer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setParams</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inputTensorName</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_outputTensorName</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_outputMode</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">setParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelName</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">featurize</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        setParams(self, inputCol=None, outputCol=None, modelName=None, featurize=False)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">setModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">modelName</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modelName</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setFeaturize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">featurize</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getFeaturize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">featurize</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="n">modelGraphSpec</span> <span class="o">=</span> <span class="n">_buildTFGraphForName</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">getModelName</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getFeaturize</span><span class="p">())</span>
+        <span class="n">inputCol</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">()</span>
+        <span class="n">resizedCol</span> <span class="o">=</span> <span class="s2">&quot;__sdl_imagesResized&quot;</span>
+        <span class="n">tfTransformer</span> <span class="o">=</span> <span class="n">TFImageTransformer</span><span class="p">(</span><span class="n">inputCol</span><span class="o">=</span><span class="n">resizedCol</span><span class="p">,</span>
+                                           <span class="n">outputCol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getOutputCol</span><span class="p">(),</span>
+                                           <span class="n">graph</span><span class="o">=</span><span class="n">modelGraphSpec</span><span class="p">[</span><span class="s2">&quot;graph&quot;</span><span class="p">],</span>
+                                           <span class="n">inputTensor</span><span class="o">=</span><span class="n">modelGraphSpec</span><span class="p">[</span><span class="s2">&quot;inputTensorName&quot;</span><span class="p">],</span>
+                                           <span class="n">outputTensor</span><span class="o">=</span><span class="n">modelGraphSpec</span><span class="p">[</span><span class="s2">&quot;outputTensorName&quot;</span><span class="p">],</span>
+                                           <span class="n">outputMode</span><span class="o">=</span><span class="n">modelGraphSpec</span><span class="p">[</span><span class="s2">&quot;outputMode&quot;</span><span class="p">])</span>
+        <span class="n">resizeUdf</span> <span class="o">=</span> <span class="n">resizeImage</span><span class="p">(</span><span class="n">modelGraphSpec</span><span class="p">[</span><span class="s2">&quot;inputTensorSize&quot;</span><span class="p">])</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">tfTransformer</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="n">resizedCol</span><span class="p">,</span> <span class="n">resizeUdf</span><span class="p">(</span><span class="n">inputCol</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">resizedCol</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_buildTFGraphForName</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">featurize</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Currently only supports pre-trained models from the Keras applications module.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">modelData</span> <span class="o">=</span> <span class="n">keras_apps</span><span class="o">.</span><span class="n">getKerasApplicationModel</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">getModelData</span><span class="p">(</span><span class="n">featurize</span><span class="p">)</span>
+    <span class="n">sess</span> <span class="o">=</span> <span class="n">modelData</span><span class="p">[</span><span class="s2">&quot;session&quot;</span><span class="p">]</span>
+    <span class="n">outputTensorName</span> <span class="o">=</span> <span class="n">modelData</span><span class="p">[</span><span class="s2">&quot;outputTensorName&quot;</span><span class="p">]</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">tfx</span><span class="o">.</span><span class="n">strip_and_freeze_until</span><span class="p">([</span><span class="n">outputTensorName</span><span class="p">],</span> <span class="n">sess</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">return_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">modelData</span><span class="p">[</span><span class="s2">&quot;graph&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">graph</span>
+
+    <span class="k">return</span> <span class="n">modelData</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

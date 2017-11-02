@@ -1,0 +1,410 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.estimators.keras_image_file_estimator &#8212; pysparkdl 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.estimators.keras_image_file_estimator</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="c1"># pylint: disable=protected-access</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">pyspark.ml</span> <span class="k">import</span> <span class="n">Estimator</span>
+<span class="kn">import</span> <span class="nn">pyspark.ml.linalg</span> <span class="k">as</span> <span class="nn">spla</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.param</span> <span class="k">import</span> <span class="n">Param</span><span class="p">,</span> <span class="n">Params</span><span class="p">,</span> <span class="n">TypeConverters</span>
+
+<span class="kn">from</span> <span class="nn">sparkdl.image.imageIO</span> <span class="k">import</span> <span class="n">imageStructToArray</span>
+<span class="kn">from</span> <span class="nn">sparkdl.param</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">keyword_only</span><span class="p">,</span> <span class="n">CanLoadImage</span><span class="p">,</span> <span class="n">HasKerasModel</span><span class="p">,</span> <span class="n">HasKerasOptimizer</span><span class="p">,</span> <span class="n">HasKerasLoss</span><span class="p">,</span> <span class="n">HasOutputMode</span><span class="p">,</span>
+    <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasInputImageNodeName</span><span class="p">,</span> <span class="n">HasLabelCol</span><span class="p">,</span> <span class="n">HasOutputNodeName</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sparkdl.transformers.keras_image</span> <span class="k">import</span> <span class="n">KerasImageFileTransformer</span>
+<span class="kn">import</span> <span class="nn">sparkdl.utils.jvmapi</span> <span class="k">as</span> <span class="nn">JVMAPI</span>
+<span class="kn">import</span> <span class="nn">sparkdl.utils.keras_model</span> <span class="k">as</span> <span class="nn">kmutil</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;KerasImageFileEstimator&#39;</span><span class="p">]</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;sparkdl&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="KerasImageFileEstimator"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.KerasImageFileEstimator">[docs]</a><span class="k">class</span> <span class="nc">KerasImageFileEstimator</span><span class="p">(</span><span class="n">Estimator</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasInputImageNodeName</span><span class="p">,</span>
+                              <span class="n">HasOutputCol</span><span class="p">,</span> <span class="n">HasOutputNodeName</span><span class="p">,</span> <span class="n">HasLabelCol</span><span class="p">,</span>
+                              <span class="n">HasKerasModel</span><span class="p">,</span> <span class="n">HasKerasOptimizer</span><span class="p">,</span> <span class="n">HasKerasLoss</span><span class="p">,</span>
+                              <span class="n">CanLoadImage</span><span class="p">,</span> <span class="n">HasOutputMode</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build a Estimator from a Keras model.</span>
+
+<span class="sd">    First, create a model and save it to file system</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from keras.applications.resnet50 import ResNet50</span>
+<span class="sd">        model = ResNet50(weights=None)</span>
+<span class="sd">        model.save(&quot;path_to_my_model.h5&quot;)</span>
+
+<span class="sd">    Then, create a image loading function that reads image data from URI,</span>
+<span class="sd">    preprocess them, and returns the numerical tensor.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        def load_image_and_process(uri):</span>
+<span class="sd">            import PIL.Image</span>
+<span class="sd">            from keras.applications.imagenet_utils import preprocess_input</span>
+
+<span class="sd">            original_image = PIL.Image.open(uri).convert(&#39;RGB&#39;)</span>
+<span class="sd">            resized_image = original_image.resize((224, 224), PIL.Image.ANTIALIAS)</span>
+<span class="sd">            image_array = np.array(resized_image).astype(np.float32)</span>
+<span class="sd">            image_tensor = preprocess_input(image_array[np.newaxis, :])</span>
+<span class="sd">            return image_tensor</span>
+
+
+<span class="sd">    Assume the image URIs live in the following DataFrame.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        original_dataset = spark.createDataFrame([</span>
+<span class="sd">            Row(imageUri=&quot;image1_uri&quot;, imageLabel=&quot;image1_label&quot;),</span>
+<span class="sd">            Row(imageUri=&quot;image2_uri&quot;, imageLabel=&quot;image2_label&quot;),</span>
+<span class="sd">            # and more rows ...</span>
+<span class="sd">        ])</span>
+<span class="sd">        stringIndexer = StringIndexer(inputCol=&quot;imageLabel&quot;, outputCol=&quot;categoryIndex&quot;)</span>
+<span class="sd">        indexed_dateset = stringIndexer.fit(original_dataset).transform(original_dataset)</span>
+<span class="sd">        encoder = OneHotEncoder(inputCol=&quot;categoryIndex&quot;, outputCol=&quot;categoryVec&quot;)</span>
+<span class="sd">        image_dataset = encoder.transform(indexed_dateset)</span>
+
+<span class="sd">    We can then create a Keras estimator that takes our saved model file and</span>
+<span class="sd">    train it using Spark.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        estimator = KerasImageFileEstimator(inputCol=&quot;imageUri&quot;,</span>
+<span class="sd">                                            outputCol=&quot;name_of_result_column&quot;,</span>
+<span class="sd">                                            labelCol=&quot;categoryVec&quot;,</span>
+<span class="sd">                                            imageLoader=load_image_and_process,</span>
+<span class="sd">                                            kerasOptimizer=&quot;adam&quot;,</span>
+<span class="sd">                                            kerasLoss=&quot;categorical_crossentropy&quot;,</span>
+<span class="sd">                                            kerasFitParams={&quot;epochs&quot;: 5, &quot;batch_size&quot;: 64},</span>
+<span class="sd">                                            modelFile=&quot;path_to_my_model.h5&quot;)</span>
+
+<span class="sd">        transformers = estimator.fit(image_dataset)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inputImageNodeName</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">outputNodeName</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputMode</span><span class="o">=</span><span class="s2">&quot;vector&quot;</span><span class="p">,</span> <span class="n">labelCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">modelFile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">imageLoader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kerasOptimizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kerasLoss</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">kerasFitParams</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        __init__(self, inputCol=None, inputImageNodeName=None, outputCol=None,</span>
+<span class="sd">                 outputNodeName=None, outputMode=&quot;vector&quot;, labelCol=None,</span>
+<span class="sd">                 modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,</span>
+<span class="sd">                 kerasFitParams=None)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># NOTE(phi-dbq): currently we ignore output mode, as the actual output are the</span>
+        <span class="c1">#                trained models and the Transformers built from them.</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">KerasImageFileEstimator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setParams</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="KerasImageFileEstimator.setParams"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.KerasImageFileEstimator.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">setParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inputImageNodeName</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">outputNodeName</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputMode</span><span class="o">=</span><span class="s2">&quot;vector&quot;</span><span class="p">,</span> <span class="n">labelCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">modelFile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">imageLoader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kerasOptimizer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kerasLoss</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">kerasFitParams</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        setParams(self, inputCol=None, inputImageNodeName=None, outputCol=None,</span>
+<span class="sd">                  outputNodeName=None, outputMode=&quot;vector&quot;, labelCol=None,</span>
+<span class="sd">                  modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,</span>
+<span class="sd">                  kerasFitParams=None)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="KerasImageFileEstimator.fit"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.KerasImageFileEstimator.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fits a model to the input dataset with optional parameters.</span>
+
+<span class="sd">        .. warning:: This returns the byte serialized HDF5 file for each model to the driver.</span>
+<span class="sd">                     If the model file is large, the driver might go out-of-memory.</span>
+<span class="sd">                     As we cannot assume the existence of a sufficiently large (and writable)</span>
+<span class="sd">                     file system, users are advised to not train too many models in a single</span>
+<span class="sd">                     Spark job.</span>
+
+<span class="sd">        :param dataset: input dataset, which is an instance of :py:class:`pyspark.sql.DataFrame`.</span>
+<span class="sd">                        The column `inputCol` should be of type `sparkdl.image.imageIO.imgSchema`.</span>
+<span class="sd">        :param params: An optional param map that overrides embedded params. If a list/tuple of</span>
+<span class="sd">                       param maps is given, this calls fit on each param map and returns a list of</span>
+<span class="sd">                       models.</span>
+<span class="sd">        :return: fitted model(s). If params includes a list of param maps, the order of these</span>
+<span class="sd">                  models matches the order of the param maps.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validateParams</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">paramMaps</span> <span class="o">=</span> <span class="p">[</span><span class="nb">dict</span><span class="p">()]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">paramMaps</span> <span class="o">=</span> <span class="p">[</span><span class="nb">dict</span><span class="p">()]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_validateFitParams</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+                <span class="n">paramMaps</span> <span class="o">=</span> <span class="n">params</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validateFitParams</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+            <span class="n">paramMaps</span> <span class="o">=</span> <span class="p">[</span><span class="n">params</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Params must be either a param map or a list/tuple of param maps, &quot;</span>
+                             <span class="s2">&quot;but got </span><span class="si">%s</span><span class="s2">.&quot;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">params</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fitInParallel</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">paramMaps</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_validateParams</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check Param values so we can throw errors on the driver, rather than workers.</span>
+<span class="sd">        :return: True if parameters are valid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">isDefined</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inputCol</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Input column must be defined&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">isDefined</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outputCol</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Output column must be defined&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_validateFitParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Check if an input parameter set is valid &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)):</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">params</span><span class="p">,</span> \
+                <span class="s2">&quot;params </span><span class="si">{}</span><span class="s2"> cannot contain input column name </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">())</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_getNumpyFeaturesAndLabels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        We assume the training data fits in memory on a single server.</span>
+<span class="sd">        The input dataframe is converted to numerical image features and</span>
+<span class="sd">        broadcast to all the worker nodes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">image_uri_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">()</span>
+        <span class="n">label_col</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isDefined</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labelCol</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">getLabelCol</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+            <span class="n">label_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getLabelCol</span><span class="p">()</span>
+        <span class="n">tmp_image_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loadedImageCol</span><span class="p">()</span>
+        <span class="n">image_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loadImagesInternal</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">image_uri_col</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">tmp_image_col</span><span class="p">])</span>
+
+        <span class="c1"># Extract features</span>
+        <span class="n">localFeatures</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">image_df</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+            <span class="n">spimg</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">tmp_image_col</span><span class="p">]</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="n">imageStructToArray</span><span class="p">(</span><span class="n">spimg</span><span class="p">)</span>
+            <span class="n">localFeatures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">localFeatures</span><span class="p">:</span>  <span class="c1"># NOTE(phi-dbq): pep-8 recommended against testing 0 == len(array)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot extract any feature from dataset!&quot;</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">localFeatures</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Extract labels</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">label_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">label_schema</span> <span class="o">=</span> <span class="n">image_df</span><span class="o">.</span><span class="n">schema</span><span class="p">[</span><span class="n">label_col</span><span class="p">]</span>
+            <span class="n">label_dtype</span> <span class="o">=</span> <span class="n">label_schema</span><span class="o">.</span><span class="n">dataType</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">label_dtype</span><span class="p">,</span> <span class="n">spla</span><span class="o">.</span><span class="n">VectorUDT</span><span class="p">),</span> \
+                <span class="s2">&quot;must encode labels in one-hot vector format, but got </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">label_dtype</span><span class="p">)</span>
+
+            <span class="n">localLabels</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">_keras_label</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">label_col</span><span class="p">]</span><span class="o">.</span><span class="n">array</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot extract encoded label array&quot;</span><span class="p">)</span>
+                <span class="n">localLabels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_keras_label</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">localLabels</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Failed to load any labels from dataset, but labels are required&quot;</span><span class="p">)</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">localLabels</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> \
+                <span class="s2">&quot;number of features </span><span class="si">{}</span><span class="s2"> != number of labels </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span>
+
+    <span class="k">def</span> <span class="nf">_collectModels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kerasModelsBytesRDD</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Collect Keras models on workers to MLlib Models on the driver.</span>
+<span class="sd">        :param kerasModelBytesRDD: RDD of (param_map, model_bytes) tuples</span>
+<span class="sd">        :param paramMaps: list of ParamMaps matching the maps in `kerasModelsRDD`</span>
+<span class="sd">        :return: list of MLlib models</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">transformers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">param_map</span><span class="p">,</span> <span class="n">model_bytes</span><span class="p">)</span> <span class="ow">in</span> <span class="n">kerasModelsBytesRDD</span><span class="o">.</span><span class="n">collect</span><span class="p">():</span>
+            <span class="n">model_filename</span> <span class="o">=</span> <span class="n">kmutil</span><span class="o">.</span><span class="n">bytes_to_h5file</span><span class="p">(</span><span class="n">model_bytes</span><span class="p">)</span>
+            <span class="n">transformers</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s1">&#39;paramMap&#39;</span><span class="p">:</span> <span class="n">param_map</span><span class="p">,</span>
+                <span class="s1">&#39;transformer&#39;</span><span class="p">:</span> <span class="n">KerasImageFileTransformer</span><span class="p">(</span><span class="n">modelFile</span><span class="o">=</span><span class="n">model_filename</span><span class="p">)})</span>
+
+        <span class="k">return</span> <span class="n">transformers</span>
+
+    <span class="k">def</span> <span class="nf">_fitInParallel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">paramMaps</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fits len(paramMaps) models in parallel, one in each Spark task.</span>
+<span class="sd">        :param paramMaps: non-empty list or tuple of ParamMaps (dict values)</span>
+<span class="sd">        :return: list of fitted models, matching the order of paramMaps</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sc</span> <span class="o">=</span> <span class="n">JVMAPI</span><span class="o">.</span><span class="n">_curr_sc</span><span class="p">()</span>
+        <span class="n">paramMapsRDD</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">parallelize</span><span class="p">(</span><span class="n">paramMaps</span><span class="p">,</span> <span class="n">numSlices</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">paramMaps</span><span class="p">))</span>
+
+        <span class="c1"># Extract image URI from provided dataset and create features as numpy arrays</span>
+        <span class="n">localFeatures</span><span class="p">,</span> <span class="n">localLabels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getNumpyFeaturesAndLabels</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="n">localFeaturesBc</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">localFeatures</span><span class="p">)</span>
+        <span class="n">localLabelsBc</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">localLabels</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">sc</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">localLabels</span><span class="p">)</span>
+
+        <span class="c1"># Broadcast Keras model (HDF5) file content as bytes</span>
+        <span class="n">modelBytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loadModelAsBytes</span><span class="p">()</span>
+        <span class="n">modelBytesBc</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">modelBytes</span><span class="p">)</span>
+
+        <span class="c1"># Obtain params for this estimator instance</span>
+        <span class="n">baseParamMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extractParamMap</span><span class="p">()</span>
+        <span class="n">baseParamDict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span> <span class="k">for</span> <span class="n">param</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">baseParamMap</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+        <span class="n">baseParamDictBc</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">baseParamDict</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">_local_fit</span><span class="p">(</span><span class="n">override_param_map</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Fit locally a model with a combination of this estimator&#39;s param,</span>
+<span class="sd">            with overriding parameters provided by the input.</span>
+<span class="sd">            :param override_param_map: dict, key type is MLllib Param</span>
+<span class="sd">                                       They are meant to override the base estimator&#39;s params.</span>
+<span class="sd">            :return: serialized Keras HDF5 file bytes</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="c1"># Update params</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">baseParamDictBc</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">override_param_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([</span>
+                <span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span> <span class="k">for</span> <span class="n">param</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">override_param_map</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">override_param_dict</span><span class="p">)</span>
+
+            <span class="c1"># Create Keras model</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">kmutil</span><span class="o">.</span><span class="n">bytes_to_model</span><span class="p">(</span><span class="n">modelBytesBc</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;kerasOptimizer&#39;</span><span class="p">],</span> <span class="n">loss</span><span class="o">=</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;kerasLoss&#39;</span><span class="p">])</span>
+
+            <span class="c1"># Retrieve features and labels and fit Keras model</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="n">localFeaturesBc</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">localLabelsBc</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">localLabelsBc</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">_fit_params</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;kerasFitParams&#39;</span><span class="p">]</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">features</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="o">**</span><span class="n">_fit_params</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">kmutil</span><span class="o">.</span><span class="n">model_to_bytes</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="n">kerasModelBytesRDD</span> <span class="o">=</span> <span class="n">paramMapsRDD</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">paramMap</span><span class="p">:</span> <span class="p">(</span><span class="n">paramMap</span><span class="p">,</span> <span class="n">_local_fit</span><span class="p">(</span><span class="n">paramMap</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collectModels</span><span class="p">(</span><span class="n">kerasModelBytesRDD</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_loadModelAsBytes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        (usable on driver only)</span>
+<span class="sd">        Load the Keras model file as a byte string.</span>
+<span class="sd">        :return: str containing the model data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">getModelFile</span><span class="p">(),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fin</span><span class="p">:</span>
+            <span class="n">fileContent</span> <span class="o">=</span> <span class="n">fin</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">fileContent</span>
+
+    <span class="k">def</span> <span class="nf">_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>  <span class="c1"># pylint: disable=unused-argument</span>
+        <span class="n">err_msgs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;This function should not have been called&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Please contact library maintainers to file a bug&quot;</span><span class="p">]</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">err_msgs</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>

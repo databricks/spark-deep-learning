@@ -1,0 +1,331 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.transformers.tf_image &#8212; pysparkdl 0.2.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head>
+  <body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.transformers.tf_image</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorframes</span> <span class="k">as</span> <span class="nn">tfs</span>
+
+<span class="kn">from</span> <span class="nn">pyspark.ml</span> <span class="k">import</span> <span class="n">Transformer</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.param</span> <span class="k">import</span> <span class="n">Param</span><span class="p">,</span> <span class="n">Params</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.functions</span> <span class="k">import</span> <span class="n">udf</span>
+
+<span class="kn">from</span> <span class="nn">sparkdl.image.imageIO</span> <span class="k">import</span> <span class="n">imageSchema</span><span class="p">,</span> <span class="n">sparkModeLookup</span><span class="p">,</span> <span class="n">SparkMode</span>
+<span class="kn">from</span> <span class="nn">sparkdl.param</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">keyword_only</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">,</span> <span class="n">SparkDLTypeConverters</span><span class="p">,</span> <span class="n">HasOutputMode</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">sparkdl.transformers.utils</span> <span class="k">as</span> <span class="nn">utils</span>
+<span class="kn">import</span> <span class="nn">sparkdl.utils.jvmapi</span> <span class="k">as</span> <span class="nn">JVMAPI</span>
+<span class="kn">import</span> <span class="nn">sparkdl.graph.utils</span> <span class="k">as</span> <span class="nn">tfx</span>
+
+<div class="viewcode-block" id="TFImageTransformer"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.TFImageTransformer">[docs]</a><span class="k">class</span> <span class="nc">TFImageTransformer</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">,</span> <span class="n">HasOutputMode</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies the Tensorflow graph to the image column in DataFrame.</span>
+
+<span class="sd">    Restrictions of the current API:</span>
+
+<span class="sd">    * Does not use minibatches, which is a major low-hanging fruit for performance.</span>
+<span class="sd">    * Only one output node can be specified.</span>
+<span class="sd">    * The output is expected to be an image or a 1-d vector.</span>
+<span class="sd">    * All images in the dataframe are expected be of the same numerical data type</span>
+<span class="sd">      (i.e. the dtype of the values in the numpy array representation is the same.)</span>
+
+<span class="sd">    We assume all graphs have a &quot;minibatch&quot; dimension (i.e. an unknown leading</span>
+<span class="sd">    dimension) in the tensor shapes.</span>
+
+<span class="sd">    .. note:: The input tensorflow graph should have appropriate weights constantified,</span>
+<span class="sd">              since a new session is created inside this transformer.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">USER_GRAPH_NAMESPACE</span> <span class="o">=</span> <span class="s1">&#39;given&#39;</span>
+    <span class="n">NEW_OUTPUT_PREFIX</span> <span class="o">=</span> <span class="s1">&#39;sdl_flattened&#39;</span>
+
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;graph&quot;</span><span class="p">,</span> <span class="s2">&quot;A TensorFlow computation graph&quot;</span><span class="p">,</span>
+                  <span class="n">typeConverter</span><span class="o">=</span><span class="n">SparkDLTypeConverters</span><span class="o">.</span><span class="n">toTFGraph</span><span class="p">)</span>
+    <span class="n">inputTensor</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;inputTensor&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;A TensorFlow tensor object or name representing the input image&quot;</span><span class="p">,</span>
+                        <span class="n">typeConverter</span><span class="o">=</span><span class="n">SparkDLTypeConverters</span><span class="o">.</span><span class="n">toStringOrTFTensor</span><span class="p">)</span>
+    <span class="n">outputTensor</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="s2">&quot;outputTensor&quot;</span><span class="p">,</span>
+                         <span class="s2">&quot;A TensorFlow tensor object or name representing the output&quot;</span><span class="p">,</span>
+                         <span class="n">typeConverter</span><span class="o">=</span><span class="n">SparkDLTypeConverters</span><span class="o">.</span><span class="n">toStringOrTFTensor</span><span class="p">)</span>
+
+    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">inputTensor</span><span class="o">=</span><span class="n">utils</span><span class="o">.</span><span class="n">IMAGE_INPUT_PLACEHOLDER_NAME</span><span class="p">,</span> <span class="n">outputTensor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">outputMode</span><span class="o">=</span><span class="s2">&quot;vector&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        __init__(self, inputCol=None, outputCol=None, graph=None,</span>
+<span class="sd">                 inputTensor=utils.IMAGE_INPUT_PLACEHOLDER_NAME, outputTensor=None,</span>
+<span class="sd">                 outputMode=&quot;vector&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">TFImageTransformer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setDefault</span><span class="p">(</span><span class="n">inputTensor</span><span class="o">=</span><span class="n">utils</span><span class="o">.</span><span class="n">IMAGE_INPUT_PLACEHOLDER_NAME</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setDefault</span><span class="p">(</span><span class="n">outputMode</span><span class="o">=</span><span class="s2">&quot;vector&quot;</span><span class="p">)</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setParams</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TFImageTransformer.setParams"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.TFImageTransformer.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">setParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">inputTensor</span><span class="o">=</span><span class="n">utils</span><span class="o">.</span><span class="n">IMAGE_INPUT_PLACEHOLDER_NAME</span><span class="p">,</span> <span class="n">outputTensor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">outputMode</span><span class="o">=</span><span class="s2">&quot;vector&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        setParams(self, inputCol=None, outputCol=None, graph=None,</span>
+<span class="sd">                  inputTensor=utils.IMAGE_INPUT_PLACEHOLDER_NAME, outputTensor=None,</span>
+<span class="sd">                  outputMode=&quot;vector&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFImageTransformer.setGraph"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.TFImageTransformer.setGraph">[docs]</a>    <span class="k">def</span> <span class="nf">setGraph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFImageTransformer.setInputTensor"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.TFImageTransformer.setInputTensor">[docs]</a>    <span class="k">def</span> <span class="nf">setInputTensor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">inputTensor</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFImageTransformer.setOutputTensor"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.TFImageTransformer.setOutputTensor">[docs]</a>    <span class="k">def</span> <span class="nf">setOutputTensor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">outputTensor</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFImageTransformer.getGraph"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.TFImageTransformer.getGraph">[docs]</a>    <span class="k">def</span> <span class="nf">getGraph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFImageTransformer.getInputTensor"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.TFImageTransformer.getInputTensor">[docs]</a>    <span class="k">def</span> <span class="nf">getInputTensor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">tensor_or_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inputTensor</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tensor_or_name</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">tensor_or_name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getGraph</span><span class="p">()</span><span class="o">.</span><span class="n">get_tensor_by_name</span><span class="p">(</span><span class="n">tensor_or_name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFImageTransformer.getOutputTensor"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.TFImageTransformer.getOutputTensor">[docs]</a>    <span class="k">def</span> <span class="nf">getOutputTensor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">tensor_or_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outputTensor</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tensor_or_name</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">tensor_or_name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getGraph</span><span class="p">()</span><span class="o">.</span><span class="n">get_tensor_by_name</span><span class="p">(</span><span class="n">tensor_or_name</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getGraph</span><span class="p">()</span>
+        <span class="n">composed_graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_addReshapeLayers</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getImageDtype</span><span class="p">(</span><span class="n">dataset</span><span class="p">))</span>
+        <span class="n">final_graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stripGraph</span><span class="p">(</span><span class="n">composed_graph</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">final_graph</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">()]</span>
+            <span class="n">image_df_exploded</span> <span class="o">=</span> <span class="p">(</span><span class="n">dataset</span>
+              <span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s2">&quot;__sdl_image_height&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+              <span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s2">&quot;__sdl_image_width&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>
+              <span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s2">&quot;__sdl_image_nchannels&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">nChannels</span><span class="p">)</span>
+              <span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="s2">&quot;__sdl_image_data&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="n">final_output_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getFinalOutputTensorName</span><span class="p">()</span>
+            <span class="n">output_tensor</span> <span class="o">=</span> <span class="n">final_graph</span><span class="o">.</span><span class="n">get_tensor_by_name</span><span class="p">(</span><span class="n">final_output_name</span><span class="p">)</span>
+            <span class="n">final_df</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">tfs</span><span class="o">.</span><span class="n">map_rows</span><span class="p">([</span><span class="n">output_tensor</span><span class="p">],</span> <span class="n">image_df_exploded</span><span class="p">,</span>
+                             <span class="n">feed_dict</span><span class="o">=</span><span class="p">{</span>
+                                 <span class="s2">&quot;height&quot;</span><span class="p">:</span> <span class="s2">&quot;__sdl_image_height&quot;</span><span class="p">,</span>
+                                 <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="s2">&quot;__sdl_image_width&quot;</span><span class="p">,</span>
+                                 <span class="s2">&quot;num_channels&quot;</span><span class="p">:</span> <span class="s2">&quot;__sdl_image_nchannels&quot;</span><span class="p">,</span>
+                                 <span class="s2">&quot;image_buffer&quot;</span><span class="p">:</span> <span class="s2">&quot;__sdl_image_data&quot;</span><span class="p">})</span>
+                <span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s2">&quot;__sdl_image_height&quot;</span><span class="p">,</span> <span class="s2">&quot;__sdl_image_width&quot;</span><span class="p">,</span> <span class="s2">&quot;__sdl_image_nchannels&quot;</span><span class="p">,</span>
+                      <span class="s2">&quot;__sdl_image_data&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="n">tfs_output_name</span> <span class="o">=</span> <span class="n">tfx</span><span class="o">.</span><span class="n">op_name</span><span class="p">(</span><span class="n">final_graph</span><span class="p">,</span> <span class="n">output_tensor</span><span class="p">)</span>
+            <span class="n">original_output_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getOriginalOutputTensorName</span><span class="p">()</span>
+            <span class="n">output_shape</span> <span class="o">=</span> <span class="n">final_graph</span><span class="o">.</span><span class="n">get_tensor_by_name</span><span class="p">(</span><span class="n">original_output_name</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span>
+            <span class="n">output_mode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outputMode</span><span class="p">)</span>
+            <span class="c1"># TODO: support non-1d tensors (return np.array).</span>
+            <span class="k">if</span> <span class="n">output_mode</span> <span class="o">==</span> <span class="s2">&quot;image&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convertOutputToImage</span><span class="p">(</span><span class="n">final_df</span><span class="p">,</span> <span class="n">tfs_output_name</span><span class="p">,</span> <span class="n">output_shape</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">output_mode</span> <span class="o">==</span> <span class="s2">&quot;vector&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown output mode: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">output_mode</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convertOutputToVector</span><span class="p">(</span><span class="n">final_df</span><span class="p">,</span> <span class="n">tfs_output_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_getImageDtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="c1"># This may not be the best way to get the type of image, but it is one way.</span>
+        <span class="c1"># Assumes that the dtype for all images is the same in the given dataframe.</span>
+        <span class="n">pdf</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">())</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">pdf</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">()]</span>
+        <span class="n">img_type</span> <span class="o">=</span> <span class="n">sparkModeLookup</span><span class="p">[</span><span class="n">img</span><span class="o">.</span><span class="n">mode</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">img_type</span><span class="o">.</span><span class="n">dtype</span>
+
+    <span class="k">def</span> <span class="nf">_addReshapeLayers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tf_graph</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uint8&quot;</span><span class="p">):</span>
+        <span class="n">input_tensor_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getInputTensor</span><span class="p">()</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="n">gdef</span> <span class="o">=</span> <span class="n">tf_graph</span><span class="o">.</span><span class="n">as_graph_def</span><span class="p">(</span><span class="n">add_shapes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">g</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+            <span class="c1"># Flat image data -&gt; image dimensions</span>
+            <span class="n">height</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="p">[],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;height&quot;</span><span class="p">)</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="p">[],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;width&quot;</span><span class="p">)</span>
+            <span class="n">num_channels</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="p">[],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;num_channels&quot;</span><span class="p">)</span>
+            <span class="n">image_buffer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">string</span><span class="p">,</span> <span class="p">[],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;image_buffer&quot;</span><span class="p">)</span>
+            <span class="c1"># Note: the shape argument is required for tensorframes as it uses a</span>
+            <span class="c1"># slightly older version of tensorflow.</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">num_channels</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,),</span>
+                               <span class="n">name</span><span class="o">=</span><span class="s1">&#39;shape&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s2">&quot;uint8&quot;</span><span class="p">:</span>
+                <span class="n">image_uint8</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">decode_raw</span><span class="p">(</span><span class="n">image_buffer</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;decode_raw&quot;</span><span class="p">)</span>
+                <span class="n">image_float</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">to_float</span><span class="p">(</span><span class="n">image_uint8</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">SparkMode</span><span class="o">.</span><span class="n">FLOAT32</span><span class="p">,</span> <span class="s2">&quot;Unsupported dtype for image: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">dtype</span>
+                <span class="n">image_float</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">decode_raw</span><span class="p">(</span><span class="n">image_buffer</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;decode_raw&quot;</span><span class="p">)</span>
+            <span class="n">image_reshaped</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">image_float</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;reshaped&quot;</span><span class="p">)</span>
+            <span class="n">image_reshaped_expanded</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">image_reshaped</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;expanded&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Add on the original graph</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">import_graph_def</span><span class="p">(</span><span class="n">gdef</span><span class="p">,</span> <span class="n">input_map</span><span class="o">=</span><span class="p">{</span><span class="n">input_tensor_name</span><span class="p">:</span> <span class="n">image_reshaped_expanded</span><span class="p">},</span>
+                                <span class="n">return_elements</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">getOutputTensor</span><span class="p">()</span><span class="o">.</span><span class="n">name</span><span class="p">],</span>
+                                <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">USER_GRAPH_NAMESPACE</span><span class="p">)</span>
+
+            <span class="c1"># Flatten the output for tensorframes</span>
+            <span class="n">output_node</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">get_tensor_by_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_getOriginalOutputTensorName</span><span class="p">())</span>
+            <span class="n">_</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">output_node</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>  <span class="c1"># batch-size = 1,</span>
+                           <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_getFinalOutputOpName</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">g</span>
+
+    <span class="c1"># Sometimes the tf graph contains a bunch of stuff that doesn&#39;t lead to the</span>
+    <span class="c1"># output. TensorFrames does not like that, so we strip out the parts that</span>
+    <span class="c1"># are not necessary for the computation at hand.</span>
+    <span class="k">def</span> <span class="nf">_stripGraph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tf_graph</span><span class="p">):</span>
+        <span class="n">gdef</span> <span class="o">=</span> <span class="n">tfx</span><span class="o">.</span><span class="n">strip_and_freeze_until</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_getFinalOutputOpName</span><span class="p">()],</span> <span class="n">tf_graph</span><span class="p">)</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">g</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">import_graph_def</span><span class="p">(</span><span class="n">gdef</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">g</span>
+
+    <span class="k">def</span> <span class="nf">_getOriginalOutputTensorName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">USER_GRAPH_NAMESPACE</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOutputTensor</span><span class="p">()</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">_getFinalOutputTensorName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">NEW_OUTPUT_PREFIX</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOutputTensor</span><span class="p">()</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">_getFinalOutputOpName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">tfx</span><span class="o">.</span><span class="n">as_op_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_getFinalOutputTensorName</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_convertOutputToImage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">tfs_output_col</span><span class="p">,</span> <span class="n">output_shape</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">output_shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_shape</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; does not have 4 dimensions&quot;</span>
+        <span class="n">height</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">output_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">output_shape</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">def</span> <span class="nf">to_image</span><span class="p">(</span><span class="n">orig_image</span><span class="p">,</span> <span class="n">numeric_data</span><span class="p">):</span>
+            <span class="c1"># Assume the returned image has float pixels but same #channels as input</span>
+            <span class="n">mode</span> <span class="o">=</span> <span class="n">orig_image</span><span class="o">.</span><span class="n">mode</span> <span class="k">if</span> <span class="n">orig_image</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;float32&quot;</span> <span class="k">else</span> <span class="s2">&quot;RGB-float32&quot;</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">mode</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">orig_image</span><span class="o">.</span><span class="n">nChannels</span><span class="p">,</span>
+                    <span class="nb">bytearray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">numeric_data</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">tobytes</span><span class="p">())]</span>
+        <span class="n">to_image_udf</span> <span class="o">=</span> <span class="n">udf</span><span class="p">(</span><span class="n">to_image</span><span class="p">,</span> <span class="n">imageSchema</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">getOutputCol</span><span class="p">(),</span>
+                          <span class="n">to_image_udf</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">()],</span> <span class="n">df</span><span class="p">[</span><span class="n">tfs_output_col</span><span class="p">]))</span>
+              <span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">tfs_output_col</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_convertOutputToVector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">tfs_output_col</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Converts the output python list to MLlib Vector.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">withColumn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">getOutputCol</span><span class="p">(),</span> <span class="n">JVMAPI</span><span class="o">.</span><span class="n">listToMLlibVectorUDF</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">tfs_output_col</span><span class="p">]))</span>
+              <span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">tfs_output_col</span><span class="p">)</span>
+        <span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 0.2.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.5.
+    </div>
+  </body>
+</html>
