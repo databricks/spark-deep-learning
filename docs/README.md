@@ -42,8 +42,6 @@ You can modify the default Jekyll build as follows:
     $ SKIP_API=1 ./jekyll build
     # Serve content locally on port 4000
     $ ./jekyll serve --watch
-    # Build the site with extra features used on the live page
-    $ PRODUCTION=1 ./jekyll build
 
 Note that `SPARK_HOME` must be set to your local Spark installation in order to generate the docs.
 
@@ -52,7 +50,10 @@ Note that `SPARK_HOME` must be set to your local Spark installation in order to 
 To upload the docs to Github pages, first make sure this branch is up-to-date with the
 spark-deep-learning master branch (e.g. merge the latest master into your local gh-pages branch).
 
-Build the docs as described above, then run
+Build the docs as described above; since we don't yet have a Scala API, pass the SKIP_SCALADOC=1
+argument to jekyll.
+
+ then run
 `$ rsync -av ./docs/_site/* . --exclude "*README.md" --exclude "*prepare" --exclude "*jekyll"`
 from the project root directory to copy the generated doc files (excluding this README) into the
 project root.

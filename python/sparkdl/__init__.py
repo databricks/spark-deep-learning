@@ -23,5 +23,5 @@ __all__ = [
     'imageSchema', 'imageType', 'readImages',
     'TFImageTransformer',
     'DeepImagePredictor', 'DeepImageFeaturizer',
-    'KerasImageFileTransformer',
+    'KerasImageFileTransformer', ""
     'imageInputPlaceholder']

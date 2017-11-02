@@ -63,8 +63,6 @@ cat << _JEKYLL_EOF_ | tee "${_bsd_}/jekyll"
 export SPARK_HOME=${spark_home}
 export PYTHONPATH=$(find ${HOME}/.local -type d -name 'site-packages' | head -n1):${_bsd_}/../python:${spark_home}/python:$(find "${spark_home}/python/lib" -name 'py4j-*-src.zip')
 
-(cd ${_bsd_}/../python && sphinx-apidoc -f -o docs sparkdl)
-
 pushd "${_bsd_}"
 jekyll \$@
 popd

@@ -60,7 +60,8 @@ parallelExecution := false
 scalacOptions in (Compile, doc) ++= Seq(
   "-groups",
   "-implicits",
-  "-skip-packages", Seq("org.apache.spark").mkString(":"))
+  "-skip-packages", Seq("org.apache.spark", "com.databricks.sparkdl",
+    "org.tensorframes.impl").mkString(":"))
 
 scalacOptions in (Test, doc) ++= Seq("-groups", "-implicits")
 

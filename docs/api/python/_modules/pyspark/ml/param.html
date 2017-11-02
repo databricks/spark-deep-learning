@@ -78,7 +78,7 @@
 
 <span class="kn">from</span> <span class="nn">py4j.java_gateway</span> <span class="k">import</span> <span class="n">JavaObject</span>
 
-<span class="kn">from</span> <span class="nn">pyspark.ml.linalg</span> <span class="k">import</span> <span class="n">DenseVector</span><span class="p">,</span> <span class="n">Vector</span><span class="p">,</span> <span class="n">Matrix</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.linalg</span> <span class="k">import</span> <span class="n">DenseVector</span><span class="p">,</span> <span class="n">Vector</span>
 <span class="kn">from</span> <span class="nn">pyspark.ml.util</span> <span class="k">import</span> <span class="n">Identifiable</span>
 
 
@@ -219,15 +219,6 @@
             <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">TypeConverters</span><span class="o">.</span><span class="n">_is_numeric</span><span class="p">(</span><span class="n">v</span><span class="p">),</span> <span class="n">value</span><span class="p">)):</span>
                 <span class="k">return</span> <span class="n">DenseVector</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Could not convert </span><span class="si">%s</span><span class="s2"> to vector&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
-
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">toMatrix</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Convert a value to a MLlib Matrix, if possible.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Matrix</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">value</span>
-        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Could not convert </span><span class="si">%s</span><span class="s2"> to matrix&quot;</span> <span class="o">%</span> <span class="n">value</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">toFloat</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
@@ -381,7 +372,7 @@
 <span class="sd">        Tests whether this instance contains a param with a given</span>
 <span class="sd">        (string) name.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paramName</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paramName</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="n">p</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">paramName</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">Param</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
@@ -435,17 +426,6 @@
         <span class="n">that</span><span class="o">.</span><span class="n">_defaultParamMap</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_copyValues</span><span class="p">(</span><span class="n">that</span><span class="p">,</span> <span class="n">extra</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Sets a parameter in the embedded param map.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_shouldOwn</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">value</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">typeConverter</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid param value given for param &quot;</span><span class="si">%s</span><span class="s1">&quot;. </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_paramMap</span><span class="p">[</span><span class="n">param</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-
     <span class="k">def</span> <span class="nf">_shouldOwn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Validates that the input param belongs to this Params instance.</span>
@@ -464,7 +444,7 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">Param</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_shouldOwn</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">param</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">basestring</span><span class="p">):</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getParam</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot resolve </span><span class="si">%r</span><span class="s2"> as a param.&quot;</span> <span class="o">%</span> <span class="n">param</span><span class="p">)</span>

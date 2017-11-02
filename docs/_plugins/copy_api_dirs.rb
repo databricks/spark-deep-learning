@@ -27,7 +27,7 @@ if not (ENV['SKIP_API'] == '1')
     cd("..")
 
     puts "Running 'build/sbt clean compile doc' from " + pwd + "; this may take a few minutes..."
-    system("build/sbt clean compile doc") || raise("Doc generation failed")
+    system("build/sbt clean compile doc ") || raise("Doc generation failed")
 
     puts "Moving back into docs dir."
     cd("docs")

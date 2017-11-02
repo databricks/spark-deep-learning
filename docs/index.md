@@ -16,7 +16,6 @@ usage examples & information about library dependencies.
 
 **API Docs:**
 
-* [Deep Learning Pipelines Scala API (Scaladoc)](api/scala/index.html#com.databricks.sparkdl.package)
 * [Deep Learning Pipelines Python API (Sphinx)](api/python/index.html)
 
 **External Resources:**
