@@ -100,10 +100,10 @@
                                      <span class="s2">&quot;pilMode&quot;</span><span class="p">,</span>
                                      <span class="s2">&quot;sparkMode&quot;</span><span class="p">,</span>
                                      <span class="p">])</span>
-<div class="viewcode-block" id="SparkMode"><a class="viewcode-back" href="../../../sparkdl.image.html#sparkdl.SparkMode">[docs]</a><span class="k">class</span> <span class="nc">SparkMode</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">SparkMode</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="n">RGB</span> <span class="o">=</span> <span class="s2">&quot;RGB&quot;</span>
     <span class="n">FLOAT32</span> <span class="o">=</span> <span class="s2">&quot;float32&quot;</span>
-    <span class="n">RGB_FLOAT32</span> <span class="o">=</span> <span class="s2">&quot;RGB-float32&quot;</span></div>
+    <span class="n">RGB_FLOAT32</span> <span class="o">=</span> <span class="s2">&quot;RGB-float32&quot;</span>
 
 <span class="n">supportedImageTypes</span> <span class="o">=</span> <span class="p">[</span>
     <span class="n">ImageType</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;uint8&quot;</span><span class="p">,</span> <span class="s2">&quot;RGB&quot;</span><span class="p">,</span> <span class="s2">&quot;RGB&quot;</span><span class="p">,</span> <span class="n">SparkMode</span><span class="o">.</span><span class="n">RGB</span><span class="p">),</span>
@@ -115,7 +115,7 @@
 <span class="n">sparkModeLookup</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="o">.</span><span class="n">sparkMode</span><span class="p">:</span> <span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">supportedImageTypes</span><span class="p">}</span>
 
 
-<div class="viewcode-block" id="imageArrayToStruct"><a class="viewcode-back" href="../../../sparkdl.image.html#sparkdl.imageArrayToStruct">[docs]</a><span class="k">def</span> <span class="nf">imageArrayToStruct</span><span class="p">(</span><span class="n">imgArray</span><span class="p">,</span> <span class="n">sparkMode</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">imageArrayToStruct</span><span class="p">(</span><span class="n">imgArray</span><span class="p">,</span> <span class="n">sparkMode</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create a row representation of an image from an image array and (optional) imageType.</span>
 
@@ -149,10 +149,10 @@
     <span class="n">imgArray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">imgArray</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">imageType</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="n">data</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">(</span><span class="n">imgArray</span><span class="o">.</span><span class="n">tobytes</span><span class="p">())</span>
-    <span class="k">return</span> <span class="n">Row</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="n">sparkMode</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">nChannels</span><span class="o">=</span><span class="n">nChannels</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">Row</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="n">sparkMode</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">nChannels</span><span class="o">=</span><span class="n">nChannels</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="imageType"><a class="viewcode-back" href="../../../sparkdl.image.html#sparkdl.imageType">[docs]</a><span class="k">def</span> <span class="nf">imageType</span><span class="p">(</span><span class="n">imageRow</span><span class="p">):</span>
+<div class="viewcode-block" id="imageType"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.imageType">[docs]</a><span class="k">def</span> <span class="nf">imageType</span><span class="p">(</span><span class="n">imageRow</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get type information about the image.</span>
 
@@ -162,7 +162,7 @@
     <span class="k">return</span> <span class="n">sparkModeLookup</span><span class="p">[</span><span class="n">imageRow</span><span class="o">.</span><span class="n">mode</span><span class="p">]</span></div>
 
 
-<div class="viewcode-block" id="imageStructToArray"><a class="viewcode-back" href="../../../sparkdl.image.html#sparkdl.imageStructToArray">[docs]</a><span class="k">def</span> <span class="nf">imageStructToArray</span><span class="p">(</span><span class="n">imageRow</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">imageStructToArray</span><span class="p">(</span><span class="n">imageRow</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert an image to a numpy array.</span>
 
@@ -171,7 +171,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">imType</span> <span class="o">=</span> <span class="n">imageType</span><span class="p">(</span><span class="n">imageRow</span><span class="p">)</span>
     <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">imageRow</span><span class="o">.</span><span class="n">height</span><span class="p">,</span> <span class="n">imageRow</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">imageRow</span><span class="o">.</span><span class="n">nChannels</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">imType</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">imageRow</span><span class="o">.</span><span class="n">data</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">imType</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">imageRow</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">_arrayToSparkMode</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
@@ -216,7 +216,7 @@
     <span class="k">return</span> <span class="n">resizeImageAsRow</span>
 
 
-<div class="viewcode-block" id="resizeImage"><a class="viewcode-back" href="../../../sparkdl.image.html#sparkdl.resizeImage">[docs]</a><span class="k">def</span> <span class="nf">resizeImage</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">resizeImage</span><span class="p">(</span><span class="n">size</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Create a udf for resizing image.</span>
 <span class="sd">    </span>
 <span class="sd">    Example usage:</span>
@@ -225,7 +225,7 @@
 <span class="sd">    :param size: tuple, target size of new image in the form (height, width). </span>
 <span class="sd">    :return: udf, a udf for resizing an image column to `size`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">udf</span><span class="p">(</span><span class="n">_resizeFunction</span><span class="p">(</span><span class="n">size</span><span class="p">),</span> <span class="n">imageSchema</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">udf</span><span class="p">(</span><span class="n">_resizeFunction</span><span class="p">(</span><span class="n">size</span><span class="p">),</span> <span class="n">imageSchema</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">_decodeImage</span><span class="p">(</span><span class="n">imageData</span><span class="p">):</span>
@@ -253,7 +253,7 @@
 <span class="c1"># Creating a UDF on import can cause SparkContext issues sometimes.</span>
 <span class="c1"># decodeImage = udf(_decodeImage, imageSchema)</span>
 
-<div class="viewcode-block" id="filesToDF"><a class="viewcode-back" href="../../../sparkdl.image.html#sparkdl.filesToDF">[docs]</a><span class="k">def</span> <span class="nf">filesToDF</span><span class="p">(</span><span class="n">sc</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">numPartitions</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">filesToDF</span><span class="p">(</span><span class="n">sc</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">numPartitions</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Read files from a directory to a DataFrame.</span>
 
@@ -267,10 +267,10 @@
                          <span class="n">StructField</span><span class="p">(</span><span class="s2">&quot;fileData&quot;</span><span class="p">,</span> <span class="n">BinaryType</span><span class="p">(),</span> <span class="kc">False</span><span class="p">)])</span>
     <span class="n">rdd</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">binaryFiles</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">minPartitions</span><span class="o">=</span><span class="n">numPartitions</span><span class="p">)</span><span class="o">.</span><span class="n">repartition</span><span class="p">(</span><span class="n">numPartitions</span><span class="p">)</span>
     <span class="n">rdd</span> <span class="o">=</span> <span class="n">rdd</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">bytearray</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
-    <span class="k">return</span> <span class="n">rdd</span><span class="o">.</span><span class="n">toDF</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">rdd</span><span class="o">.</span><span class="n">toDF</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="readImages"><a class="viewcode-back" href="../../../sparkdl.image.html#sparkdl.readImages">[docs]</a><span class="k">def</span> <span class="nf">readImages</span><span class="p">(</span><span class="n">imageDirectory</span><span class="p">,</span> <span class="n">numPartition</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="readImages"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.readImages">[docs]</a><span class="k">def</span> <span class="nf">readImages</span><span class="p">(</span><span class="n">imageDirectory</span><span class="p">,</span> <span class="n">numPartition</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Read a directory of images (or a single image) into a DataFrame.</span>
 

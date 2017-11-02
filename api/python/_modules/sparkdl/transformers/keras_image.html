@@ -78,7 +78,7 @@
 <span class="kn">from</span> <span class="nn">sparkdl.transformers.tf_image</span> <span class="k">import</span> <span class="n">TFImageTransformer</span>
 
 
-<div class="viewcode-block" id="KerasImageFileTransformer"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.KerasImageFileTransformer">[docs]</a><span class="k">class</span> <span class="nc">KerasImageFileTransformer</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">,</span>
+<div class="viewcode-block" id="KerasImageFileTransformer"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.KerasImageFileTransformer">[docs]</a><span class="k">class</span> <span class="nc">KerasImageFileTransformer</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">,</span>
                                 <span class="n">CanLoadImage</span><span class="p">,</span> <span class="n">HasKerasModel</span><span class="p">,</span> <span class="n">HasOutputMode</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Applies the Tensorflow-backed Keras model (specified by a file name) to</span>
@@ -101,7 +101,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_inputTensor</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_outputTensor</span> <span class="o">=</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="KerasImageFileTransformer.setParams"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.KerasImageFileTransformer.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
+<div class="viewcode-block" id="KerasImageFileTransformer.setParams"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.KerasImageFileTransformer.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
     <span class="k">def</span> <span class="nf">setParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelFile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">imageLoader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                   <span class="n">outputMode</span><span class="o">=</span><span class="s2">&quot;vector&quot;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>

@@ -70,18 +70,18 @@
 
 <span class="n">IMAGE_INPUT_PLACEHOLDER_NAME</span> <span class="o">=</span> <span class="s2">&quot;sparkdl_image_input&quot;</span>
 
-<div class="viewcode-block" id="imageInputPlaceholder"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.imageInputPlaceholder">[docs]</a><span class="k">def</span> <span class="nf">imageInputPlaceholder</span><span class="p">(</span><span class="n">nChannels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="imageInputPlaceholder"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.imageInputPlaceholder">[docs]</a><span class="k">def</span> <span class="nf">imageInputPlaceholder</span><span class="p">(</span><span class="n">nChannels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">nChannels</span><span class="p">],</span>
                           <span class="n">name</span><span class="o">=</span><span class="n">IMAGE_INPUT_PLACEHOLDER_NAME</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="ImageNetConstants"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.ImageNetConstants">[docs]</a><span class="k">class</span> <span class="nc">ImageNetConstants</span><span class="p">:</span>
-    <span class="n">NUM_CLASSES</span> <span class="o">=</span> <span class="mi">1000</span></div>
+<span class="k">class</span> <span class="nc">ImageNetConstants</span><span class="p">:</span>
+    <span class="n">NUM_CLASSES</span> <span class="o">=</span> <span class="mi">1000</span>
 
 <span class="c1"># InceptionV3 is used in a lot of tests, so we&#39;ll make this shortcut available</span>
 <span class="c1"># For other networks, see the keras_applications module.</span>
-<div class="viewcode-block" id="InceptionV3Constants"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.InceptionV3Constants">[docs]</a><span class="k">class</span> <span class="nc">InceptionV3Constants</span><span class="p">:</span>
+<span class="k">class</span> <span class="nc">InceptionV3Constants</span><span class="p">:</span>
     <span class="n">INPUT_SHAPE</span> <span class="o">=</span> <span class="p">(</span><span class="mi">299</span><span class="p">,</span> <span class="mi">299</span><span class="p">)</span>
-    <span class="n">NUM_OUTPUT_FEATURES</span> <span class="o">=</span> <span class="mi">131072</span></div>
+    <span class="n">NUM_OUTPUT_FEATURES</span> <span class="o">=</span> <span class="mi">131072</span>
 </pre></div>
 
           </div>

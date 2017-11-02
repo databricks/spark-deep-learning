@@ -83,7 +83,7 @@
 <span class="n">SUPPORTED_MODELS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;InceptionV3&quot;</span><span class="p">,</span> <span class="s2">&quot;Xception&quot;</span><span class="p">,</span> <span class="s2">&quot;ResNet50&quot;</span><span class="p">]</span>
 
 
-<div class="viewcode-block" id="DeepImagePredictor"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.DeepImagePredictor">[docs]</a><span class="k">class</span> <span class="nc">DeepImagePredictor</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">):</span>
+<div class="viewcode-block" id="DeepImagePredictor"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImagePredictor">[docs]</a><span class="k">class</span> <span class="nc">DeepImagePredictor</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Applies the model specified by its popular name to the image column in DataFrame.</span>
 <span class="sd">    The input image column should be 3-channel SpImage.</span>
@@ -111,7 +111,7 @@
         <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">setParams</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-<div class="viewcode-block" id="DeepImagePredictor.setParams"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.DeepImagePredictor.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
+<div class="viewcode-block" id="DeepImagePredictor.setParams"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImagePredictor.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
     <span class="k">def</span> <span class="nf">setParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelName</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">decodePredictions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                   <span class="n">topK</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -122,10 +122,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 
-<div class="viewcode-block" id="DeepImagePredictor.setModelName"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.DeepImagePredictor.setModelName">[docs]</a>    <span class="k">def</span> <span class="nf">setModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<div class="viewcode-block" id="DeepImagePredictor.setModelName"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImagePredictor.setModelName">[docs]</a>    <span class="k">def</span> <span class="nf">setModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">modelName</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="DeepImagePredictor.getModelName"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.DeepImagePredictor.getModelName">[docs]</a>    <span class="k">def</span> <span class="nf">getModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="DeepImagePredictor.getModelName"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImagePredictor.getModelName">[docs]</a>    <span class="k">def</span> <span class="nf">getModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modelName</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
@@ -167,7 +167,7 @@
 
 <span class="c1"># TODO: give an option to take off multiple layers so it can be used in tuning</span>
 <span class="c1">#       (could be the name of the layer or int for how many to take off).</span>
-<div class="viewcode-block" id="DeepImageFeaturizer"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.DeepImageFeaturizer">[docs]</a><span class="k">class</span> <span class="nc">DeepImageFeaturizer</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">):</span>
+<div class="viewcode-block" id="DeepImageFeaturizer"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImageFeaturizer">[docs]</a><span class="k">class</span> <span class="nc">DeepImageFeaturizer</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Applies the model specified by its popular name, with its prediction layer(s) chopped off,</span>
 <span class="sd">    to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer</span>
@@ -187,7 +187,7 @@
         <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">setParams</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-<div class="viewcode-block" id="DeepImageFeaturizer.setParams"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.DeepImageFeaturizer.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
+<div class="viewcode-block" id="DeepImageFeaturizer.setParams"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImageFeaturizer.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
     <span class="k">def</span> <span class="nf">setParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelName</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        setParams(self, inputCol=None, outputCol=None, modelName=None)</span>
@@ -196,10 +196,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span></div>
 
-<div class="viewcode-block" id="DeepImageFeaturizer.setModelName"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.DeepImageFeaturizer.setModelName">[docs]</a>    <span class="k">def</span> <span class="nf">setModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<div class="viewcode-block" id="DeepImageFeaturizer.setModelName"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImageFeaturizer.setModelName">[docs]</a>    <span class="k">def</span> <span class="nf">setModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="n">modelName</span><span class="o">=</span><span class="n">value</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="DeepImageFeaturizer.getModelName"><a class="viewcode-back" href="../../../sparkdl.transformers.html#sparkdl.DeepImageFeaturizer.getModelName">[docs]</a>    <span class="k">def</span> <span class="nf">getModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="DeepImageFeaturizer.getModelName"><a class="viewcode-back" href="../../../sparkdl.html#sparkdl.DeepImageFeaturizer.getModelName">[docs]</a>    <span class="k">def</span> <span class="nf">getModelName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modelName</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>

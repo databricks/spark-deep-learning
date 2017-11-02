@@ -9,10 +9,7 @@ BUILDDIR      = _build
 
 export PACKAGE_VERSION
 
-ifndef PYTHONPATH
-$(error PYTHONPATH is undefined)
-endif
-$(info $$PYTHONPATH is [${PYTHONPATH}])
+export PYTHONPATH=$(realpath ..):$(realpath $(SPARK_HOME))/python:$(realpath $(SPARK_HOME))/python/lib/py4j-*-src.zip)
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
