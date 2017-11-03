@@ -14,16 +14,14 @@
 #
 
 from .image.imageIO import imageSchema, imageType, readImages
-from .estimators.keras_image_file_estimator import KerasImageFileEstimator
 from .transformers.keras_image import KerasImageFileTransformer
 from .transformers.named_image import DeepImagePredictor, DeepImageFeaturizer
 from .transformers.tf_image import TFImageTransformer
 from .transformers.utils import imageInputPlaceholder
-from .udf.keras_image_model import registerKerasImageUDF
 
 __all__ = [
     'imageSchema', 'imageType', 'readImages',
     'TFImageTransformer',
     'DeepImagePredictor', 'DeepImageFeaturizer',
-    'KerasImageFileEstimator', 'KerasImageFileTransformer', 'registerKerasImageUDF',
+    'KerasImageFileTransformer',
     'imageInputPlaceholder']
