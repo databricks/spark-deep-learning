@@ -1,8 +1,8 @@
 sparkdl package
 ===============
 
-Submodules
----------------
+Submodule Functions & Classes
+------------------------------
 
 .. automodule :: sparkdl.udf.keras_image_model
     :members:
@@ -14,8 +14,8 @@ Submodules
     :undoc-members:
     :show-inheritance:
 
-Module contents
----------------
+sparkdl Module Contents
+-------------------------
 
 .. automodule:: sparkdl
     :members:
