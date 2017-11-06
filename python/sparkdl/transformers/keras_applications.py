@@ -125,7 +125,7 @@ class VGG16Model(KerasApplicationModel):
 
     def model(self, preprocessed, featurize):
         return vgg16.VGG16(input_tensor=preprocessed, weights="imagenet",
-                                 include_top=(not featurize))
+                           include_top=(not featurize))
 
     def inputShape(self):
         return (224, 224)
@@ -139,7 +139,7 @@ class VGG19Model(KerasApplicationModel):
 
     def model(self, preprocessed, featurize):
         return vgg19.VGG19(input_tensor=preprocessed, weights="imagenet",
-                                 include_top=(not featurize))
+                           include_top=(not featurize))
 
     def inputShape(self):
         return (224, 224)
