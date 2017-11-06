@@ -14,14 +14,15 @@ usage examples & information about library dependencies.
 
 # Where to Go from Here
 
-**API Docs:**
-
-* [Deep Learning Pipelines Python API (Sphinx)](api/python/index.html)
+### API Docs
 
 **Note:** the Python modules are likely to be refactored/moved in the future to more clearly
 reflect the structure of the available tools.
 
-**External Resources:**
+* [Deep Learning Pipelines Python API (Sphinx)](api/python/index.html)
+
+
+### External Resources
 
 * [Deep Learning Pipelines on Spark Packages](https://spark-packages.org/package/databricks/spark-deep-learning)
 * [Deep Learning Pipelines on Github](http://github.com/databricks/spark-deep-learning)
