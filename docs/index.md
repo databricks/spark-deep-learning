@@ -18,6 +18,9 @@ usage examples & information about library dependencies.
 
 * [Deep Learning Pipelines Python API (Sphinx)](api/python/index.html)
 
+**Note:** the Python modules are likely to be refactored/moved in the future to more clearly
+reflect the structure of the available tools.
+
 **External Resources:**
 
 * [Deep Learning Pipelines on Spark Packages](https://spark-packages.org/package/databricks/spark-deep-learning)
