@@ -18,4 +18,4 @@ from .named_image_test import NamedImageTransformerBaseTestCase
 class NamedImageTransformerVGG16Test(NamedImageTransformerBaseTestCase):
     __test__ = True
     name = "VGG16"
-    numPartitionsOverride = 2 # hits OOM if more than 2 threads
+    numPartitionsOverride = 1 # hits OOM if more than 2 threads
