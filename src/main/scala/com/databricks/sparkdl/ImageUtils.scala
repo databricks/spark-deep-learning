@@ -22,7 +22,7 @@ import java.awt.{Color, Image}
 import org.apache.spark.image.ImageSchema
 import org.apache.spark.sql.Row
 
-object ImageUtils {
+private[sparkdl] object ImageUtils {
 
   /**
    * Takes a Row image (spImage) and returns a Java BufferedImage. Currently supports 1 & 3
@@ -74,7 +74,7 @@ object ImageUtils {
 
 
   /**
-   * Takes a Java BufferedImage and returns a Row Image (spImage). The
+   * Takes a Java BufferedImage and returns a Row Image (spImage).
    *
    * @param image Java BufferedImage.
    * @return Row image in spark.ml.image format with 3 channels in BGR order.

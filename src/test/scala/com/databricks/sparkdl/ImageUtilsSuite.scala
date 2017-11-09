@@ -27,13 +27,13 @@ import org.scalatest.FunSuite
 
 object ImageUtilsSuite {
   val biggerImage: Row = {
-    val biggerFile = getClass.getResource("/images/00081101.jpg").getFile
+    val biggerFile = getClass.getResource("/sparkdl/test-image-collection/00081101.jpg").getFile
     val imageBuffer = ImageIO.read(new File(biggerFile))
     ImageUtils.spImageFromBufferedImage(imageBuffer)
   }
 
   val smallerImage: Row = {
-    val smallerFile = getClass.getResource("/smaller.png").getFile
+    val smallerFile = getClass.getResource("/sparkdl/00081101-small-version.png").getFile
     val imageBuffer = ImageIO.read(new File(smallerFile))
     ImageUtils.spImageFromBufferedImage(imageBuffer)
   }
@@ -46,7 +46,7 @@ class ImageUtilsSuite extends FunSuite {
   assert(System.getProperty("java.awt.headless") === "true")
   import ImageUtilsSuite._
 
-  test("test binary image resize") {
+  test("Test spImage resize.") {
     val tgtHeight: Int = ImageSchema.getHeight(smallerImage)
     val tgtWidth: Int = ImageSchema.getWidth(smallerImage)
     val tgtChannels: Int = ImageSchema.getNChannels(smallerImage)
@@ -57,7 +57,7 @@ class ImageUtilsSuite extends FunSuite {
     assert(ImageSchema.getNChannels(testImage) === tgtChannels)
     val testImageData = ImageSchema.getData(testImage)
     val smallerImageData = ImageSchema.getData(smallerImage)
-    assert(testImageData.deep === smallerImageData)
+    assert(testImageData.deep === smallerImageData.deep)
   }
 
   test ("Test Row image -> BufferedImage -> Row image") {
