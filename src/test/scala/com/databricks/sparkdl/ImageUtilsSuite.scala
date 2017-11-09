@@ -52,12 +52,7 @@ class ImageUtilsSuite extends FunSuite {
     val tgtChannels: Int = ImageSchema.getNChannels(smallerImage)
 
     val testImage = ImageUtils.resizeImage(tgtHeight, tgtWidth, tgtChannels, biggerImage)
-    assert(ImageSchema.getHeight(testImage) === tgtHeight)
-    assert(ImageSchema.getWidth(testImage) === tgtWidth)
-    assert(ImageSchema.getNChannels(testImage) === tgtChannels)
-    val testImageData = ImageSchema.getData(testImage)
-    val smallerImageData = ImageSchema.getData(smallerImage)
-    assert(testImageData.deep === smallerImageData.deep)
+    assert(testImage === smallerImage, "Resizing image did not produce expected smaller image.")
   }
 
   test ("Test Row image -> BufferedImage -> Row image") {
