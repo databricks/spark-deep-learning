@@ -27,7 +27,7 @@ install:
 script:
   - ./build/sbt -Dspark.version=$SPARK_VERSION -Dscala.version=$SCALA_VERSION "set test in assembly := {}" assembly
   - ./build/sbt -Dspark.version=$SPARK_VERSION -Dscala.version=$SCALA_VERSION coverage test coverageReport
-  - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD ./python/run-tests.sh
+  - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD RUN_ONLY_LIGHT_TESTS=True ./python/run-tests.sh
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
