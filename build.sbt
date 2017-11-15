@@ -35,6 +35,7 @@ sparkComponents ++= Seq("mllib-local", "mllib", "sql")
 // add any Spark Package dependencies using spDependencies.
 // e.g. spDependencies += "databricks/spark-avro:0.1"
 spDependencies += s"databricks/tensorframes:0.2.9-s_${scalaMajorVersion}"
+spDependencies += "Microsoft/spark-images:0.1"
 
 // These versions are ancient, but they cross-compile around scala 2.10 and 2.11.
 // Update them when dropping support for scala 2.10
@@ -68,7 +69,12 @@ scalacOptions in (Test, doc) ++= Seq("-groups", "-implicits")
 fork in Test := true
 
 // This and the next line fix a problem with forked run: https://github.com/scalatest/scalatest/issues/770
-javaOptions in Test ++= Seq("-Xmx2048m", "-XX:ReservedCodeCacheSize=384m", "-XX:MaxPermSize=384m")
+javaOptions in Test ++= Seq(
+  "-Xmx2048m",
+  "-XX:ReservedCodeCacheSize=384m",
+  "-XX:MaxPermSize=384m",
+  "-Djava.awt.headless=true"
+)
 
 concurrentRestrictions in Global := Seq(
   Tags.limitAll(1))
