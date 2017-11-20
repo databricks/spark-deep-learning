@@ -2,6 +2,7 @@
 *.log
 *.pyc
 build/*.jar
+.coverage
 
 docs/_site
 docs/api
@@ -17,6 +18,9 @@ lib_managed/
 src_managed/
 project/boot/
 project/plugins/project/
+
+# spark
+metastore_db
 
 # intellij
 .idea/

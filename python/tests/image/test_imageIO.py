@@ -26,7 +26,7 @@ from pyspark.sql.types import BinaryType, StringType, StructField, StructType
 from sparkdl.image import imageIO
 from ..tests import SparkDLTestCase
 
-# Create dome fake image data to work with
+# Create some fake image data to work with
 def create_image_data():
     # Random image-like data
     array = np.random.randint(0, 256, (10, 11, 3), 'uint8')
@@ -171,6 +171,100 @@ class TestReadImages(SparkDLTestCase):
         first = df.first()
         self.assertTrue(hasattr(first, "filePath"))
         self.assertEqual(type(first.fileData), bytearray)
+
+
+# Create some fake GIF data to work with
+def create_gif_data():
+    # Random GIF-like data
+    arrays2D = [np.random.randint(0, 256, (10, 11), 'uint8') for _ in range(3)]
+    arrays3D = [np.dstack((a, a, a)) for a in arrays2D]
+    # Create frames in P mode because Pillow always reads GIFs as P or L images
+    frames = [PIL.Image.fromarray(a, mode='P') for a in arrays2D]
+
+    # Compress as GIF
+    gifFile = BytesIO()
+    frames[0].save(gifFile, 'gif', save_all=True, append_images=frames[1:], optimize=False)
+    gifFile.seek(0)
+
+    # Get GIF data as stream
+    gifData = gifFile.read()
+    return arrays3D, gifData
+
+gifArray, gifData = create_gif_data()
+frameArray = gifArray[0]
+
+
+class BinaryGifFilesMock(object):
+
+    defaultParallelism = 4
+
+    def __init__(self, sc):
+        self.sc = sc
+
+    def binaryFiles(self, path, minPartitions=None):
+        gifsData = [["file/path", gifData],
+                    ["another/file/path", gifData],
+                    ["bad/gif", b"badGifData"]
+                    ]
+        rdd = self.sc.parallelize(gifsData)
+        if minPartitions is not None:
+            rdd = rdd.repartition(minPartitions)
+        return rdd
+
+
+class TestReadGifs(SparkDLTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(TestReadGifs, cls).setUpClass()
+        cls.binaryFilesMock = BinaryGifFilesMock(cls.sc)
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestReadGifs, cls).tearDownClass()
+        cls.binaryFilesMock = None
+
+    def test_decodeGif(self):
+        badFrames = imageIO._decodeGif(b"xxx")
+        self.assertEqual(badFrames, [(None, None)])
+        gifFrames = imageIO._decodeGif(gifData)
+        self.assertIsNotNone(gifFrames)
+        self.assertEqual(len(gifFrames), 3)
+        self.assertEqual(len(gifFrames[0][1]), len(imageIO.imageSchema.names))
+        for n in imageIO.imageSchema.names:
+            gifFrames[0][1][n]
+
+    def test_gif_round_trip(self):
+        # Test round trip: array -> GIF frame -> sparkImg -> array
+        binarySchema = StructType([StructField("data", BinaryType(), False)])
+        df = self.session.sparkContext.parallelize([bytearray(gifData)])
+
+        # Convert to GIF frames
+        rdd = df.flatMap(lambda x: [f[1] for f in imageIO._decodeGif(x)])
+        framesDF = rdd.toDF(imageIO.imageSchema)
+        row = framesDF.first()
+
+        testArray = imageIO.imageStructToArray(row)
+        self.assertEqual(testArray.shape, frameArray.shape)
+        self.assertEqual(testArray.dtype, frameArray.dtype)
+        self.assertTrue(np.all(frameArray == testArray))
+
+    def test_readGifs(self):
+        # Test that reading
+        gifDF = imageIO._readGifs("some/path", 2, self.binaryFilesMock)
+        self.assertTrue("filePath" in gifDF.schema.names)
+        self.assertTrue("frameNum" in gifDF.schema.names)
+        self.assertTrue("gifFrame" in gifDF.schema.names)
+
+        # The DF should have 6 images (2 images, 3 frames each) and 1 null.
+        self.assertEqual(gifDF.count(), 7)
+        validGifs = gifDF.filter(col("gifFrame").isNotNull())
+        self.assertEqual(validGifs.count(), 6)
+
+        frame = validGifs.first().gifFrame
+        self.assertEqual(frame.height, frameArray.shape[0])
+        self.assertEqual(frame.width, frameArray.shape[1])
+        self.assertEqual(imageIO.imageType(frame).nChannels, frameArray.shape[2])
+        self.assertEqual(frame.data, frameArray.tobytes())
 
 
 # TODO: make unit tests for arrayToImageRow on arrays of varying shapes, channels, dtypes.
