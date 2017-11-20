@@ -162,6 +162,22 @@ class HasKerasModel(Params):
     def getKerasFitParams(self):
         return self.getOrDefault(self.kerasFitParams)
 
+    def _loadTFGraph(self):
+        """
+        TODO(sid) should this go here?
+        """
+        with KSessionWrap() as (sess, g):
+            assert K.backend() == "tensorflow", \
+                "Keras backend is not tensorflow but KerasImageTransformer only supports " + \
+                "tensorflow-backed Keras models."
+            with g.as_default():
+                K.set_learning_phase(0)  # Testing phase
+                model = load_model(self.getModelFile())
+                out_op_name = tfx.op_name(g, model.output)
+                self._inputTensor = model.input.name
+                self._outputTensor = model.output.name
+                return tfx.strip_and_freeze_until([out_op_name], g, sess, return_graph=True)
+
 
 class HasKerasOptimizer(Params):
     # TODO: docs
