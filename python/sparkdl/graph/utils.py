@@ -16,8 +16,6 @@
 
 import logging
 import six
-import webbrowser
-from tempfile import NamedTemporaryFile
 
 import tensorflow as tf
 
@@ -35,14 +33,15 @@ one of the four target variants.
 
 def validated_graph(graph):
     """
-    Check if the input is a valid tf.Graph
+    Check if the input is a valid :py:class:`tf.Graph` and return it.
+    Raise an error otherwise.
 
-    :param graph: tf.Graph, a TensorFlow Graph object
+    :param graph: :py:class:`tf.Graph`, a TensorFlow Graph object
     """
     assert isinstance(graph, tf.Graph), 'must provide tf.Graph, but get {}'.format(type(graph))
     return graph
 
-def get_shape(graph, tfobj_or_name):
+def get_shape(tfobj_or_name, graph):
     """
     Return the shape of the tensor as a list
 
@@ -50,38 +49,44 @@ def get_shape(graph, tfobj_or_name):
     :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
     graph = validated_graph(graph)
-    _shape = get_tensor(graph, tfobj_or_name).get_shape().as_list()
+    _shape = get_tensor(tfobj_or_name, graph).get_shape().as_list()
     return [-1 if x is None else x for x in _shape]
 
-def get_op(graph, tfobj_or_name):
+def get_op(tfobj_or_name, graph):
     """
-    Get a tf.Operation object
+    Get a :py:class:`tf.Operation` object.
 
-    :param graph: tf.Graph, a TensorFlow Graph object
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
+    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or
+                          a name to either.
+    :param graph: a :py:class:`tf.Graph` object containing the operation.
+                  By default the graph we don't require this argument to be provided.
     """
     graph = validated_graph(graph)
+    _assert_same_graph(tfobj_or_name, graph)
     if isinstance(tfobj_or_name, tf.Operation):
         return tfobj_or_name
     name = tfobj_or_name
     if isinstance(tfobj_or_name, tf.Tensor):
         name = tfobj_or_name.name
     if not isinstance(name, six.string_types):
-        raise TypeError('invalid op request for {} of {}'.format(name, type(name)))
-    _op_name = as_op_name(name)
+        raise TypeError('invalid op request for [type {}] {}'.format(type(name), name))
+    _op_name = op_name(name, graph=None)
     op = graph.get_operation_by_name(_op_name)
-    assert op is not None, \
-        'cannot locate op {} in current graph'.format(_op_name)
+    err_msg = 'cannot locate op {} in the current graph, got [type {}] {}'
+    assert isinstance(op, tf.Operation), err_msg.format(_op_name, type(op), op)
     return op
 
-def get_tensor(graph, tfobj_or_name):
+def get_tensor(tfobj_or_name, graph):
     """
-    Get a tf.Tensor object
+    Get a :py:class:`tf.Tensor` object
 
-    :param graph: tf.Graph, a TensorFlow Graph object
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
+    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or
+                          a name to either.
+    :param graph: a :py:class:`tf.Graph` object containing the tensor.
+                  By default the graph we don't require this argument to be provided.
     """
     graph = validated_graph(graph)
+    _assert_same_graph(tfobj_or_name, graph)
     if isinstance(tfobj_or_name, tf.Tensor):
         return tfobj_or_name
     name = tfobj_or_name
@@ -89,59 +94,71 @@ def get_tensor(graph, tfobj_or_name):
         name = tfobj_or_name.name
     if not isinstance(name, six.string_types):
         raise TypeError('invalid tensor request for {} of {}'.format(name, type(name)))
-    _tensor_name = as_tensor_name(name)
+    _tensor_name = tensor_name(name, graph=None)
     tnsr = graph.get_tensor_by_name(_tensor_name)
-    assert tnsr is not None, \
-        'cannot locate tensor {} in current graph'.format(_tensor_name)
+    err_msg = 'cannot locate tensor {} in the current graph, got [type {}] {}'
+    assert isinstance(tnsr, tf.Tensor), err_msg.format(_tensor_name, type(tnsr), tnsr)
     return tnsr
 
-def as_tensor_name(name):
+def tensor_name(tfobj_or_name, graph=None):
     """
-    Derive tf.Tensor name from an op/tensor name.
-    We do not check if the tensor exist (as no graph parameter is passed in).
+    Derive the :py:class:`tf.Tensor` name from a :py:class:`tf.Operation` or :py:class:`tf.Tensor`
+    object, or its name.
+    If a name is provided and the graph is not, we will derive the tensor name based on
+    TensorFlow's naming convention.
+    If the input is a TensorFlow object, or the graph is given, we also check that
+    the tensor exists in the associated graph.
 
-    :param name: op name or tensor name
+    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or
+                          a name to either.
+    :param graph: a :py:class:`tf.Graph` object containing the tensor.
+                  By default the graph we don't require this argument to be provided.
     """
-    assert isinstance(name, six.string_types)
-    name_parts = name.split(":")
-    assert len(name_parts) <= 2, name_parts
-    if len(name_parts) < 2:
-        name += ":0"
-    return name
+    if graph is not None:
+        return get_tensor(tfobj_or_name, graph).name
+    if isinstance(tfobj_or_name, six.string_types):
+        # If input is a string, assume it is a name and infer the corresponding tensor name.
+        # WARNING: this depends on TensorFlow's tensor naming convention
+        name = tfobj_or_name
+        name_parts = name.split(":")
+        assert len(name_parts) <= 2, name_parts
+        if len(name_parts) < 2:
+            name += ":0"
+        return name
+    elif hasattr(tfobj_or_name, 'graph'):
+        return get_tensor(tfobj_or_name, tfobj_or_name.graph).name
+    else:
+        raise TypeError('invalid tf.Tensor name query type {}'.format(type(tfobj_or_name)))
 
-def as_op_name(name):
+def op_name(tfobj_or_name, graph=None):
     """
-    Derive tf.Operation name from an op/tensor name
-    We do not check if the operation exist (as no graph parameter is passed in).
+    Derive the :py:class:`tf.Operation` name from a :py:class:`tf.Operation` or
+    :py:class:`tf.Tensor` object, or its name.
+    If a name is provided and the graph is not, we will derive the operation name based on
+    TensorFlow's naming convention.
+    If the input is a TensorFlow object, or the graph is given, we also check that
+    the operation exists in the associated graph.
 
-    :param name: op name or tensor name
+    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or
+                          a name to either.
+    :param graph: a :py:class:`tf.Graph` object containing the operation.
+                  By default the graph we don't require this argument to be provided.
     """
-    assert isinstance(name, six.string_types)
-    name_parts = name.split(":")
-    assert len(name_parts) <= 2, name_parts
-    return name_parts[0]
+    if graph is not None:
+        return get_op(tfobj_or_name, graph).name
+    if isinstance(tfobj_or_name, six.string_types):
+        # If input is a string, assume it is a name and infer the corresponding operation name.
+        # WARNING: this depends on TensorFlow's operation naming convention
+        name = tfobj_or_name
+        name_parts = name.split(":")
+        assert len(name_parts) <= 2, name_parts
+        return name_parts[0]
+    elif hasattr(tfobj_or_name, 'graph'):
+        return get_op(tfobj_or_name, tfobj_or_name.graph).name
+    else:
+        raise TypeError('invalid tf.Operation name query type {}'.format(type(tfobj_or_name)))
 
-def op_name(graph, tfobj_or_name):
-    """
-    Get the name of a tf.Operation
-
-    :param graph: tf.Graph, a TensorFlow Graph object
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
-    """
-    graph = validated_graph(graph)
-    return get_op(graph, tfobj_or_name).name
-
-def tensor_name(graph, tfobj_or_name):
-    """
-    Get the name of a tf.Tensor
-
-    :param graph: tf.Graph, a TensorFlow Graph object
-    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
-    """
-    graph = validated_graph(graph)
-    return get_tensor(graph, tfobj_or_name).name
-
-def validated_output(graph, tfobj_or_name):
+def validated_output(tfobj_or_name, graph):
     """
     Validate and return the output names useable GraphFunction
 
@@ -149,9 +166,9 @@ def validated_output(graph, tfobj_or_name):
     :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
     graph = validated_graph(graph)
-    return op_name(graph, tfobj_or_name)
+    return op_name(tfobj_or_name, graph)
 
-def validated_input(graph, tfobj_or_name):
+def validated_input(tfobj_or_name, graph):
     """
     Validate and return the input names useable GraphFunction
 
@@ -159,7 +176,7 @@ def validated_input(graph, tfobj_or_name):
     :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either
     """
     graph = validated_graph(graph)
-    name = op_name(graph, tfobj_or_name)
+    name = op_name(tfobj_or_name, graph)
     op = graph.get_operation_by_name(name)
     assert 'Placeholder' == op.type, \
         ('input must be Placeholder, but get', op.type)
@@ -186,7 +203,7 @@ def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
     gdef_frozen = tf.graph_util.convert_variables_to_constants(
         sess,
         graph.as_graph_def(add_shapes=True),
-        [op_name(graph, tnsr) for tnsr in fetches])
+        [op_name(tnsr, graph) for tnsr in fetches])
 
     if should_close_session:
         sess.close()
@@ -198,3 +215,9 @@ def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
         return g
     else:
         return gdef_frozen
+
+
+def _assert_same_graph(tfobj, graph):
+    if graph is not None and hasattr(tfobj, 'graph'):
+        err_msg = 'the graph of TensorFlow element {} != graph {}'
+        assert tfobj.graph == graph, err_msg.format(tfobj, graph)

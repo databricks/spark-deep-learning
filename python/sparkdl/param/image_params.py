@@ -107,7 +107,7 @@ class HasOutputMode(Params):
                        "How the output column should be formatted. 'vector' for a 1-d MLlib " +
                        "Vector of floats. 'image' to format the output to work with the image " +
                        "tools in this package.",
-                       typeConverter=SparkDLTypeConverters.supportedNameConverter(OUTPUT_MODES))
+                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(OUTPUT_MODES))
 
     def setOutputMode(self, value):
         return self._set(outputMode=value)

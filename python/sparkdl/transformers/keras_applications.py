@@ -173,4 +173,3 @@ KERAS_APPLICATION_MODELS = {
     "VGG16": VGG16Model,
     "VGG19": VGG19Model,
 }
-
