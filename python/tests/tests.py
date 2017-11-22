@@ -34,21 +34,32 @@ class PythonUnitTestCase(unittest.TestCase):
     # This class is created to avoid replicating this logic in various places.
     pass
 
-class SparkDLTestCase(unittest.TestCase):
 
+class TestSparkContext(object):
     @classmethod
-    def setUpClass(cls):
+    def setup_env(cls):
         cls.sc = SparkContext('local[*]', cls.__name__)
         cls.sql = SQLContext(cls.sc)
         cls.session = SparkSession.builder.getOrCreate()
 
     @classmethod
-    def tearDownClass(cls):
+    def tear_down_env(cls):
         cls.session.stop()
         cls.session = None
         cls.sc.stop()
         cls.sc = None
         cls.sql = None
+
+
+class SparkDLTestCase(TestSparkContext, unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.setup_env()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tear_down_env()
 
     def assertDfHasCols(self, df, cols = []):
         map(lambda c: self.assertIn(c, df.columns), cols)

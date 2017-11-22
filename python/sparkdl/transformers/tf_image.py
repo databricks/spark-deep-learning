@@ -30,7 +30,7 @@ import sparkdl.graph.utils as tfx
 
 __all__ = ['TFImageTransformer']
 
-IMAGE_INPUT_TENSOR_NAME = tfx.as_tensor_name(utils.IMAGE_INPUT_PLACEHOLDER_NAME)
+IMAGE_INPUT_TENSOR_NAME = tfx.tensor_name(utils.IMAGE_INPUT_PLACEHOLDER_NAME)
 USER_GRAPH_NAMESPACE = 'given'
 NEW_OUTPUT_PREFIX = 'sdl_flattened'
 
@@ -136,7 +136,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                       "__sdl_image_data")
             )
 
-            tfs_output_name = tfx.op_name(final_graph, output_tensor)
+            tfs_output_name = tfx.op_name(output_tensor, final_graph)
             original_output_name = self._getOriginalOutputTensorName()
             output_shape = final_graph.get_tensor_by_name(original_output_name).shape
             output_mode = self.getOrDefault(self.outputMode)
@@ -207,7 +207,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         return NEW_OUTPUT_PREFIX + '_' + self.getOutputTensor().name
 
     def _getFinalOutputOpName(self):
-        return tfx.as_op_name(self._getFinalOutputTensorName())
+        return tfx.op_name(self._getFinalOutputTensorName())
 
     def _convertOutputToImage(self, df, tfs_output_col, output_shape):
         assert len(output_shape) == 4, str(output_shape) + " does not have 4 dimensions"

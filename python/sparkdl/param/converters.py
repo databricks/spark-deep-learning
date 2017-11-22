@@ -30,6 +30,7 @@ import tensorflow as tf
 
 from pyspark.ml.param import TypeConverters
 
+from sparkdl.graph.input import *
 import sparkdl.utils.keras_model as kmutil
 
 __all__ = ['SparkDLTypeConverters']
@@ -51,6 +52,13 @@ class SparkDLTypeConverters(object):
         if not isinstance(value, tf.Graph):
             raise TypeError("Could not convert %s to tf.Graph" % type(value))
         return value
+
+    @staticmethod
+    def toTFInputGraph(value):
+        if isinstance(value, TFInputGraph):
+            return value
+        else:
+            raise TypeError("Could not convert %s to TFInputGraph" % type(value))
 
     @staticmethod
     def asColumnToTensorNameMap(value):
@@ -167,7 +175,14 @@ def _check_is_tensor_name(_maybe_tnsr_name):
         raise TypeError(err_msg.format(type(_maybe_tnsr_name)))
 
     # The check is taken from TensorFlow's NodeDef protocol buffer.
-    # https://github.com/tensorflow/tensorflow/blob/r1.3/tensorflow/core/framework/node_def.proto#L21-L25
+    #   Each input is "node:src_output" with "node" being a string name and
+    #   "src_output" indicating which output tensor to use from "node". If
+    #   "src_output" is 0 the ":0" suffix can be omitted.  Regular inputs
+    #   may optionally be followed by control inputs that have the format
+    #   "^node".
+    # Reference:
+    #    https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/node_def.proto
+    #    https://stackoverflow.com/questions/36150834/how-does-tensorflow-name-tensors
     try:
         _, src_idx = _maybe_tnsr_name.split(":")
         _ = int(src_idx)

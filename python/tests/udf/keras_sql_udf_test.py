@@ -66,7 +66,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             makeGraphUDF(issn.graph,
                          'my_keras_model_udf',
                          model.outputs,
-                         {tfx.op_name(issn.graph, model.inputs[0]): 'image_col'})
+                         {tfx.op_name(model.inputs[0], issn.graph): 'image_col'})
             # Run the training procedure
             # Export the graph in this IsolatedSession as a GraphFunction
             # gfn = issn.asGraphFunction(model.inputs, model.outputs)
@@ -168,4 +168,3 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         data2 = df2.collect()
         assert len(data2) == 5, data2
         assert data2[0].z == 3.0, data2
-

@@ -19,9 +19,11 @@ private APIs.
 """
 import textwrap
 from functools import wraps
+import six
 
 from pyspark.ml.param import Param, Params, TypeConverters
 
+from sparkdl.graph.input import TFInputGraph
 from sparkdl.param.converters import SparkDLTypeConverters
 
 ########################################################
@@ -196,8 +198,9 @@ class HasOutputMapping(Params):
     """
     Mixin for param outputMapping: ordered list of ('outputTensorOpName', 'outputColName') pairs
     """
-    outputMapping = Param(Params._dummy(), "outputMapping",
-                          "Mapping output :class:`tf.Operation` names to DataFrame column names",
+    outputMapping = Param(Params._dummy(),
+                          "outputMapping",
+                          "Mapping output :class:`tf.Tensor` names to DataFrame column names",
                           typeConverter=SparkDLTypeConverters.asTensorNameToColumnMap)
 
     def setOutputMapping(self, value):
@@ -211,8 +214,9 @@ class HasInputMapping(Params):
     """
     Mixin for param inputMapping: ordered list of ('inputColName', 'inputTensorOpName') pairs
     """
-    inputMapping = Param(Params._dummy(), "inputMapping",
-                         "Mapping input DataFrame column names to :class:`tf.Operation` names",
+    inputMapping = Param(Params._dummy(),
+                         "inputMapping",
+                         "Mapping input DataFrame column names to :class:`tf.Tensor` names",
                          typeConverter=SparkDLTypeConverters.asColumnToTensorNameMap)
 
     def setInputMapping(self, value):
@@ -220,6 +224,26 @@ class HasInputMapping(Params):
 
     def getInputMapping(self):
         return self.getOrDefault(self.inputMapping)
+
+
+class HasTFInputGraph(Params):
+    """
+    Mixin for param tfInputGraph: a serializable object derived from a TensorFlow computation graph.
+    """
+    tfInputGraph = Param(Params._dummy(),
+                         "tfInputGraph",
+                         "A serializable object derived from a TensorFlow computation graph",
+                         typeConverter=SparkDLTypeConverters.toTFInputGraph)
+
+    def __init__(self):
+        super(HasTFInputGraph, self).__init__()
+        self._setDefault(tfInputGraph=None)
+
+    def setTFInputGraph(self, value):
+        return self._set(tfInputGraph=value)
+
+    def getTFInputGraph(self):
+        return self.getOrDefault(self.tfInputGraph)
 
 
 class HasTFHParams(Params):

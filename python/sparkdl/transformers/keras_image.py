@@ -76,14 +76,14 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
         return transformer.transform(image_df).drop(self._loadedImageCol())
 
     def _loadTFGraph(self):
-        with KSessionWrap() as (sess, g):
+        with KSessionWrap() as (sess, graph):
             assert K.backend() == "tensorflow", \
                 "Keras backend is not tensorflow but KerasImageTransformer only supports " + \
                 "tensorflow-backed Keras models."
-            with g.as_default():
+            with graph.as_default():
                 K.set_learning_phase(0)  # Testing phase
                 model = load_model(self.getModelFile())
-                out_op_name = tfx.op_name(g, model.output)
+                out_op_name = tfx.op_name(model.output, graph)
                 self._inputTensor = model.input.name
                 self._outputTensor = model.output.name
-                return tfx.strip_and_freeze_until([out_op_name], g, sess, return_graph=True)
+                return tfx.strip_and_freeze_until([out_op_name], graph, sess, return_graph=True)
