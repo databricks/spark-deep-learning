@@ -293,7 +293,7 @@ def _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key, feed_nam
     :param fetch_names: list, names of the output tensors.
     """
     assert (feed_names is None) == (fetch_names is None), \
-        'feed_names and fetch_names, if provided must appear together'
+        'feed_names and fetch_names, if provided must be both non-None.'
     assert (feed_names is None) != (signature_def_key is None), \
         'must either provide feed_names or singnature_def_key'
 
