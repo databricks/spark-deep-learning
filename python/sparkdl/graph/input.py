@@ -38,7 +38,7 @@ class TFInputGraph(object):
               - :py:meth:`fromSavedModelWithSignature`
 
 
-    When the graph contains serving signatures in which a set of well-known names are associtated
+    When the graph contains serving signatures in which a set of well-known names are associated
     with their corresponding raw tensor names in the graph, we extract and store them here.
     For example, the TensorFlow saved model may contain the following structure,
     so that end users can retrieve the the input tensor via `well_known_input_sig` and
@@ -174,9 +174,8 @@ class TFInputGraph(object):
         graph = tf.Graph()
         with tf.Session(graph=graph) as sess:
             tf.import_graph_def(graph_def, name='')
-            gin = _build_with_feeds_fetches(sess=sess, graph=graph, feed_names=feed_names,
-                                            fetch_names=fetch_names)
-        return gin
+            return _build_with_feeds_fetches(sess=sess, graph=graph, feed_names=feed_names,
+                                             fetch_names=fetch_names)
 
     @classmethod
     def fromCheckpoint(cls, checkpoint_dir, feed_names, fetch_names):
@@ -277,12 +276,10 @@ def _from_checkpoint_impl(checkpoint_dir, signature_def_key, feed_names, fetch_n
 
         if signature_def_key is not None:
             sig_def = meta_graph_def.signature_def[signature_def_key]
-            gin = _build_with_sig_def(sess=sess, graph=graph, sig_def=sig_def)
+            return _build_with_sig_def(sess=sess, graph=graph, sig_def=sig_def)
         else:
-            gin = _build_with_feeds_fetches(sess=sess, graph=graph, feed_names=feed_names,
-                                            fetch_names=fetch_names)
-    return gin
-
+            return _build_with_feeds_fetches(sess=sess, graph=graph, feed_names=feed_names,
+                                             fetch_names=fetch_names)
 
 def _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key, feed_names, fetch_names):
     """
@@ -308,11 +305,10 @@ def _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key, feed_nam
         if signature_def_key is not None:
             sig_def = tf.contrib.saved_model.get_signature_def_by_key(meta_graph_def,
                                                                       signature_def_key)
-            gin = _build_with_sig_def(sess=sess, graph=graph, sig_def=sig_def)
+            return _build_with_sig_def(sess=sess, graph=graph, sig_def=sig_def)
         else:
-            gin = _build_with_feeds_fetches(sess=sess, graph=graph, feed_names=feed_names,
-                                            fetch_names=fetch_names)
-    return gin
+            return _build_with_feeds_fetches(sess=sess, graph=graph, feed_names=feed_names,
+                                             fetch_names=fetch_names)
 
 
 def _build_with_sig_def(sess, graph, sig_def):
@@ -327,7 +323,6 @@ def _build_with_sig_def(sess, graph, sig_def):
             feed_mapping[sigdef_key] = tnsr_name
             feed_names.append(tnsr_name)
 
-        # TODO: IN-THIS-PR, test if these mappings are constructed correctly.
         fetch_mapping = {}
         fetch_names = []
         for sigdef_key, tnsr_info in sig_def.outputs.items():
