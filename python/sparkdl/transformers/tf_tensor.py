@@ -22,9 +22,8 @@ import tensorframes as tfs
 from pyspark.ml import Transformer
 
 import sparkdl.graph.utils as tfx
-from sparkdl.graph.input import TFInputGraph
-from sparkdl.param import (keyword_only, SparkDLTypeConverters, HasInputMapping,
-                           HasOutputMapping, HasTFInputGraph, HasTFHParams)
+from sparkdl.param import (keyword_only, HasInputMapping, HasOutputMapping,
+                           HasTFInputGraph, HasTFHParams)
 
 __all__ = ['TFTransformer']
 
@@ -37,9 +36,10 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
     Restrictions of the current API:
 
     We assume that
-    - All graphs have a "minibatch" dimension (i.e. an unknown leading
+    - All the inputs of the graphs have a "minibatch" dimension (i.e. an unknown leading
       dimension) in the tensor shapes.
     - Input DataFrame has an array column where all elements have the same length
+    - The transformer is expected to work on blocks of data at the same time.
     """
 
     @keyword_only
@@ -73,6 +73,8 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         opt_gdef = infr_opt.optimize_for_inference(gin.graph_def,
                                                    input_node_names,
                                                    output_node_names,
+                                                   # TODO: below is the place to change for
+                                                   #       the `float64` data type issue.
                                                    tf.float64.as_datatype_enum)
         return opt_gdef
 

@@ -85,6 +85,7 @@ def _build_local_features():
     """
     # Build local features and DataFrame from it
     local_features = []
+    np.random.seed(997)
     for idx in range(100):
         _dict = {'idx': idx}
         for colname, _ in _input_mapping.items():

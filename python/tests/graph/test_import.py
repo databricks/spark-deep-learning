@@ -53,6 +53,34 @@ class TestGraphImport(object):
             gin = _build_graph_input(gin_fun)
             _check_input_novar(gin)
 
+    def test_saved_model_iomap(self):
+        with _make_temp_directory() as tmp_dir:
+            saved_model_dir = os.path.join(tmp_dir, 'saved_model')
+            graph = tf.Graph()
+            with tf.Session(graph=graph) as sess, graph.as_default():
+                _build_graph()
+                _build_saved_model(sess, saved_model_dir)
+                # Build the transformer from exported serving model
+                # We are using signatures, thus must provide the keys
+                gin = TFInputGraph.fromSavedModelWithSignature(saved_model_dir, _serving_tag,
+                                                               _serving_sigdef_key)
+
+                _input_mapping_with_sigdef = {'inputCol': _tensor_input_signature}
+                # Input mapping for the Transformer
+                _translated_input_mapping = gin.translateInputMapping(_input_mapping_with_sigdef)
+                _expected_input_mapping = {'inputCol': tfx.tensor_name(_tensor_input_name)}
+                # Output mapping for the Transformer
+                _output_mapping_with_sigdef = {_tensor_output_signature: 'outputCol'}
+                _translated_output_mapping = gin.translateOutputMapping(_output_mapping_with_sigdef)
+                _expected_output_mapping = {tfx.tensor_name(_tensor_output_name): 'outputCol'}
+
+                err_msg = "signature based input mapping {} and output mapping {} " + \
+                          "must be translated correctly into tensor name based mappings"
+                assert _translated_input_mapping == _expected_input_mapping \
+                    and _translated_output_mapping == _expected_output_mapping, \
+                    err_msg.format(_translated_input_mapping, _translated_output_mapping)
+
+
     def test_saved_graph_novar(self):
         with _make_temp_directory() as tmp_dir:
             saved_model_dir = os.path.join(tmp_dir, 'saved_model')
@@ -118,6 +146,10 @@ _tensor_input_name = "input_tensor"
 _tensor_input_name_2 = "input_tensor_2"
 # The name of the output tensor (scalar)
 _tensor_output_name = "output_tensor"
+# Input signature name
+_tensor_input_signature = 'well_known_input_sig'
+# Output signature name
+_tensor_output_signature = 'well_known_output_sig'
 # The name of the variable
 _tensor_var_name = "variable"
 # The size of the input tensor
@@ -135,8 +167,8 @@ def _build_checkpointed_model(session, tmp_dir):
     w = tfx.get_tensor(_tensor_var_name, session.graph)
     saver = tf.train.Saver(var_list=[w])
     _ = saver.save(session, ckpt_path_prefix, global_step=2702)
-    sig_inputs = {'input_sig': tf.saved_model.utils.build_tensor_info(input_tensor)}
-    sig_outputs = {'output_sig': tf.saved_model.utils.build_tensor_info(output_tensor)}
+    sig_inputs = {_tensor_input_signature: tf.saved_model.utils.build_tensor_info(input_tensor)}
+    sig_outputs = {_tensor_output_signature: tf.saved_model.utils.build_tensor_info(output_tensor)}
     serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
         inputs=sig_inputs, outputs=sig_outputs)
 
@@ -163,8 +195,8 @@ def _build_saved_model(session, saved_model_dir):
     builder = tf.saved_model.builder.SavedModelBuilder(saved_model_dir)
     input_tensor = tfx.get_tensor(_tensor_input_name, session.graph)
     output_tensor = tfx.get_tensor(_tensor_output_name, session.graph)
-    sig_inputs = {'input_sig': tf.saved_model.utils.build_tensor_info(input_tensor)}
-    sig_outputs = {'output_sig': tf.saved_model.utils.build_tensor_info(output_tensor)}
+    sig_inputs = {_tensor_input_signature: tf.saved_model.utils.build_tensor_info(input_tensor)}
+    sig_outputs = {_tensor_output_signature: tf.saved_model.utils.build_tensor_info(output_tensor)}
     serving_sigdef = tf.saved_model.signature_def_utils.build_signature_def(
         inputs=sig_inputs, outputs=sig_outputs)
 
