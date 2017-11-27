@@ -13,14 +13,18 @@
 # limitations under the License.
 #
 from sparkdl.param import keyword_only, HasKerasModel, HasInputCol, HasOutputCol
+from tf_tensor import TFTransformer
+from sparkdl.transformers.keras_utils import KSessionWrap
+from sparkdl.graph.input import TFInputGraph
 
-class KerasVectorTransformer(HasInputCol, HasOutputCol, HasKerasModel):
+
+class KerasTransformer(HasInputCol, HasOutputCol, HasKerasModel):
     """
     Applies the Tensorflow-backed Keras model (specified by a file name) to
-    a column of vectors in a DataFrame.
+    a column of arrays in a DataFrame.
 
     Restrictions of the current API:
-      * see TFTransformer. TODO(sid): See TFTransformer?
+      * See TFTransformer
       * Only supports Tensorflow-backed Keras models (no Theano).
     """
     @keyword_only
@@ -28,7 +32,7 @@ class KerasVectorTransformer(HasInputCol, HasOutputCol, HasKerasModel):
         """
         __init__(self, inputCol=None, outputCol=None, modelFile=None)
         """
-        super(KerasVectorTransformer, self).__init__()
+        super(KerasTransformer, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
 
@@ -41,11 +45,17 @@ class KerasVectorTransformer(HasInputCol, HasOutputCol, HasKerasModel):
         self._set(**kwargs)
         return self
 
-
-    def transform(self, dataframe):
+    def _transform(self, dataset):
         """ TODO(sid) actually add implementation here. """
-        graph = self._loadTFGraph()
-        transformer = TFTransformer(graph=graph)
-        return transformer.transform(dataframe)
-
-
+        # Load Keras model as a TF graph from disk. Note that _loadGraph also
+        # sets the _inputTensor and _outputTensor members to the names of the input/output
+        # tensors of the loaded model
+        with KSessionWrap() as (sess, keras_graph):
+            tfGraph = self._loadTFGraph(sess=sess, graph=keras_graph)
+            inputGraph = TFInputGraph.fromGraph(graph=inputGraph, sess=sess,
+                                                feed_names=[self._inputTensor],
+                                                fetch_names=[self._outputTensor])
+        transformer = TFTransformer(graph=graph,
+                                    inputMapping={self._inputTensor: self.getInputCol()},
+                                    outputMapping={self._outputTensor: self.getOutputCol()})
+        return transformer.transform(dataset)

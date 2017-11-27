@@ -21,10 +21,15 @@ import textwrap
 from functools import wraps
 import six
 
+from keras.models import load_model
+import keras.backend as K
+import sparkdl.graph.utils as tfx
+
 from pyspark.ml.param import Param, Params, TypeConverters
 
 from sparkdl.graph.input import TFInputGraph
 from sparkdl.param.converters import SparkDLTypeConverters
+
 
 ########################################################
 # Copied from PySpark for backward compatibility.
@@ -137,6 +142,7 @@ class HasLabelCol(Params):
 class HasKerasModel(Params):
     """
     This parameter allows users to provide Keras model file
+    TODO(sid): Move Keras mixins to own file, e.g. param/keras_params.py?
     """
     # TODO: add an option to allow user to use Keras Model object
     modelFile = Param(Params._dummy(), "modelFile",
@@ -162,21 +168,21 @@ class HasKerasModel(Params):
     def getKerasFitParams(self):
         return self.getOrDefault(self.kerasFitParams)
 
-    def _loadTFGraph(self):
+    def _loadTFGraph(self, sess, graph):
         """
-        TODO(sid) should this go here?
+        TODO(sid) should this method be in shared_params.py? probably not...
         """
-        with KSessionWrap() as (sess, g):
-            assert K.backend() == "tensorflow", \
-                "Keras backend is not tensorflow but KerasImageTransformer only supports " + \
-                "tensorflow-backed Keras models."
-            with g.as_default():
-                K.set_learning_phase(0)  # Testing phase
-                model = load_model(self.getModelFile())
-                out_op_name = tfx.op_name(g, model.output)
-                self._inputTensor = model.input.name
-                self._outputTensor = model.output.name
-                return tfx.strip_and_freeze_until([out_op_name], g, sess, return_graph=True)
+        keras_backend = K.backend()
+        assert keras_backend == "tensorflow", \
+            "Only tensorflow-backed Keras models are supported, tried to load Keras model " \
+            "with backend %s."%(keras_backend)
+        with graph.as_default():
+            K.set_learning_phase(0)  # Testing phase
+            model = load_model(self.getModelFile())
+            out_op_name = tfx.op_name(g, model.output)
+            self._inputTensor = model.input.name
+            self._outputTensor = model.output.name
+            return tfx.strip_and_freeze_until([out_op_name], g, sess, return_graph=True)
 
 
 class HasKerasOptimizer(Params):
