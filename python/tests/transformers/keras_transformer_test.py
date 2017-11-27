@@ -22,32 +22,44 @@ from . import one_dim_utils
 
 class KerasTransformerTest(SparkDLTestCase, ImdbDatasetOutputComparisonTestCase):
 
+    def getInputData(self):
+        pass
+
+    def prepareKerasModelFile(self, filename):
+        pass
 
     def test_imdb_model_vs_keras(self):
         input_col = "features"
         output_col = "preds"
+        id_col = "id"
 
-        # TODO: Figure out which model to test against
+        # TODO(sid): add back
         model_path = one_dim_utils.prepImdbKerasModelFile("imdb_model.h5")
+        # model_path = self.prepareKerasModelFile("keras_transformer_test_model.h5")
+
         transformer = KerasTransformer(inputCol=input_col, outputCol=output_col,
                                        modelFile=model_path)
 
         # Load dataset, transform it with transformer
-        df = one_dim_utils.getSampleImagePathsDF(self.sql, input_col)
+        df, _ = self.getImdbDataframes(self.sql, inputCol=input_col, idCol=id_col)
+        # TODO(sid) add back
+        # df = self.getInputData()
+
         final_df = transformer.transform(df)
 
         # Verify that result DF has the specified input & output columns
-        self.assertDfHasCols(final_df, [input_col, output_col])
-        self.assertEqual(len(final_df.columns), 2)
+        self.assertDfHasCols(final_df, [input_col, output_col, id_col])
+        self.assertEqual(len(final_df.columns), 3)
 
         # Compare transformer output to keras model output
         collected = final_df.collect()
         sparkdl_predictions = self.transformOutputToComparables(collected, input_col, output_col)
-        keras_predictions = one_dim_utils.executeKerasImdb(seq_df=df, seq_col=input_col)
+        keras_predictions = one_dim_utils.executeKerasImdb(seq_df=df, model_path=model_path,
+                                                           seq_col=input_col, id_col=id_col)
 
         max_pred_diff = np.max(np.abs(sparkdl_predictions - keras_predictions))
         # Maximum acceptable (absolute) difference in KerasTransformer & Keras model output
         diff_tolerance = 1e-5
-        assert(np.allclose(sparkdl_predictions, keras_predictions, atol=diff_tolerance),
-               "KerasTransformer output differed (absolute difference) from Keras model output by "
-               "as much as %s, maximum allowed deviation = %s"%(max_pred_diff, diff_tolerance))
+        assert np.allclose(sparkdl_predictions, keras_predictions, atol=diff_tolerance), "" \
+            "KerasTransformer output differed (absolute difference) from Keras model output by "\
+            "as much as %s, maximum allowed deviation = %s"%(max_pred_diff, diff_tolerance)

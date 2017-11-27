@@ -13,12 +13,15 @@
 # limitations under the License.
 #
 from sparkdl.param import keyword_only, HasKerasModel, HasInputCol, HasOutputCol
-from tf_tensor import TFTransformer
+
+from pyspark.ml import Transformer
+
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.graph.input import TFInputGraph
+from .tf_tensor import TFTransformer
 
 
-class KerasTransformer(HasInputCol, HasOutputCol, HasKerasModel):
+class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
     """
     Applies the Tensorflow-backed Keras model (specified by a file name) to
     a column of arrays in a DataFrame.
@@ -52,10 +55,10 @@ class KerasTransformer(HasInputCol, HasOutputCol, HasKerasModel):
         # tensors of the loaded model
         with KSessionWrap() as (sess, keras_graph):
             tfGraph = self._loadTFGraph(sess=sess, graph=keras_graph)
-            inputGraph = TFInputGraph.fromGraph(graph=inputGraph, sess=sess,
+            inputGraph = TFInputGraph.fromGraph(graph=tfGraph, sess=sess,
                                                 feed_names=[self._inputTensor],
                                                 fetch_names=[self._outputTensor])
-        transformer = TFTransformer(graph=graph,
-                                    inputMapping={self._inputTensor: self.getInputCol()},
-                                    outputMapping={self._outputTensor: self.getOutputCol()})
+        transformer = TFTransformer(tfInputGraph=inputGraph,
+                                    inputMapping={self.getInputCol() : self._inputTensor},
+                                    outputMapping={self._outputTensor : self.getOutputCol()})
         return transformer.transform(dataset)

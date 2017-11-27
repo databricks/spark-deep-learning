@@ -21,12 +21,12 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 import org.apache.spark.annotation.DeveloperApi
-import org.apache.spark.ml.linalg.{DenseVector, SQLDataTypes, Vector}
+import org.apache.spark.ml.linalg.{DenseVector, Vector}
 import org.apache.spark.sql.{Column, SQLContext}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.sparkdl_stubs.{PipelinedUDF, UDFUtils}
-import org.apache.spark.sql.types.{ArrayType, DoubleType, FloatType, SQLUserDefinedType}
+import org.apache.spark.sql.types.{ArrayType, DoubleType, FloatType}
 
 /**
  * This file contains some interfaces with the JVM runtime: theses functions create UDFs and
@@ -80,8 +80,6 @@ object Conversions {
 
   private def doubleArrayToVector(x: Array[Double]): Vector = { new DenseVector(x) }
 
-  private def vectorToDoubleArray(vec: Vector): Array[Double] = { vec.toArray }
-
   private def fromFloatArray(x: Array[Float]): Array[Double] = {
     val res = Array.ofDim[Double](x.length)
     var idx = 0
@@ -90,15 +88,6 @@ object Conversions {
       idx += 1
     }
     res
-  }
-
-  /** Convert a column of vector values to a column of array values. */
-  def vectorColToArrayCol(col: Column): Column = {
-    col.expr.dataType match {
-      case SQLDataTypes.VectorType =>
-        val f = udf(vectorToDoubleArray _)
-        f(col)
-    }
   }
 
   def convertToVector(col: Column): Column = {

@@ -6,13 +6,23 @@ Utility methods for working with Keras & Tensorflow models that operate on 1D in
 
 """
 
-import numpy as np
+import os
+import tempfile
+import unittest
+
 from keras.models import load_model
+from keras.preprocessing import sequence
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation
+from keras.layers import Embedding
+from keras.layers import Conv1D, GlobalMaxPooling1D
+from keras.datasets import imdb
+import numpy as np
 
 # Methods for getting some test data to work with.
 
 
-def executeKerasImdb(seq_df, model_file, seq_col="inputCol", id_col="id"):
+def executeKerasImdb(seq_df, model_path, seq_col, id_col):
     """
     Apply Keras IMDB sequence-classification model on input DataFrame (without using DLP APIs)
     :param seq_df: Dataset. contains a column (seq_col) of tokenized sequences.
@@ -20,7 +30,7 @@ def executeKerasImdb(seq_df, model_file, seq_col="inputCol", id_col="id"):
     :return: numpy array of predictions, sorted by row ID
     """
     # Load keras model from disk
-    model = load_model(model_file)
+    model = load_model(model_path)
     # Collect dataframe, sort rows by ID column
     rows = seq_df.select(seq_col).collect()
     rows.sort(key=lambda row: row[id_col])
@@ -37,6 +47,14 @@ def getImdbKerasModel():
     NOTE: The returned model may have different (randomly-initialized) weights each time this method
     is called.
     """
+    # set parameters:
+    max_features = 5000
+    maxlen = 400
+    embedding_dims = 50
+    filters = 250
+    kernel_size = 3
+    hidden_dims = 250
+
     model = Sequential()
     # we start off with an efficient embedding layer which maps
     # our vocab indices into embedding_dims dimensions
@@ -83,14 +101,19 @@ class ImdbDatasetOutputComparisonTestCase(unittest.TestCase):
     Methods for making comparisons between outputs of using different frameworks.
     For IMDB text dataset.
     """
-    def loadOneDimInputData(self, max_features=5000, maxlen=400):
+    def _getImdbPath(self):
+        curr_dir = os.path.dirname(__file__)
+        return os.path.join(curr_dir, "../resources/imdb.npz")
+
+    def _loadData(self, max_features=5000, maxlen=400):
         """
         Load IMDB text-classification dataset, returning a tuple of tuples
         ((x_train, y_train), (x_test, y_test))
         Code from https://github.com/fchollet/keras/blob/master/examples/imdb_cnn.py
         """
-        print('Loading data...')
-        (x_train, y_train), (x_test, y_test) = imdb.load_data(num_words=max_features)
+        print('Loading data from %s'%self._getImdbPath())
+        (x_train, y_train), (x_test, y_test) = imdb.load_data(path=self._getImdbPath(),
+                                                              num_words=max_features)
         print(len(x_train), 'train sequences')
         print(len(x_test), 'test sequences')
 
@@ -99,13 +122,14 @@ class ImdbDatasetOutputComparisonTestCase(unittest.TestCase):
         x_test = sequence.pad_sequences(x_test, maxlen=maxlen)
         return ((x_train, y_train), (x_test, y_test))
 
-    def getImdbDataframes(self, sqlContext):
-        ((x_train, y_train), (x_test, y_test)) = self.loadOneDimInputData()
-        train_rows = [{'id' : i, 'features' : x_train[i], 'label' : y_train[i]} for i in range(len(x_train))]
-        test_rows = [{'id' : i, 'features' : x_test[i], 'label' : y_test[i]} for i in range(len(x_test))]
+    def getImdbDataframes(self, sqlContext, inputCol, idCol):
+        # TODO(sid): Remove unencessary cols like label here
+        ((x_train, _), (x_test, _)) = self._loadData()
+        train_rows = [{idCol : i, inputCol : x_train[i].tolist()} for i in range(len(x_train))]
+        test_rows = [{idCol : i, inputCol : x_test[i].tolist()} for i in range(len(x_test))]
         train_df = sqlContext.createDataFrame(train_rows)
         test_df = sqlContext.createDataFrame(test_rows)
-        return (train_df, test_df)
+        return train_df, test_df
 
     def transformOutputToComparables(self, collected, id_col, output_col):
         """
