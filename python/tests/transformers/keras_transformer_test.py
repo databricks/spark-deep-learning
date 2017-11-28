@@ -13,38 +13,86 @@
 # limitations under the License.
 #
 import numpy as np
+import os
+import tempfile
+
+from keras.models import Sequential
+from keras.layers import Dense, Activation
 
 from sparkdl.transformers.keras_transformer import KerasTransformer
 from ..tests import SparkDLTestCase
-from .one_dim_utils import ImdbDatasetOutputComparisonTestCase
-from . import one_dim_utils
 
+class KerasTransformerTest(SparkDLTestCase):
 
-class KerasTransformerTest(SparkDLTestCase, ImdbDatasetOutputComparisonTestCase):
+    def _loadNumpyData(self, num_examples, num_features):
+        """
+        Construct and return a 2D numpy array of shape (num_examples, num_features) corresponding
+        to one-dimensional input data.
+        """
+        local_features = []
+        np.random.seed(997)
+        return np.random.randn(num_examples, num_features)
 
-    def getInputData(self):
-        pass
+    def getInputDF(self, sqlContext, inputCol, idCol):
+        """
+        Return a DataFrame containing an integer ID column and an input column of arrays.
+        :param inputCol: Input column name
+        :param idCol: ID column name
+        """
+        x_train = self._loadNumpyData(num_examples=2, num_features=10)
+        train_rows = [{idCol : i, inputCol : x_train[i].tolist()} for i in range(len(x_train))]
+        return sqlContext.createDataFrame(train_rows)
+
+    def getKerasModel(self):
+        """ Build and return keras model for (binary) classification on one-dimensional data. """
+        model = Sequential()
+
+        # We add a vanilla hidden layer:
+        model.add(Dense(units=50, input_shape=(10, )))
+        model.add(Activation('relu'))
+
+        # We project onto a single unit output layer, and squash it with a sigmoid:
+        model.add(Dense(1))
+        model.add(Activation('sigmoid'))
+        return model
 
     def prepareKerasModelFile(self, filename):
-        pass
+        model = self.getKerasModel()
+        model_dir_tmp = tempfile.mkdtemp("sparkdl_keras_tests", dir="/tmp")
+        path = os.path.join(model_dir_tmp, filename)
+        model.save(path)
+        return (model, path)
+
+    def executeKerasModel(self, df, model, input_col, id_col):
+        # Collect dataframe, sort rows by ID column
+        rows = df.select(input_col, id_col).collect()
+        rows.sort(key=lambda row: row[id_col])
+        # Get numpy array (num_examples, num_features) containing input data
+        x_predict = np.array([row[input_col] for row in rows])
+        return model.predict(x_predict)
+
+    def transformOutputToComparables(self, collected, id_col, output_col):
+        """
+        Returns a list of model predictions ordered by row ID
+        params:
+        :param collected: Output (DataFrame) of KerasTransformer.transform()
+        :param id_col: Column containing row ID
+        :param output_col: Column containing transform() output
+        """
+        collected.sort(key=lambda row: row[id_col])
+        return [row[output_col][0] for row in collected]
 
     def test_imdb_model_vs_keras(self):
         input_col = "features"
         output_col = "preds"
         id_col = "id"
 
-        # TODO(sid): add back
-        model_path = one_dim_utils.prepImdbKerasModelFile("imdb_model.h5")
-        # model_path = self.prepareKerasModelFile("keras_transformer_test_model.h5")
-
+        model, model_path = self.prepareKerasModelFile("keras_transformer_test_model.h5")
         transformer = KerasTransformer(inputCol=input_col, outputCol=output_col,
                                        modelFile=model_path)
 
         # Load dataset, transform it with transformer
-        df, _ = self.getImdbDataframes(self.sql, inputCol=input_col, idCol=id_col)
-        # TODO(sid) add back
-        # df = self.getInputData()
-
+        df = self.getInputDF(self.sql, inputCol=input_col, idCol=id_col)
         final_df = transformer.transform(df)
 
         # Verify that result DF has the specified input & output columns
@@ -53,9 +101,10 @@ class KerasTransformerTest(SparkDLTestCase, ImdbDatasetOutputComparisonTestCase)
 
         # Compare transformer output to keras model output
         collected = final_df.collect()
-        sparkdl_predictions = self.transformOutputToComparables(collected, input_col, output_col)
-        keras_predictions = one_dim_utils.executeKerasImdb(seq_df=df, model_path=model_path,
-                                                           seq_col=input_col, id_col=id_col)
+        sparkdl_predictions = self.transformOutputToComparables(collected, id_col, output_col)
+        keras_predictions_raw = self.executeKerasModel(df=df, model=model,
+                                                   input_col=input_col, id_col=id_col)
+        keras_predictions = keras_predictions_raw.reshape((len(keras_predictions_raw),))
 
         max_pred_diff = np.max(np.abs(sparkdl_predictions - keras_predictions))
         # Maximum acceptable (absolute) difference in KerasTransformer & Keras model output
