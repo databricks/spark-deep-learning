@@ -12,12 +12,15 @@ Deep Learning Pipelines provides high-level APIs for scalable deep learning in P
 - [Overview](#overview)
 - [Building and running unit tests](#building-and-running-unit-tests)
 - [Spark version compatibility](#spark-version-compatibility)
+- [Support](#support)
 - [Quick user guide](#quick-user-guide)
   - [Working with images in Spark](#working-with-images-in-spark)
   - [Transfer learning](#transfer-learning)
   - [Applying deep learning models at scale](#applying-deep-learning-models-at-scale)
   - [Deploying models as SQL functions](#deploying-models-as-sql-functions)
 - [Releases](#releases)
+- [License](#license)
+
 
 ## Overview
 
@@ -54,6 +57,13 @@ sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.1.1-bin-hadoop2.7 PYSPARK_PYTHON=pyth
 ## Spark version compatibility
 
 Spark 2.1.1 and Python 2.7 are recommended.
+
+
+## Support
+
+You can ask questions and join the development discussion on the [DL Pipelines Google group](https://groups.google.com/forum/#!forum/dl-pipelines-users/).
+
+You can also post bug reports and feature requests in Github issues.
 
 
 ## Quick user guide
@@ -241,9 +251,14 @@ registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"),
 
 ```
 
-## Releases:
+## Releases
 - 0.1.0 Alpha release
 - 0.2.0 release:
     1. KerasImageFileEstimator API (train a Keras model on image files)
     2. SQL UDF support for Keras models
     3. Added Xception, Resnet50 models to DeepImageFeaturizer/DeepImagePredictor.
+
+
+## License
+* The Deep Learning Pipelines source code is released under the Apache License 2.0 (see the LICENSE file).
+* The various models provided via `DeepImageFeaturizer` and `DeepImagePredictor` come from Keras; see the [Keras applications page](https://keras.io/applications/) for the individual model licensing information.
