@@ -179,6 +179,7 @@ class HasKerasModel(Params):
             "Only tensorflow-backed Keras models are supported, tried to load Keras model " \
             "with backend %s."%(keras_backend)
         with graph.as_default():
+            K.set_learning_phase(0)  # Testing phase
             model = load_model(self.getModelFile())
             out_op_name = tfx.op_name(model.output, graph)
             self._inputTensor = model.input.name
