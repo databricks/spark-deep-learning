@@ -49,7 +49,6 @@ class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
         return self
 
     def _transform(self, dataset):
-        """ TODO(sid) actually add implementation here. """
         # Load Keras model as a TF graph from disk. Note that _loadGraph also
         # sets the _inputTensor and _outputTensor members to the names of the input/output
         # tensors of the loaded model
@@ -58,7 +57,8 @@ class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
             inputGraph = TFInputGraph.fromGraph(graph=tfGraph, sess=sess,
                                                 feed_names=[self._inputTensor],
                                                 fetch_names=[self._outputTensor])
+        # Create TFTransformer & use it to apply the loaded Keras model graph to our dataset
         transformer = TFTransformer(tfInputGraph=inputGraph,
                                     inputMapping={self.getInputCol() : self._inputTensor},
-                                    outputMapping={self._outputTensor : self.getOutputCol()})
+                                    outputMapping={self._outputTensor: self.getOutputCol()})
         return transformer.transform(dataset)

@@ -142,7 +142,6 @@ class HasLabelCol(Params):
 class HasKerasModel(Params):
     """
     This parameter allows users to provide Keras model file
-    TODO(sid): Move Keras mixins to own file, e.g. param/keras_params.py?
     """
     # TODO: add an option to allow user to use Keras Model object
     modelFile = Param(Params._dummy(), "modelFile",
@@ -170,14 +169,16 @@ class HasKerasModel(Params):
 
     def _loadTFGraph(self, sess, graph):
         """
-        TODO(sid) should this method be in shared_params.py? probably not...
+        Loads the Keras model into memory, then uses the passed-in session to load the
+        model's inference-related ops into the passed-in Tensorflow graph.
+
+        :return: A TF graph corresponding to the Keras model's inference subgraph.
         """
         keras_backend = K.backend()
         assert keras_backend == "tensorflow", \
             "Only tensorflow-backed Keras models are supported, tried to load Keras model " \
             "with backend %s."%(keras_backend)
         with graph.as_default():
-            K.set_learning_phase(0)  # Testing phase
             model = load_model(self.getModelFile())
             out_op_name = tfx.op_name(model.output, graph)
             self._inputTensor = model.input.name

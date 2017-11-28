@@ -13,7 +13,10 @@
 # limitations under the License.
 #
 
+import shutil
 import sys
+import tempfile
+
 import sparkdl
 
 if sys.version_info[:2] <= (2, 6):
@@ -56,10 +59,12 @@ class SparkDLTestCase(TestSparkContext, unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.setup_env()
+        cls.tempdir = tempfile.mkdtemp("sparkdl_tests", dir="/tmp")
 
     @classmethod
     def tearDownClass(cls):
         cls.tear_down_env()
+        shutil.rmtree(cls.tempdir)
 
     def assertDfHasCols(self, df, cols = []):
         map(lambda c: self.assertIn(c, df.columns), cols)

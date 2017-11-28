@@ -62,48 +62,47 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         # Further conanonicalization, e.g. converting dict to sorted str pairs happens here
         return self._set(**kwargs)
 
-
-    def _getPlaceholderName(self, tensor_name):
-        base_tensor_name = tensor_name.split(":")[0]
-        return "sparkdl/placeholder/%s"%base_tensor_name
-
-    def _addPlaceholders(self, graph_fn):
+    def _addCastOps(self, user_graph_fn):
         """
-        :param graph_fn: GranFucntion wrapping actual graph we wish to execute (i.e. a Keras or TF model graph)
-        :return: Modified graph
-        """
-        gdef = graph_fn.graph_def
-        # TODO(sid): we can actually rename input nodes when importing the graph def, should we?
-        # Then placeholders could have the same name as the original input nodes.
-        # https://www.tensorflow.org/api_docs/python/tf/import_graph_def
-        graph = tf.Graph()
-        with graph.as_default():
-            tf.import_graph_def(gdef, name="")
+        Given a GraphFunction object corresponding to a user-specified graph G, creates a copy G'
+        of G with ops injected before each input node. The injected ops allow the input nodes of G'
+        to accept tf.float64 input fed from Spark, casting float64 input into the datatype
+        requested by each input node.
 
-        # Build a GraphFunction for the placeholder subgraph
-        g = tf.Graph()
+        :return: GraphFunction wrapping the copied, modified graph.
+        """
+        # Load user-specified graph into memory
+        user_graph = tf.Graph()
+        with user_graph.as_default():
+            tf.import_graph_def(user_graph_fn.graph_def, name="")
+
+        # Build a subgraph containing our injected ops
+        injected_op_subgraph = tf.Graph()
+        # Arrays containing the names of input/output tensors of our injected-op subgraph
         output_names = []
         input_names = []
-        with g.as_default():
+        with injected_op_subgraph.as_default():
+            # Iterate through the input tensors of the original graph
             for _, orig_tensor_name in self.getInputMapping():
-                placeholder_name = tfx.op_name(orig_tensor_name)
-                orig_tensor = tfx.get_tensor(orig_tensor_name, graph)
+                orig_tensor = tfx.get_tensor(orig_tensor_name, user_graph)
                 # Create placeholder with same shape as original input tensor, but that accepts
-                # float64 input.
-                placeholder = tf.placeholder(tf.float64, shape=orig_tensor.shape,
-                                             name=placeholder_name)
-                if orig_tensor.dtype != tf.float64:
-                    output_tensor = tf.cast(placeholder, dtype=orig_tensor.dtype)
+                # float64 input from Spark.
+                spark_placeholder = tf.placeholder(tf.float64, shape=orig_tensor.shape,
+                                             name=tfx.op_name(orig_tensor_name))
+                # If the original tensor was of type float64, just pass through the Spark input
+                if orig_tensor.dtype == tf.float64:
+                    output_tensor = tf.identity(spark_placeholder)
+                # Otherwise, cast the Spark input to the datatype of the original tensor
                 else:
-                    output_tensor = tf.identity(placeholder)
-                input_names.append(placeholder.name)
+                    output_tensor = tf.cast(spark_placeholder, dtype=orig_tensor.dtype)
+                input_names.append(spark_placeholder.name)
                 output_names.append(output_tensor.name)
 
-        placeholder_graph_fn = GraphFunction(graph_def=g.as_graph_def(), input_names=input_names,
-                                             output_names=output_names)
-        res = GraphFunction.fromList([("sparkdl/placeholder", placeholder_graph_fn), (None, graph_fn)])
-        return res
-
+        # Concatenate our injected-op subgraph with the original graph and return the result.
+        injected_op_subgraph_fn = GraphFunction(graph_def=injected_op_subgraph.as_graph_def(),
+                                             input_names=input_names, output_names=output_names)
+        return GraphFunction.fromList([("sparkdl_ops", injected_op_subgraph_fn),
+                                      ("user_graph", user_graph_fn)])
 
     def _optimize_for_inference(self):
         """ Optimize the graph for inference """
@@ -113,25 +112,20 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         input_node_names = [tfx.op_name(tnsr_name) for _, tnsr_name in input_mapping]
         output_node_names = [tfx.op_name(tnsr_name) for tnsr_name, _ in output_mapping]
 
-        # Build GraphFunction for actual training graph
+        # Build GraphFunction wrapping the model graph
         graph_fn = GraphFunction(graph_def=gin.graph_def, input_names=input_node_names,
                                  output_names=output_node_names)
-        # Concatenate graph with placeholders
-        graph_fn_with_placeholders = self._addPlaceholders(graph_fn)
+        # Inject cast ops to convert float64 input fed from Spark into the datatypes of the
+        # Graph's input nodes.
+        graph_fn_with_casts = self._addCastOps(graph_fn)
 
         # Optimize for inference, replacing placeholders with float64
         # NOTE(phi-dbq): Spark DataFrame assumes float64 as default floating point type
-        print("Optimizing for inference, casting placeholders to float64...")
-        print(graph_fn_with_placeholders.graph_def)
-        print("Input names: " + str(graph_fn_with_placeholders.input_names),
-              "Output names: " + str(graph_fn_with_placeholders.output_names))
-        # input_names = [self._getPlaceholderName(name) for name in graph_fn_with_placeholders.input_names]
-        input_names = [name for name in graph_fn_with_placeholders.input_names]
-        opt_gdef = infr_opt.optimize_for_inference(graph_fn_with_placeholders.graph_def,
+        input_names = [name for name in graph_fn_with_casts.input_names]
+        opt_gdef = infr_opt.optimize_for_inference(graph_fn_with_casts.graph_def,
                                                    input_names,
-                                                   graph_fn_with_placeholders.output_names,
+                                                   graph_fn_with_casts.output_names,
                                                    tf.float64.as_datatype_enum)
-        # print(opt_gdef)
         return opt_gdef
 
     def _transform(self, dataset):
@@ -150,7 +144,6 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
 
             # Feed dict maps from placeholder name to DF column name
             feed_dict = {tfx.op_name(tnsr_name) : col_name for col_name, tnsr_name in input_mapping}
-            print("Feed dict: %s"%feed_dict)
             fetches = [tfx.get_tensor(tnsr_op_name, graph) for tnsr_op_name in out_tnsr_op_names]
             out_df = tfs.map_blocks(fetches, analyzed_df, feed_dict=feed_dict)
 
