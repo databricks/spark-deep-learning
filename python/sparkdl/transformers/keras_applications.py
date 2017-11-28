@@ -82,6 +82,9 @@ class InceptionV3Model(KerasApplicationModel):
         return inception_v3.preprocess_input(inputImage)
 
     def model(self, preprocessed, featurize):
+        """
+        From Keras: These weights are released under the Apache License 2.0.
+        """
         return inception_v3.InceptionV3(input_tensor=preprocessed, weights="imagenet",
                                         include_top=(not featurize))
 
@@ -96,6 +99,10 @@ class XceptionModel(KerasApplicationModel):
         return xception.preprocess_input(inputImage)
 
     def model(self, preprocessed, featurize):
+        """
+        From Keras: These weights are released under the MIT License:
+         [ TODO: put license text here? ]
+        """
         return xception.Xception(input_tensor=preprocessed, weights="imagenet",
                                  include_top=(not featurize))
 
@@ -110,6 +117,10 @@ class ResNet50Model(KerasApplicationModel):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
 
     def model(self, preprocessed, featurize):
+        """
+        From Keras: These weights are ported from the ones released by Kaiming He 
+        under the MIT license (https://github.com/KaimingHe/deep-residual-networks/blob/master/LICENSE).
+        """
         return resnet50.ResNet50(input_tensor=preprocessed, weights="imagenet",
                                  include_top=(not featurize))
 
@@ -124,6 +135,10 @@ class VGG16Model(KerasApplicationModel):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
 
     def model(self, preprocessed, featurize):
+        """
+        From Keras: These weights are ported from the ones released by 
+        VGG at Oxford under the Creative Commons Attribution License.
+        """
         return vgg16.VGG16(input_tensor=preprocessed, weights="imagenet",
                            include_top=(not featurize))
 
@@ -138,6 +153,10 @@ class VGG19Model(KerasApplicationModel):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
 
     def model(self, preprocessed, featurize):
+        """
+        From Keras: These weights are ported from the ones released by 
+        VGG at Oxford under the Creative Commons Attribution License.
+        """
         return vgg19.VGG19(input_tensor=preprocessed, weights="imagenet",
                            include_top=(not featurize))
 

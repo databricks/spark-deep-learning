@@ -182,6 +182,8 @@ object DeepImageFeaturizer {
   private[sparkdl] object InceptionV3 extends NamedImageModel {
     /**
      * InceptionV3 model, with final layer removed, adapted from Keras.
+     * The model and weights are modified from the ones released by Keras
+     * under the Apache License 2.0.
      */
     override val name = "InceptionV3"
     override val height = 299
