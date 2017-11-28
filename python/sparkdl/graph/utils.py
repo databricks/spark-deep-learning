@@ -76,9 +76,6 @@ def get_op(tfobj_or_name, graph):
     assert isinstance(op, tf.Operation), err_msg.format(_op_name, type(op), op)
     return op
 
-def get_tensor_base_name(name):
-    return name.split(":")[0]
-
 def get_tensor(tfobj_or_name, graph):
     """
     Get a :py:class:`tf.Tensor` object

@@ -218,8 +218,12 @@ class GraphFunction(object):
         for (scope_in, gfn_in), (scope_out, gfn_out) in zip(functions[:-1], functions[1:]):
             # For stage F => G, the composition G(F(.)) must work, which means
             # the number of outputs for F is equal to the number of inputs for G
-            assert len(gfn_in.output_names) == len(gfn_out.input_names), \
-                "graph function link {} -> {} require compatible layers".format(scope_in, scope_out)
+            output_dim = len(gfn_in.output_names)
+            input_dim = len(gfn_out.input_names)
+            assert input_dim == output_dim, \
+                "cannot link functions with scopes (%s, %s) with " \
+                "differing output, input dimensions: (%s, %s) (%s, %s)"%(scope_in, scope_out, output_dim,
+                                                                input_dim, gfn_in.output_names, gfn_out.input_names)
             # We currently only support single input/output for intermediary stages
             # The functions could still take multi-dimensional tensor, but only one
             if len(gfn_out.input_names) != 1:
@@ -231,8 +235,11 @@ class GraphFunction(object):
         # of the first function to get the correct input tensors.
         first_input_info = []
         with IsolatedSession() as issn:
+            # Get scope, wrapper around first Graph
             _, first_gfn = functions[0]
+            # Import the first graph in an isolated session, get its inputs
             feeds, _ = issn.importGraphFunction(first_gfn, prefix='')
+            # For each input tensor, get the input tensor name
             for tnsr in feeds:
                 name = tfx.op_name(tnsr, issn.graph)
                 first_input_info.append((tnsr.dtype, tnsr.shape, name))

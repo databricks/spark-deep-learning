@@ -56,12 +56,11 @@ class KerasTransformerTest(SparkDLTestCase):
         model.add(Activation('sigmoid'))
         return model
 
-    def prepareKerasModelFile(self, filename):
-        model = self.getKerasModel()
+    def prepareKerasModelFile(self, model, filename):
         model_dir_tmp = tempfile.mkdtemp("sparkdl_keras_tests", dir="/tmp")
         path = os.path.join(model_dir_tmp, filename)
         model.save(path)
-        return (model, path)
+        return path
 
     def executeKerasModel(self, df, model, input_col, id_col):
         # Collect dataframe, sort rows by ID column
@@ -86,8 +85,8 @@ class KerasTransformerTest(SparkDLTestCase):
         input_col = "features"
         output_col = "preds"
         id_col = "id"
-
-        model, model_path = self.prepareKerasModelFile("keras_transformer_test_model.h5")
+        model = self.getKerasModel()
+        model_path = self.prepareKerasModelFile(model, "keras_transformer_test_model.h5")
         transformer = KerasTransformer(inputCol=input_col, outputCol=output_col,
                                        modelFile=model_path)
 
