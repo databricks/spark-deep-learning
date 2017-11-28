@@ -23,13 +23,12 @@ import six
 
 from keras.models import load_model
 import keras.backend as K
-import sparkdl.graph.utils as tfx
 
 from pyspark.ml.param import Param, Params, TypeConverters
 
 from sparkdl.graph.input import TFInputGraph
+import sparkdl.graph.utils as tfx
 from sparkdl.param.converters import SparkDLTypeConverters
-
 
 ########################################################
 # Copied from PySpark for backward compatibility.

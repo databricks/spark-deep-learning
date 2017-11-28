@@ -77,6 +77,7 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
             tf.import_graph_def(user_graph_fn.graph_def, name="")
 
         # Build a subgraph containing our injected ops
+        # TODO: If all input tensors are of type float64, we could just do nothing here
         injected_op_subgraph = tf.Graph()
         # Arrays containing the names of input/output tensors of our injected-op subgraph
         output_names = []
@@ -130,7 +131,6 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
 
     def _transform(self, dataset):
         graph_def = self._optimize_for_inference()
-        # print("Got graph def: %s"%graph_def)
         input_mapping = self.getInputMapping()
         output_mapping = self.getOutputMapping()
 

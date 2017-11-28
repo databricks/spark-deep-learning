@@ -220,6 +220,8 @@ class GraphFunction(object):
         for (scope_in, gfn_in), (scope_out, gfn_out) in zip(functions[:-1], functions[1:]):
             # For stage F => G, the composition G(F(.)) must work, which means
             # the number of outputs for F is equal to the number of inputs for G
+            assert len(gfn_in.output_names) == len(gfn_out.input_names), \
+                "graph function link {} -> {} require compatible layers".format(scope_in, scope_out)
             output_dim = len(gfn_in.output_names)
             input_dim = len(gfn_out.input_names)
             assert input_dim == output_dim, \

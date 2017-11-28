@@ -23,11 +23,13 @@ from .tf_tensor import TFTransformer
 
 class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
     """
-    Applies the Tensorflow-backed Keras model (specified by a file name) to
-    a column of arrays in a DataFrame.
+    Applies a Tensorflow-backed Keras model (specified by a file name) to
+    a column of arrays (where each array corresponds to a Tensor) in a DataFrame.
+    Produces an output column of arrays.
 
     Restrictions of the current API:
       * See TFTransformer
+      * Only supports Keras models with a single input tensor & a single output tensor
       * Only supports Tensorflow-backed Keras models (no Theano).
     """
     @keyword_only

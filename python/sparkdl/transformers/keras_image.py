@@ -14,7 +14,6 @@
 #
 
 from pyspark.ml import Transformer
-from pyspark.ml.param import Params, TypeConverters
 
 from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol,
