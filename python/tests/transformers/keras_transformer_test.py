@@ -42,8 +42,7 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
                         kernel_initializer=self._getKerasModelWeightInitializer()))
         model.add(Activation('sigmoid'))
         # Compare KerasTransformer output to raw Keras model output
-        self._test_keras_transformer_helper(model, "keras_transformer_single_dim",
-                                            input_shape=input_shape)
+        self._test_keras_transformer_helper(model, model_filename="keras_transformer_single_dim")
 
     def test_keras_transformer_multi_dim(self):
         """
@@ -52,12 +51,12 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
         model = Sequential()
         input_shape = [2, 3]
         model.add(Reshape(input_shape=input_shape, target_shape=input_shape))
-        self._test_keras_transformer_helper(model, "keras_transformer_multi_dim",
-                                            input_shape=input_shape)
+        self._test_keras_transformer_helper(model, model_filename="keras_transformer_multi_dim")
 
-    def _test_keras_transformer_helper(self, model, model_filename, input_shape):
+    def _test_keras_transformer_helper(self, model, model_filename):
         """
-        Compare KerasTransformer output to that of a Keras model on a one-dimensional input dataset.
+        Compares KerasTransformer output to raw Keras model output for the passed-in model.
+        Saves the model to model_filename so that it can be loaded-in by KerasTransformer.
         """
         input_col = "inputCol"
         output_col = "outputCol"
@@ -70,6 +69,7 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
                                        modelFile=model_path)
 
         # Load dataset, transform it with KerasTransformer
+        input_shape = list(model.input_shape[1:]) # Get shape of a single example
         df = self._getInputDF(self.sql, inputShape=input_shape, inputCol=input_col, idCol=id_col)
         final_df = transformer.transform(df)
         sparkdl_predictions = self._convertOutputToComparables(final_df, id_col, output_col)
