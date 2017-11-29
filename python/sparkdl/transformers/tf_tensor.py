@@ -111,11 +111,10 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         return injected_op_subgraph.as_graph_def(add_shapes=True)
 
     def _optimize_for_inference(self):
-        """ Optimize the graph for inference """
         gin = self.getTFInputGraph()
         # Inject cast ops to convert float64 input fed from Spark into the datatypes of the
         # Graph's input nodes.
-        graphdef_with_casts = self._addCastOps(gin.graph_def)
+        graphdef_with_casts = self._addCastOps(self.getTFInputGraph().graph_def)
 
         # Strip away graph nodes not used in computing the tensors with the specified output names
         input_names = [self._getSparkDlOpName(tnsr_name) for _, tnsr_name in self.getInputMapping()]

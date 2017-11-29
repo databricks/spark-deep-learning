@@ -44,7 +44,7 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
         # Compare KerasTransformer output to raw Keras model output
         self._test_keras_transformer_helper(model, model_filename="keras_transformer_single_dim")
 
-    def test_keras_transformer_multi_dim(self):
+    def test_keras_transformer_2dim(self):
         """
         Test that KerasTransformer correctly handles multi-dimensional input/output tensors.
         """
