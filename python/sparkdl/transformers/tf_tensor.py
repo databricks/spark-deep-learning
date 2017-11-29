@@ -92,7 +92,8 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
                                              name=tfx.op_name(orig_tensor_name))
                 # If the original tensor was of type float64, just pass through the Spark input
                 if orig_tensor.dtype == tf.float64:
-                    output_tensor = tf.identity(spark_placeholder)
+                    # output_tensor = tf.identity(spark_placeholder)
+                    output_tensor = spark_placeholder
                 # Otherwise, cast the Spark input to the datatype of the original tensor
                 else:
                     output_tensor = tf.cast(spark_placeholder, dtype=orig_tensor.dtype)
@@ -120,8 +121,7 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         # Graph's input nodes.
         graph_fn_with_casts = self._addCastOps(graph_fn)
 
-        # Optimize for inference, replacing placeholders with float64
-        # NOTE(phi-dbq): Spark DataFrame assumes float64 as default floating point type
+        # Optimize for inference, replacing input nodes with float64 placeholders
         input_names = [name for name in graph_fn_with_casts.input_names]
         opt_gdef = infr_opt.optimize_for_inference(graph_fn_with_casts.graph_def,
                                                    input_names,

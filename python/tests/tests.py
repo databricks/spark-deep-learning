@@ -54,17 +54,37 @@ class TestSparkContext(object):
         cls.sql = None
 
 
+class TestTempDir(object):
+    @classmethod
+    def make_tempdir(cls):
+        cls.tempdir = tempfile.mkdtemp("sparkdl_tests", dir="/tmp")
+
+    @classmethod
+    def remove_tempdir(cls):
+        shutil.rmtree(cls.tempdir)
+
+
 class SparkDLTestCase(TestSparkContext, unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls.setup_env()
-        cls.tempdir = tempfile.mkdtemp("sparkdl_tests", dir="/tmp")
+
 
     @classmethod
     def tearDownClass(cls):
         cls.tear_down_env()
-        shutil.rmtree(cls.tempdir)
 
     def assertDfHasCols(self, df, cols = []):
         map(lambda c: self.assertIn(c, df.columns), cols)
+
+
+class SparkDLTempDirTestCase(SparkDLTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super(SparkDLTempDirTestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(SparkDLTempDirTestCase, cls).tearDownClass()

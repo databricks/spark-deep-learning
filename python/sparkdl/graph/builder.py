@@ -260,6 +260,8 @@ class GraphFunction(object):
                     scope = 'GFN-BLK-{}'.format(idx)
                 _msg = 'merge: stage {}, scope {}'.format(idx, scope)
                 logger.info(_msg)
+
+                # Input map takes inputs of current layer to names of outputs in the previous layer
                 input_map = dict(zip(gfn.input_names, prev_outputs))
                 _, fetches = issn.importGraphFunction(
                     gfn, prefix=scope, input_map=input_map)
@@ -274,5 +276,4 @@ class GraphFunction(object):
                 last_outputs.append(tf.identity(tnsr, name=name))
 
             gfn = issn.asGraphFunction(first_inputs, last_outputs)
-
         return gfn

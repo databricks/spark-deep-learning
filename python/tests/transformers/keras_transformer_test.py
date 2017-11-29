@@ -20,14 +20,47 @@ from keras.layers import Dense, Activation
 from keras.initializers import glorot_uniform
 
 from sparkdl.transformers.keras_transformer import KerasTransformer
-from ..tests import SparkDLTestCase
+from ..tests import SparkDLTempDirTestCase
 
-class KerasTransformerTest(SparkDLTestCase):
 
-    # TODO(sid): How to create static class variables in Python? Should I just put these in the
-    # constructor?
+class KerasTransformerTest(SparkDLTempDirTestCase):
+
     NUM_FEATURES = 10
     RANDOM_SEED = 997
+
+    def test_keras_transformer_single_dim(self):
+        """
+        Compare KerasTransformer output to that of a Keras model on a one-dimensional input dataset.
+        """
+        input_col = "features"
+        output_col = "preds"
+        id_col = "id"
+        # Create Keras model, persist it to disk, and create KerasTransformer
+        model = self._getKerasModel()
+        model_path = self._prepareKerasModelFile(model, "keras_transformer_test_model.h5")
+        transformer = KerasTransformer(inputCol=input_col, outputCol=output_col,
+                                       modelFile=model_path)
+
+        # Load dataset, transform it with KerasTransformer
+        df = self._getInputDF(self.sql, inputCol=input_col, idCol=id_col)
+        final_df = transformer.transform(df)
+        sparkdl_predictions = self._convertOutputToComparables(final_df, id_col, output_col)
+
+        self.assertDfHasCols(final_df, [input_col, output_col, id_col])
+        self.assertEqual(len(final_df.columns), 3)
+
+        # Compute Keras model local execution output
+        keras_predictions_raw = self.executeKerasModel(df=df, model=model,
+                                                       input_col=input_col, id_col=id_col)
+        keras_predictions = keras_predictions_raw.reshape((len(keras_predictions_raw),))
+
+        # Compare KerasTransformer & Keras model output
+        max_pred_diff = np.max(np.abs(sparkdl_predictions - keras_predictions))
+        diff_tolerance = 1e-5
+        assert np.allclose(sparkdl_predictions, keras_predictions, atol=diff_tolerance), "" \
+            "KerasTransformer output differed (absolute difference) from Keras model output by " \
+            "as much as %s, maximum allowed deviation = %s"%(max_pred_diff, diff_tolerance)
+
 
     def _loadNumpyData(self, num_examples, num_features):
         """
@@ -37,7 +70,7 @@ class KerasTransformerTest(SparkDLTestCase):
         np.random.seed(self.RANDOM_SEED)
         return np.random.randn(num_examples, num_features)
 
-    def getInputDF(self, sqlContext, inputCol, idCol):
+    def _getInputDF(self, sqlContext, inputCol, idCol):
         """ Return a DataFrame containing a long ID column and an input column of arrays. """
         x_train = self._loadNumpyData(num_examples=20, num_features=self.NUM_FEATURES)
         train_rows = [{idCol : i, inputCol : x_train[i].tolist()} for i in range(len(x_train))]
@@ -50,7 +83,7 @@ class KerasTransformerTest(SparkDLTestCase):
         """
         return glorot_uniform(seed=self.RANDOM_SEED)
 
-    def getKerasModel(self):
+    def _getKerasModel(self):
         """
         Build and return keras model for (binary) classification on one-dimensional data.
 
@@ -72,7 +105,7 @@ class KerasTransformerTest(SparkDLTestCase):
         model.add(Activation('sigmoid'))
         return model
 
-    def prepareKerasModelFile(self, model, filename):
+    def _prepareKerasModelFile(self, model, filename):
         """
         Saves the passed-in keras model to a temporary directory with the specified filename.
         """
@@ -80,20 +113,7 @@ class KerasTransformerTest(SparkDLTestCase):
         model.save(path)
         return path
 
-    def executeKerasModel(self, df, model, input_col, id_col):
-        """
-        Given an input DataFrame, applies the passed-in Keras model to the data in the specified
-        input column, returning a numpy array of the model output sorted by increasing row ID (where
-        row ID is contained in id_col).
-        """
-        # Collect dataframe, sort rows by ID column
-        rows = df.select(input_col, id_col).collect()
-        rows.sort(key=lambda row: row[id_col])
-        # Get numpy array (num_examples, num_features) containing input data
-        x_predict = np.array([row[input_col] for row in rows])
-        return model.predict(x_predict)
-
-    def transformOutputToComparables(self, final_df, id_col, output_col):
+    def _convertOutputToComparables(self, final_df, id_col, output_col):
         """
         Given the output of KerasTransformer.transform(), collects transformer output and
         returns a list of model predictions ordered by row id.
@@ -109,37 +129,14 @@ class KerasTransformerTest(SparkDLTestCase):
         collected.sort(key=lambda row: row[id_col])
         return [row[output_col][0] for row in collected]
 
-    def test_keras_transformer_single_dim(self):
+    def _executeKerasModelLocally(self, df, model, input_col, id_col):
         """
-        Compare KerasTransformer output to that of a Keras model on a one-dimensional input dataset.
+        Given an input DataFrame, locally collects the data in the specified input column and
+        applies the passed-in Keras model, returning a numpy array of the model output sorted by
+        increasing row ID (where row ID is contained in id_col).
         """
-        # Declare column names
-        input_col = "features"
-        output_col = "preds"
-        id_col = "id"
-        # Create Keras model, persist it to disk, and create KerasTransformer
-        model = self.getKerasModel()
-        model_path = self.prepareKerasModelFile(model, "keras_transformer_test_model.h5")
-        transformer = KerasTransformer(inputCol=input_col, outputCol=output_col,
-                                       modelFile=model_path)
-
-        # Load dataset, transform it with KerasTransformer
-        df = self.getInputDF(self.sql, inputCol=input_col, idCol=id_col)
-        final_df = transformer.transform(df)
-        sparkdl_predictions = self.transformOutputToComparables(final_df, id_col, output_col)
-
-        # Verify that result DF has the specified input & output columns
-        self.assertDfHasCols(final_df, [input_col, output_col, id_col])
-        self.assertEqual(len(final_df.columns), 3)
-
-        # Compute Keras model output
-        keras_predictions_raw = self.executeKerasModel(df=df, model=model,
-                                                       input_col=input_col, id_col=id_col)
-        keras_predictions = keras_predictions_raw.reshape((len(keras_predictions_raw),))
-
-        # Compare KerasTransformer & Keras model output
-        max_pred_diff = np.max(np.abs(sparkdl_predictions - keras_predictions))
-        diff_tolerance = 1e-5
-        assert np.allclose(sparkdl_predictions, keras_predictions, atol=diff_tolerance), "" \
-            "KerasTransformer output differed (absolute difference) from Keras model output by "\
-            "as much as %s, maximum allowed deviation = %s"%(max_pred_diff, diff_tolerance)
+        rows = df.select(input_col, id_col).collect()
+        rows.sort(key=lambda row: row[id_col])
+        # Get numpy array (num_examples, num_features) containing input data
+        x_predict = np.array([row[input_col] for row in rows])
+        return model.predict(x_predict)

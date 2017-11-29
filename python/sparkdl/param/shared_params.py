@@ -171,19 +171,21 @@ class HasKerasModel(Params):
         Loads the Keras model into memory, then uses the passed-in session to load the
         model's inference-related ops into the passed-in Tensorflow graph.
 
-        :return: A TF graph corresponding to the Keras model's inference subgraph.
+        :return: A tuple (graph, input_name, output_name) where graph is the TF graph
+        corresponding to the Keras model's inference subgraph, input_name is the name of the
+        Keras model's input tensor, and output_name is the name of the Keras model's output tensor.
         """
         keras_backend = K.backend()
         assert keras_backend == "tensorflow", \
             "Only tensorflow-backed Keras models are supported, tried to load Keras model " \
             "with backend %s."%(keras_backend)
         with graph.as_default():
-            K.set_learning_phase(0)  # Testing phase
+            K.set_learning_phase(0)  # Inference phase
             model = load_model(self.getModelFile())
             out_op_name = tfx.op_name(model.output, graph)
-            self._inputTensor = model.input.name
-            self._outputTensor = model.output.name
-            return tfx.strip_and_freeze_until([out_op_name], graph, sess, return_graph=True)
+            stripped_graph = tfx.strip_and_freeze_until([out_op_name], graph, sess,
+                                                        return_graph=True)
+            return stripped_graph, model.input.name, model.output.name
 
 
 class HasKerasOptimizer(Params):

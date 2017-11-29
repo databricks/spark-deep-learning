@@ -30,7 +30,7 @@ class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
     Restrictions of the current API:
       * See TFTransformer
       * Only supports Keras models with a single input tensor & a single output tensor
-      * Only supports Tensorflow-backed Keras models (no Theano).
+      * Only supports Tensorflow-backed Keras models (no Theano or CNTK).
     """
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelFile=None):
@@ -51,16 +51,14 @@ class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
         return self
 
     def _transform(self, dataset):
-        # Load Keras model as a TF graph from disk. Note that _loadGraph also
-        # sets the _inputTensor and _outputTensor members to the names of the input/output
-        # tensors of the loaded model
         with KSessionWrap() as (sess, keras_graph):
-            tfGraph = self._loadTFGraph(sess=sess, graph=keras_graph)
+            tfGraph, inputTensorName, outputTensorName = self._loadTFGraph(sess=sess,
+                                                                           graph=keras_graph)
             inputGraph = TFInputGraph.fromGraph(graph=tfGraph, sess=sess,
                                                 feed_names=[self._inputTensor],
                                                 fetch_names=[self._outputTensor])
         # Create TFTransformer & use it to apply the loaded Keras model graph to our dataset
         transformer = TFTransformer(tfInputGraph=inputGraph,
-                                    inputMapping={self.getInputCol() : self._inputTensor},
-                                    outputMapping={self._outputTensor: self.getOutputCol()})
+                                    inputMapping={self.getInputCol() : inputTensorName},
+                                    outputMapping={outputTensorName: self.getOutputCol()})
         return transformer.transform(dataset)
