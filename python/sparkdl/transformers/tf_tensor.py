@@ -43,6 +43,7 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
     - The transformer is expected to work on blocks of data at the same time.
     """
 
+    # Name scope used for cast/placeholder ops added to the user-specified TF graph by Sparkdl
     SPARKDL_OP_SCOPE = "sparkdl_ops"
 
     @keyword_only
@@ -64,18 +65,22 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
         # Further conanonicalization, e.g. converting dict to sorted str pairs happens here
         return self._set(**kwargs)
 
-    def _addSparkDlScope(self, tensor_name):
+    def _getSparkDlOpName(self, tensor_name):
+        """
+        Given a tensor name, returns the name of the op generating the tensor, prefixed with
+        a special scope indicating that the op has been added by Sparkdl.
+        """
         op_name = tfx.op_name(tensor_name)
-        return "%s/%s"%(self.SPARKDL_OP_SCOPE, op_name)
+        return tfx.add_scope_to_name(scope=self.SPARKDL_OP_SCOPE, name=op_name)
 
     def _addCastOps(self, user_graph_def):
         """
-        Given a GraphFunction object corresponding to a user-specified graph G, creates a copy G'
+        Given a GraphDef object corresponding to a user-specified graph G, creates a copy G'
         of G with ops injected before each input node. The injected ops allow the input nodes of G'
         to accept tf.float64 input fed from Spark, casting float64 input into the datatype
         requested by each input node.
 
-        :return: GraphFunction wrapping the copied, modified graph.
+        :return: GraphDef representing the copied, modified graph.
         """
         # Load user-specified graph into memory
         user_graph = tf.Graph()
@@ -83,12 +88,11 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
             tf.import_graph_def(user_graph_def, name="")
 
         # Build a subgraph containing our injected ops
-        # TODO: If all input tensors are of type float64, we could just do nothing here
+        # TODO: Cheap optimization: if all input tensors are of type float64, just do nothing here
         injected_op_subgraph = tf.Graph()
-        # Dict mapping input tensors of our original graph to outputs of our injected-op subgraph
+        # Maps names of input tensors in our original graph to outputs of the injected-op subgraph
         input_map = {}
         with injected_op_subgraph.as_default():
-            # Iterate through the input tensors of the original graph
             with tf.name_scope(self.SPARKDL_OP_SCOPE):
                 for _, orig_tensor_name in self.getInputMapping():
                     orig_tensor = tfx.get_tensor(orig_tensor_name, user_graph)
@@ -98,32 +102,27 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
                                                        name=tfx.op_name(orig_tensor_name))
                     # If the original tensor was of type float64, just pass through the Spark input
                     if orig_tensor.dtype == tf.float64:
-                        output_tensor = spark_placeholder
+                        input_map[orig_tensor_name] = spark_placeholder
                     # Otherwise, cast the Spark input to the datatype of the original tensor
                     else:
-                        output_tensor = tf.cast(spark_placeholder, dtype=orig_tensor.dtype)
-                    input_map[orig_tensor_name] = output_tensor
+                        input_map[orig_tensor_name] = tf.cast(spark_placeholder,
+                                                              dtype=orig_tensor.dtype)
             tf.import_graph_def(graph_def=user_graph_def, input_map=input_map, name="")
-
         return injected_op_subgraph.as_graph_def(add_shapes=True)
 
     def _optimize_for_inference(self):
         """ Optimize the graph for inference """
         gin = self.getTFInputGraph()
-        input_mapping = self.getInputMapping()
-        output_mapping = self.getOutputMapping()
-        output_node_names = [tfx.op_name(tnsr_name) for tnsr_name, _ in output_mapping]
-
         # Inject cast ops to convert float64 input fed from Spark into the datatypes of the
         # Graph's input nodes.
         graphdef_with_casts = self._addCastOps(gin.graph_def)
 
-        # Optimize for inference, replacing input nodes with float64 placeholders
-        input_names = [self._addSparkDlScope(tnsr_name) for _, tnsr_name in input_mapping]
-
+        # Strip away graph nodes not used in computing the tensors with the specified output names
+        input_names = [self._getSparkDlOpName(tnsr_name) for _, tnsr_name in self.getInputMapping()]
+        output_names = [tfx.op_name(tnsr_name) for tnsr_name, _ in self.getOutputMapping()]
         opt_gdef = infr_opt.optimize_for_inference(graphdef_with_casts,
                                                    input_names,
-                                                   output_node_names,
+                                                   output_names,
                                                    tf.float64.as_datatype_enum)
         return opt_gdef
 
@@ -140,7 +139,7 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
             tf.import_graph_def(graph_def=graph_def, name='', return_elements=out_tnsr_op_names)
 
             # Feed dict maps from placeholder name to DF column name
-            feed_dict = {self._addSparkDlScope(tnsr_name) : col_name for col_name, tnsr_name in input_mapping}
+            feed_dict = {self._getSparkDlOpName(tnsr_name) : col_name for col_name, tnsr_name in input_mapping}
             fetches = [tfx.get_tensor(tnsr_name, graph) for tnsr_name in out_tnsr_op_names]
 
             out_df = tfs.map_blocks(fetches, analyzed_df, feed_dict=feed_dict)

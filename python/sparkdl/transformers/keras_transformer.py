@@ -29,7 +29,8 @@ class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
 
     Restrictions of the current API:
       * See TFTransformer
-      * Only supports Keras models with a single input tensor & a single output tensor
+      * Only supports Keras models with a single input tensor & a single output tensor, where
+        the input & output tensors must have at most 2 dimensions.
       * Only supports Tensorflow-backed Keras models (no Theano or CNTK).
     """
     @keyword_only

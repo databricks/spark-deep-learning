@@ -16,7 +16,7 @@ import numpy as np
 import os
 
 from keras.models import Sequential
-from keras.layers import Dense, Activation
+from keras.layers import Dense, Activation, Reshape
 from keras.initializers import glorot_uniform
 
 from sparkdl.transformers.keras_transformer import KerasTransformer
@@ -24,25 +24,53 @@ from ..tests import SparkDLTempDirTestCase
 
 
 class KerasTransformerTest(SparkDLTempDirTestCase):
-
-    NUM_FEATURES = 10
+    # Seed used for random-number generation in tests
     RANDOM_SEED = 997
 
     def test_keras_transformer_single_dim(self):
         """
+        Test that KerasTransformer correctly handles single-dimensional input data.
+        """
+        # Construct a model for simple binary classification (with a single hidden layer)
+        model = Sequential()
+        input_shape = [10]
+        model.add(Dense(units=10, input_shape=input_shape,
+                        bias_initializer=self._getKerasModelWeightInitializer(),
+                        kernel_initializer=self._getKerasModelWeightInitializer()))
+        model.add(Activation('relu'))
+        model.add(Dense(units=1, bias_initializer=self._getKerasModelWeightInitializer(),
+                        kernel_initializer=self._getKerasModelWeightInitializer()))
+        model.add(Activation('sigmoid'))
+        # Compare KerasTransformer output to raw Keras model output
+        self._test_keras_transformer_helper(model, "keras_transformer_single_dim",
+                                            input_shape=input_shape)
+
+    def test_keras_transformer_multi_dim(self):
+        """
+        Test that KerasTransformer correctly handles multi-dimensional input/output tensors.
+        """
+        model = Sequential()
+        input_shape = [2, 3]
+        model.add(Reshape(input_shape=input_shape, target_shape=input_shape))
+        self._test_keras_transformer_helper(model, "keras_transformer_multi_dim",
+                                            input_shape=input_shape)
+
+    def _test_keras_transformer_helper(self, model, model_filename, input_shape):
+        """
         Compare KerasTransformer output to that of a Keras model on a one-dimensional input dataset.
         """
-        input_col = "features"
-        output_col = "preds"
+        input_col = "inputCol"
+        output_col = "outputCol"
         id_col = "id"
+
         # Create Keras model, persist it to disk, and create KerasTransformer
-        model = self._getKerasModel()
-        model_path = self._prepareKerasModelFile(model, "keras_transformer_test_model.h5")
+        save_filename = "%s.h5"%(model_filename)
+        model_path = self._writeKerasModelFile(model, save_filename)
         transformer = KerasTransformer(inputCol=input_col, outputCol=output_col,
                                        modelFile=model_path)
 
         # Load dataset, transform it with KerasTransformer
-        df = self._getInputDF(self.sql, inputCol=input_col, idCol=id_col)
+        df = self._getInputDF(self.sql, inputShape=input_shape, inputCol=input_col, idCol=id_col)
         final_df = transformer.transform(df)
         sparkdl_predictions = self._convertOutputToComparables(final_df, id_col, output_col)
 
@@ -50,31 +78,14 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
         self.assertEqual(len(final_df.columns), 3)
 
         # Compute Keras model local execution output
-        keras_predictions_raw = self._executeKerasModelLocally(df=df, model=model,
-                                                       input_col=input_col, id_col=id_col)
-        keras_predictions = keras_predictions_raw.reshape((len(keras_predictions_raw),))
-
+        keras_predictions = self._executeKerasModelLocally(df=df, model=model,
+                                                           input_col=input_col, id_col=id_col)
         # Compare KerasTransformer & Keras model output
         max_pred_diff = np.max(np.abs(sparkdl_predictions - keras_predictions))
         diff_tolerance = 1e-5
         assert np.allclose(sparkdl_predictions, keras_predictions, atol=diff_tolerance), "" \
             "KerasTransformer output differed (absolute difference) from Keras model output by " \
             "as much as %s, maximum allowed deviation = %s"%(max_pred_diff, diff_tolerance)
-
-
-    def _loadNumpyData(self, num_examples, num_features):
-        """
-        Construct and return a 2D numpy array of shape (num_examples, num_features) corresponding
-        to a dataset of one-dimensional examples.
-        """
-        np.random.seed(self.RANDOM_SEED)
-        return np.random.randn(num_examples, num_features)
-
-    def _getInputDF(self, sqlContext, inputCol, idCol):
-        """ Return a DataFrame containing a long ID column and an input column of arrays. """
-        x_train = self._loadNumpyData(num_examples=20, num_features=self.NUM_FEATURES)
-        train_rows = [{idCol : i, inputCol : x_train[i].tolist()} for i in range(len(x_train))]
-        return sqlContext.createDataFrame(train_rows)
 
     def _getKerasModelWeightInitializer(self):
         """
@@ -83,29 +94,21 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
         """
         return glorot_uniform(seed=self.RANDOM_SEED)
 
-    def _getKerasModel(self):
+    def _createNumpyData(self, num_examples, example_shape):
         """
-        Build and return keras model for (binary) classification on one-dimensional data.
-
-        The model has a single hidden layer that feeds into a single-unit, sigmoid-activated output
-        unit. Weights of the hidden & output layer are drawn from a zero-mean uniform distribution.
+        Return np array of num_examples data points where each data point has shape example_shape.
         """
-        model = Sequential()
+        np.random.seed(self.RANDOM_SEED)
+        data_shape = [num_examples] + example_shape
+        return np.random.randn(*data_shape)
 
-        # We add a vanilla hidden layer, specifying the initializer (RNG) for the kernel & bias
-        # weights
-        model.add(Dense(units=50, input_shape=(self.NUM_FEATURES, ),
-                        bias_initializer=self._getKerasModelWeightInitializer(),
-                        kernel_initializer=self._getKerasModelWeightInitializer()))
-        model.add(Activation('relu'))
+    def _getInputDF(self, sqlContext, inputShape, inputCol, idCol):
+        """ Return a DataFrame containing a long ID column and an input column of arrays. """
+        x_train = self._createNumpyData(num_examples=20, example_shape=inputShape)
+        train_rows = [{idCol : i, inputCol : x_train[i].tolist()} for i in range(len(x_train))]
+        return sqlContext.createDataFrame(train_rows)
 
-        # We project onto a single unit output layer, and squash it with a sigmoid:
-        model.add(Dense(units=1, bias_initializer=self._getKerasModelWeightInitializer(),
-                        kernel_initializer=self._getKerasModelWeightInitializer()))
-        model.add(Activation('sigmoid'))
-        return model
-
-    def _prepareKerasModelFile(self, model, filename):
+    def _writeKerasModelFile(self, model, filename):
         """
         Saves the passed-in keras model to a temporary directory with the specified filename.
         """
@@ -116,18 +119,16 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
     def _convertOutputToComparables(self, final_df, id_col, output_col):
         """
         Given the output of KerasTransformer.transform(), collects transformer output and
-        returns a list of model predictions ordered by row id.
+        returns a numpy array of model output ordered by row id.
 
         params:
         :param final_df: DataFrame, output of KerasTransformer.transform()
         :param id_col: String, Column assumed to contain a row ID (Long)
-        :param output_col: String, Column containing transform() output. We assume that for
-                           each row, transform() has produced a single-element array containing a
-                           Keras model's prediction on that row)
+        :param output_col: String, Column containing transform() output.
         """
         collected = final_df.collect()
         collected.sort(key=lambda row: row[id_col])
-        return [row[output_col][0] for row in collected]
+        return np.array([row[output_col] for row in collected])
 
     def _executeKerasModelLocally(self, df, model, input_col, id_col):
         """

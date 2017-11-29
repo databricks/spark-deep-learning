@@ -207,9 +207,7 @@ class GraphFunction(object):
         The inputs and outputs are picked out of the scopes, so that users
         will still be able to call the function with the expected inputs/outputs names.
 
-        It's assumed that the input/output names of adjacent GraphFunction elements in
-        functions align; that is, we feed
-        functions[i].output_names[j] as the input to functions[i + 1].input_names[j]
+        It is assumed that there is only one input and one output in the intermediary layers
 
         :param functions: a list of tuples (scope name, GraphFunction object).
         """
@@ -222,12 +220,10 @@ class GraphFunction(object):
             # the number of outputs for F is equal to the number of inputs for G
             assert len(gfn_in.output_names) == len(gfn_out.input_names), \
                 "graph function link {} -> {} require compatible layers".format(scope_in, scope_out)
-            output_dim = len(gfn_in.output_names)
-            input_dim = len(gfn_out.input_names)
-            assert input_dim == output_dim, \
-                "cannot link functions with scopes (%s, %s) with " \
-                "differing output, input dimensions: (%s, %s) (%s, %s)"%(scope_in, scope_out, output_dim,
-                                                                input_dim, gfn_in.output_names, gfn_out.input_names)
+            # We currently only support single input/output for intermediary stages
+            # The functions could still take multi-dimensional tensor, but only one
+            if len(gfn_out.input_names) != 1:
+                raise NotImplementedError("Only support single input/output for intermediary layers")
 
         # Acquire initial placeholders' properties
         # We want the input names of the merged function are not under scoped
@@ -235,11 +231,8 @@ class GraphFunction(object):
         # of the first function to get the correct input tensors.
         first_input_info = []
         with IsolatedSession() as issn:
-            # Get scope, wrapper around first Graph
             _, first_gfn = functions[0]
-            # Import the first graph in an isolated session, get its inputs
             feeds, _ = issn.importGraphFunction(first_gfn, prefix='')
-            # For each input tensor, get the input tensor name
             for tnsr in feeds:
                 name = tfx.op_name(tnsr, issn.graph)
                 first_input_info.append((tnsr.dtype, tnsr.shape, name))
@@ -260,8 +253,6 @@ class GraphFunction(object):
                     scope = 'GFN-BLK-{}'.format(idx)
                 _msg = 'merge: stage {}, scope {}'.format(idx, scope)
                 logger.info(_msg)
-
-                # Input map takes inputs of current layer to names of outputs in the previous layer
                 input_map = dict(zip(gfn.input_names, prev_outputs))
                 _, fetches = issn.importGraphFunction(
                     gfn, prefix=scope, input_map=input_map)
@@ -276,4 +267,5 @@ class GraphFunction(object):
                 last_outputs.append(tf.identity(tnsr, name=name))
 
             gfn = issn.asGraphFunction(first_inputs, last_outputs)
+
         return gfn
