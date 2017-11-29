@@ -13,6 +13,56 @@
 # limitations under the License.
 #
 
+#
+# Models marked below as provided by Keras are provided subject to the 
+# below copyright and licenses (and any additional copyrights and 
+# licenses specified).
+# 
+# COPYRIGHT
+#
+# All contributions by François Chollet:
+# Copyright (c) 2015, François Chollet.
+# All rights reserved.
+#
+# All contributions by Google:
+# Copyright (c) 2015, Google, Inc.
+# All rights reserved.
+#
+# All contributions by Microsoft:
+# Copyright (c) 2017, Microsoft, Inc.
+# All rights reserved.
+#
+# All other contributions:
+# Copyright (c) 2015 - 2017, the respective contributors.
+# All rights reserved.
+#
+# Each contributor holds copyright over their respective contributions.
+# The project versioning (Git) records all such contribution source information.
+#
+# LICENSE
+#
+# The MIT License (MIT)
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+
+
 from abc import ABCMeta, abstractmethod
 
 import keras.backend as K
@@ -57,6 +107,12 @@ class KerasApplicationModel:
 
     @abstractmethod
     def model(self, preprocessed, featurize):
+        """
+        Models marked as *provided by Keras* are provided subject to the MIT 
+        license located at https://github.com/fchollet/keras/blob/master/LICENSE
+        and subject to any additional copyrights and licenses specified in the 
+        code or documentation.
+        """
         pass
 
     @abstractmethod
@@ -82,6 +138,23 @@ class InceptionV3Model(KerasApplicationModel):
         return inception_v3.preprocess_input(inputImage)
 
     def model(self, preprocessed, featurize):
+        # Model provided by Keras. All cotributions by Keras are provided subject to the
+        # MIT license located at https://github.com/fchollet/keras/blob/master/LICENSE
+        # and subject to the below additional copyrights and licenses.
+        #
+        # Copyright 2016 The TensorFlow Authors.  All rights reserved.
+        #
+        # Licensed under the Apache License, Version 2.0 (the "License");
+        # you may not use this file except in compliance with the License.
+        # You may obtain a copy of the License at
+        #
+        # http://www.apache.org/licenses/LICENSE-2.0
+        #
+        # Unless required by applicable law or agreed to in writing, software
+        # distributed under the License is distributed on an "AS IS" BASIS,
+        # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        # See the License for the specific language governing permissions and
+        # limitations under the License.
         """
         From Keras: These weights are released under the Apache License 2.0.
         """
@@ -99,10 +172,8 @@ class XceptionModel(KerasApplicationModel):
         return xception.preprocess_input(inputImage)
 
     def model(self, preprocessed, featurize):
-        """
-        From Keras: These weights are released under the MIT License:
-         [ TODO: put license text here? ]
-        """
+        # Model provided by Keras. All cotributions by Keras are provided subject to the
+        # MIT license located at https://github.com/fchollet/keras/blob/master/LICENSE.
         return xception.Xception(input_tensor=preprocessed, weights="imagenet",
                                  include_top=(not featurize))
 
@@ -117,10 +188,31 @@ class ResNet50Model(KerasApplicationModel):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
 
     def model(self, preprocessed, featurize):
-        """
-        From Keras: These weights are ported from the ones released by Kaiming He 
-        under the MIT license (https://github.com/KaimingHe/deep-residual-networks/blob/master/LICENSE).
-        """
+        # Model provided by Keras. All cotributions by Keras are provided subject to the
+        # MIT license located at https://github.com/fchollet/keras/blob/master/LICENSE
+        # and subject to the below additional copyrights and licenses.
+        #
+        # The MIT License (MIT)
+        #
+        # Copyright (c) 2016 Shaoqing Ren
+        #
+        # Permission is hereby granted, free of charge, to any person obtaining a copy
+        # of this software and associated documentation files (the "Software"), to deal
+        # in the Software without restriction, including without limitation the rights
+        # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        # copies of the Software, and to permit persons to whom the Software is
+        # furnished to do so, subject to the following conditions:
+        #
+        # The above copyright notice and this permission notice shall be included in all
+        # copies or substantial portions of the Software.
+        #
+        # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        # SOFTWARE.
         return resnet50.ResNet50(input_tensor=preprocessed, weights="imagenet",
                                  include_top=(not featurize))
 
@@ -135,10 +227,17 @@ class VGG16Model(KerasApplicationModel):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
 
     def model(self, preprocessed, featurize):
-        """
-        From Keras: These weights are ported from the ones released by 
-        VGG at Oxford under the Creative Commons Attribution License.
-        """
+        # Model provided by Keras. All cotributions by Keras are provided subject to the
+        # MIT license located at https://github.com/fchollet/keras/blob/master/LICENSE
+        # and subject to the below additional copyrights and licenses.
+        #
+        # Copyright 2014 Oxford University
+        # 
+        # Licensed under the Creative Commons Attribution License CC BY 4.0 ("License").
+        # You may obtain a copy of the License at
+        #
+        #     https://creativecommons.org/licenses/by/4.0/
+        #
         return vgg16.VGG16(input_tensor=preprocessed, weights="imagenet",
                            include_top=(not featurize))
 
@@ -153,10 +252,17 @@ class VGG19Model(KerasApplicationModel):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
 
     def model(self, preprocessed, featurize):
-        """
-        From Keras: These weights are ported from the ones released by 
-        VGG at Oxford under the Creative Commons Attribution License.
-        """
+        # Model provided by Keras. All cotributions by Keras are provided subject to the
+        # MIT license located at https://github.com/fchollet/keras/blob/master/LICENSE
+        # and subject to the below additional copyrights and licenses.
+        #
+        # Copyright 2014 Oxford University
+        # 
+        # Licensed under the Creative Commons Attribution License CC BY 4.0 ("License").
+        # You may obtain a copy of the License at
+        #
+        #     https://creativecommons.org/licenses/by/4.0/
+        #
         return vgg19.VGG19(input_tensor=preprocessed, weights="imagenet",
                            include_top=(not featurize))
 
