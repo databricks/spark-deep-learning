@@ -182,6 +182,24 @@ object DeepImageFeaturizer {
   private[sparkdl] object InceptionV3 extends NamedImageModel {
     /**
      * InceptionV3 model, with final layer removed, adapted from Keras.
+     * The model and weights are modified from the one provided by Keras.
+     * All cotributions by Keras are provided subject to the MIT license 
+     * located at https://github.com/fchollet/keras/blob/master/LICENSE
+     * and subject to the below additional copyrights and licenses.
+     *
+     * Copyright 2016 The TensorFlow Authors.  All rights reserved.
+     *
+     * Licensed under the Apache License, Version 2.0 (the "License");
+     * you may not use this file except in compliance with the License.
+     * You may obtain a copy of the License at
+     * 
+     * http://www.apache.org/licenses/LICENSE-2.0
+     * 
+     * Unless required by applicable law or agreed to in writing, software
+     * distributed under the License is distributed on an "AS IS" BASIS,
+     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     * See the License for the specific language governing permissions and
+     * limitations under the License.
      */
     override val name = "InceptionV3"
     override val height = 299
