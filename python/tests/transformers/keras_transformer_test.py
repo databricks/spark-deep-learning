@@ -50,7 +50,7 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
         self.assertEqual(len(final_df.columns), 3)
 
         # Compute Keras model local execution output
-        keras_predictions_raw = self.executeKerasModel(df=df, model=model,
+        keras_predictions_raw = self._executeKerasModelLocally(df=df, model=model,
                                                        input_col=input_col, id_col=id_col)
         keras_predictions = keras_predictions_raw.reshape((len(keras_predictions_raw),))
 

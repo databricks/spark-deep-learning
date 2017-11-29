@@ -79,12 +79,14 @@ class SparkDLTestCase(TestSparkContext, unittest.TestCase):
         map(lambda c: self.assertIn(c, df.columns), cols)
 
 
-class SparkDLTempDirTestCase(SparkDLTestCase):
+class SparkDLTempDirTestCase(SparkDLTestCase, TestTempDir):
 
     @classmethod
     def setUpClass(cls):
         super(SparkDLTempDirTestCase, cls).setUpClass()
+        cls.make_tempdir()
 
     @classmethod
     def tearDownClass(cls):
         super(SparkDLTempDirTestCase, cls).tearDownClass()
+        cls.remove_tempdir()

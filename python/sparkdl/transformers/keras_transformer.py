@@ -55,8 +55,8 @@ class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
             tfGraph, inputTensorName, outputTensorName = self._loadTFGraph(sess=sess,
                                                                            graph=keras_graph)
             inputGraph = TFInputGraph.fromGraph(graph=tfGraph, sess=sess,
-                                                feed_names=[self._inputTensor],
-                                                fetch_names=[self._outputTensor])
+                                                feed_names=[inputTensorName],
+                                                fetch_names=[outputTensorName])
         # Create TFTransformer & use it to apply the loaded Keras model graph to our dataset
         transformer = TFTransformer(tfInputGraph=inputGraph,
                                     inputMapping={self.getInputCol() : inputTensorName},
