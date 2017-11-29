@@ -261,4 +261,4 @@ registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"),
 
 ## License
 * The Deep Learning Pipelines source code is released under the Apache License 2.0 (see the LICENSE file).
-* The various models provided via `DeepImageFeaturizer` and `DeepImagePredictor` come from Keras; see the [Keras applications page](https://keras.io/applications/) for the individual model licensing information.
+* Models marked as *provided by Keras* (used by `DeepImageFeaturizer` and `DeepImagePredictor`) are provided subject to the MIT license located at https://github.com/fchollet/keras/blob/master/LICENSE and subject to any additional copyrights and licenses specified in the code or documentation. Also see the [Keras applications page](https://keras.io/applications/) for more on the individual model licensing information.
