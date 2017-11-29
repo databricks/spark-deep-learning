@@ -46,7 +46,7 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
 
     def test_keras_transformer_2dim(self):
         """
-        Test that KerasTransformer correctly handles multi-dimensional input/output tensors.
+        Test that KerasTransformer correctly handles two-dimensional input/output tensors.
         """
         model = Sequential()
         input_shape = [2, 3]
