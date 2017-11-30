@@ -22,7 +22,9 @@ private APIs.
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql.functions import udf
 
-from sparkdl.image.imageIO import imageArrayToStruct, imageSchema
+from sparkdl.image.imageIO import imageArrayToStruct
+from pyspark.ml.image import ImageSchema
+
 from sparkdl.param import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
@@ -89,15 +91,13 @@ class CanLoadImage(Params):
         # plan 1: udf(loader() + convert from np.array to imageSchema) -> call TFImageTransformer
         # plan 2: udf(loader()) ... we don't support np.array as a dataframe column type...
         loader = self.getImageLoader()
-
         # Load from external resources can fail, so we should allow None to be returned
         def load_image_uri_impl(uri):
             try:
                 return imageArrayToStruct(loader(uri))
             except:  # pylint: disable=bare-except
                 return None
-
-        load_udf = udf(load_image_uri_impl, imageSchema)
+        load_udf = udf(load_image_uri_impl, ImageSchema.imageSchema['image'].dataType)
         return dataframe.withColumn(self._loadedImageCol(), load_udf(dataframe[inputCol]))
 
 

@@ -20,8 +20,8 @@
 # 
 # COPYRIGHT
 #
-# All contributions by François Chollet:
-# Copyright (c) 2015, François Chollet.
+# All contributions by Francois Chollet:
+# Copyright (c) 2015, Francois Chollet.
 # All rights reserved.
 #
 # All contributions by Google:
@@ -135,7 +135,10 @@ class KerasApplicationModel:
 
 class InceptionV3Model(KerasApplicationModel):
     def preprocess(self, inputImage):
-        return inception_v3.preprocess_input(inputImage)
+        # TODO
+        # Keras preprocessing flips channel order from RGB -> BGR
+        # since we already have the image in BGR, we need to flip it to RGB first, for now
+        return inception_v3.preprocess_input(inputImage[...,::-1])
 
     def model(self, preprocessed, featurize):
         # Model provided by Keras. All cotributions by Keras are provided subject to the
@@ -169,7 +172,7 @@ class InceptionV3Model(KerasApplicationModel):
 
 class XceptionModel(KerasApplicationModel):
     def preprocess(self, inputImage):
-        return xception.preprocess_input(inputImage)
+        return xception.preprocess_input(inputImage[...,::-1])
 
     def model(self, preprocessed, featurize):
         # Model provided by Keras. All cotributions by Keras are provided subject to the
@@ -282,8 +285,7 @@ def _imagenet_preprocess_input(x, input_shape):
     It's a possibility to change the implementation in keras to look like the
     following, but not doing it for now.
     """
-    # 'RGB'->'BGR'
-    x = x[..., ::-1]
+    # assuming 'BGR'
     # Zero-center by mean pixel
     mean = np.ones(input_shape + (3,), dtype=np.float32)
     mean[..., 0] = 103.939

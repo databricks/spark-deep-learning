@@ -43,11 +43,12 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         image = np.expand_dims(image, axis=0)
         return preprocess_input(image)
 
+    # TODO: I believe this is already tested in named_image_test, should we remove it?
     def test_load_image_vs_keras(self):
         g = tf.Graph()
         with g.as_default():
             image_arr = utils.imageInputPlaceholder()
-            preprocessed = preprocess_input(image_arr)
+            preprocessed = preprocess_input(image_arr[...,::-1])
 
         output_col = "transformed_image"
         transformer = TFImageTransformer(inputCol="image", outputCol=output_col, graph=g,
@@ -60,7 +61,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         for row in df.collect():
             processed = np.array(row[output_col]).astype(np.float32)
             # compare to keras loading
-            images = self._loadImageViaKeras(row["filePath"])
+            images = self._loadImageViaKeras(row["image"]['origin'])
             image = images[0]
             image.shape = (1, image.shape[0] * image.shape[1] * image.shape[2])
             keras_processed = image[0]
@@ -74,7 +75,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         with g.as_default():
             image_arr = utils.imageInputPlaceholder()
             resized_images = tf.image.resize_images(image_arr, InceptionV3Constants.INPUT_SHAPE)
-            processed_images = preprocess_input(resized_images)
+            processed_images = preprocess_input(resized_images[...,::-1])
         self.assertEqual(processed_images.shape[1], InceptionV3Constants.INPUT_SHAPE[0])
         self.assertEqual(processed_images.shape[2], InceptionV3Constants.INPUT_SHAPE[1])
 
@@ -103,7 +104,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
     # Test InceptionV3 prediction as an example of applying a trained model.
 
     def _executeTensorflow(self, graph, input_tensor_name, output_tensor_name,
-                           df, id_col="filePath", input_col="image"):
+                           df,  input_col="image"):
         with tf.Session(graph=graph) as sess:
             output_tensor = graph.get_tensor_by_name(output_tensor_name)
             image_collected = df.collect()
@@ -111,7 +112,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             topK = {}
             for img_row in image_collected:
                 image = np.expand_dims(imageStructToArray(img_row[input_col]), axis=0)
-                uri = img_row[id_col]
+                uri = img_row['image']['origin']
                 output = sess.run([output_tensor],
                                   feed_dict={
                                       graph.get_tensor_by_name(input_tensor_name): image
@@ -132,7 +133,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                 image_string = utils.imageInputPlaceholder(nChannels = 3)
                 resized_images = tf.image.resize_images(image_string,
                                                         InceptionV3Constants.INPUT_SHAPE)
-                preprocessed = preprocess_input(resized_images)
+                preprocessed = preprocess_input(resized_images[...,::-1])
                 model = InceptionV3(input_tensor=preprocessed, weights="imagenet")
                 graph = tfx.strip_and_freeze_until([model.output], g, sess, return_graph=True)
 
@@ -143,8 +144,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         self.assertDfHasCols(transformed_df, [output_col])
         collected = transformed_df.collect()
         transformer_values, transformer_topK = self.transformOutputToComparables(collected,
-                                                                                 "filePath",
-                                                                                 output_col)
+                                                                                 output_col,lambda row: row['image']['origin'])
 
         tf_values, tf_topK = self._executeTensorflow(graph, image_string.name, model.output.name,
                                                      image_df)

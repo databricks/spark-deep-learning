@@ -36,7 +36,8 @@ from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
-from sparkdl.image.imageIO import imageArrayToStruct, SparkMode
+from sparkdl.image.imageIO import imageArrayToStruct
+from sparkdl.image.imageIO import imageTypeByOrdinal
 from sparkdl.graph.builder import IsolatedSession, GraphFunction
 import sparkdl.graph.pieces as gfac
 import sparkdl.graph.utils as tfx
@@ -62,7 +63,7 @@ class GraphPiecesTest(SparkDLTestCase):
         def check_image_round_trip(img_arr):
             spimg_dict = imageArrayToStruct(img_arr).asDict()
             spimg_dict['data'] = bytes(spimg_dict['data'])
-            img_arr_out = exec_gfn_spimg_decode(spimg_dict, spimg_dict['mode'])
+            img_arr_out = exec_gfn_spimg_decode(spimg_dict, imageTypeByOrdinal(spimg_dict['mode']).dtype)
             self.assertTrue(np.all(img_arr_out == img_arr))
 
         for fp in img_fpaths:
@@ -71,7 +72,7 @@ class GraphPiecesTest(SparkDLTestCase):
             img_arr_byte = img_to_array(img).astype(np.uint8)
             check_image_round_trip(img_arr_byte)
 
-            img_arr_float = img_to_array(img).astype(np.float)
+            img_arr_float = img_to_array(img).astype(np.float32)
             check_image_round_trip(img_arr_float)
 
             img_arr_preproc = iv3.preprocess_input(img_to_array(img))
@@ -143,7 +144,7 @@ class GraphPiecesTest(SparkDLTestCase):
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
         xcpt_model = Xception(weights="imagenet")
-        stages = [('spimage', gfac.buildSpImageConverter(SparkMode.RGB_FLOAT32)),
+        stages = [('spimage', gfac.buildSpImageConverter('float32')),
                   ('xception', GraphFunction.fromKeras(xcpt_model))]
         piped_model = GraphFunction.fromList(stages)
 

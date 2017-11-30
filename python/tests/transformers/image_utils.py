@@ -25,6 +25,8 @@ from keras.preprocessing.image import img_to_array, load_img
 import keras.backend as K
 import numpy as np
 import PIL.Image
+import sparkdl.image.imageIO
+
 
 from pyspark.sql.types import StringType
 
@@ -39,7 +41,7 @@ def _getSampleJPEGDir():
     return os.path.join(cur_dir, "../resources/images")
 
 def getSampleImageDF():
-    return imageIO.readImages(_getSampleJPEGDir())
+    return imageIO.readImagesWithCustomLib(path=_getSampleJPEGDir(),decode_f=imageIO.PIL_decode)
 
 def getSampleImagePaths():
     dirpath = _getSampleJPEGDir()
@@ -56,14 +58,13 @@ def getSampleImagePathsDF(sqlContext, colName):
 
 class ImageNetOutputComparisonTestCase(unittest.TestCase):
 
-    def transformOutputToComparables(self, collected, uri_col, output_col):
+    def transformOutputToComparables(self, collected, output_col, get_uri):
         values = {}
         topK = {}
         for row in collected:
-            uri = row[uri_col]
+            uri = get_uri(row)
             predictions = row[output_col]
             self.assertEqual(len(predictions), ImageNetConstants.NUM_CLASSES)
-
             values[uri] = np.expand_dims(predictions, axis=0)
             topK[uri] = decode_predictions(values[uri], top=5)[0]
         return values, topK

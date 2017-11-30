@@ -18,7 +18,6 @@ import logging
 import tensorflow as tf
 
 from sparkdl.graph.builder import IsolatedSession
-from sparkdl.image.imageIO import SparkMode
 
 logger = logging.getLogger('sparkdl')
 
@@ -48,14 +47,13 @@ def buildSpImageConverter(img_dtype):
         # This is the default behavior of Python Image Library
         shape = tf.reshape(tf.stack([height, width, num_channels], axis=0),
                            shape=(3,), name='shape')
-        if img_dtype == SparkMode.RGB:
+        if img_dtype == 'uint8':
             image_uint8 = tf.decode_raw(image_buffer, tf.uint8, name="decode_raw")
             image_float = tf.to_float(image_uint8)
-        else:
-            assert img_dtype == SparkMode.RGB_FLOAT32, \
-                "Unsupported dtype for image: {}".format(img_dtype)
+        elif img_dtype == 'float32':
             image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
-
+        else:
+            raise ValueError('unsupported image data type "%s"' % img_dtype)
         image_reshaped = tf.reshape(image_float, shape, name="reshaped")
         image_input = tf.expand_dims(image_reshaped, 0, name="image_input")
         gfn = issn.asGraphFunction([height, width, image_buffer, num_channels], [image_input])

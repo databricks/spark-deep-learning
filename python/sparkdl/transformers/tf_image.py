@@ -21,12 +21,15 @@ from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
 
-from sparkdl.image.imageIO import imageSchema, sparkModeLookup, SparkMode
+
+from pyspark.ml.image import ImageSchema
 from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters, HasOutputMode)
 import sparkdl.transformers.utils as utils
 import sparkdl.utils.jvmapi as JVMAPI
 import sparkdl.graph.utils as tfx
+import sparkdl.image.imageIO as imageIO
+from pyspark import Row
 
 __all__ = ['TFImageTransformer']
 
@@ -152,7 +155,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         # Assumes that the dtype for all images is the same in the given dataframe.
         pdf = dataset.select(self.getInputCol()).take(1)
         img = pdf[0][self.getInputCol()]
-        img_type = sparkModeLookup[img.mode]
+        img_type = imageIO.imageTypeByOrdinal(img.mode)
         return img_type.dtype
 
     def _addReshapeLayers(self, tf_graph, dtype="uint8"):
@@ -174,7 +177,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                 image_uint8 = tf.decode_raw(image_buffer, tf.uint8, name="decode_raw")
                 image_float = tf.to_float(image_uint8)
             else:
-                assert dtype == SparkMode.FLOAT32, "Unsupported dtype for image: %s" % dtype
+                assert dtype == "float32", "Unsupported dtype for image: %s" % dtype
                 image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
             image_reshaped = tf.reshape(image_float, shape, name="reshaped")
             image_reshaped_expanded = tf.expand_dims(image_reshaped, 0, name="expanded")
@@ -215,15 +218,11 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         width = int(output_shape[2])
         def to_image(orig_image, numeric_data):
             # Assume the returned image has float pixels but same #channels as input
-            mode = orig_image.mode if orig_image.mode == "float32" else "RGB-float32"
-            return [mode, height, width, orig_image.nChannels,
-                    bytearray(np.array(numeric_data).astype(np.float32).tobytes())]
-        to_image_udf = udf(to_image, imageSchema)
-        return (
-            df.withColumn(self.getOutputCol(),
-                          to_image_udf(df[self.getInputCol()], df[tfs_output_col]))
-              .drop(tfs_output_col)
-        )
+            mode = imageIO.imageTypeByName('CV_32FC%d' % orig_image.nChannels)
+            return Row(origin="",mode=mode.ord, height=height, width=width, nChannels=orig_image.nChannels, data=bytearray(np.array(numeric_data).astype(np.float32).tobytes()))
+        to_image_udf = udf(to_image, ImageSchema.imageSchema['image'].dataType)
+        return df.withColumn(self.getOutputCol(),to_image_udf(df[self.getInputCol()],df[tfs_output_col])).drop(tfs_output_col)
+
 
     def _convertOutputToVector(self, df, tfs_output_col):
         """

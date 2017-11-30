@@ -21,7 +21,7 @@ import java.io.File
 import javax.imageio.ImageIO
 
 import scala.util.Random
-import org.apache.spark.image.ImageSchema
+import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.sql.Row
 import org.scalatest.FunSuite
 
@@ -43,7 +43,7 @@ object ImageUtilsSuite {
 
 class ImageUtilsSuite extends FunSuite {
   // We want to make sure to test ImageUtils in headless mode to ensure it'll work on all systems.
-  assert(System.getProperty("java.awt.headless") === "true")
+//  assert(System.getProperty("java.awt.headless") === "true")
   import ImageUtilsSuite._
 
   test("Test spImage resize.") {
@@ -63,7 +63,7 @@ class ImageUtilsSuite extends FunSuite {
     val rand = new Random(971)
     val imageData = Array.ofDim[Byte](height * width * channels)
     rand.nextBytes(imageData)
-    val spImage = Row(null, height, width, channels, "CV_U8C3", imageData)
+    val spImage = Row(null, height, width, channels, ImageSchema.ocvTypes("CV_8UC3"), imageData)
     val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
     val testImage = ImageUtils.spImageFromBufferedImage(bufferedImage)
     assert(spImage === testImage, "Image changed during conversion.")
@@ -81,7 +81,7 @@ class ImageUtilsSuite extends FunSuite {
       (0 until width).flatMap { j => Seq(x + j + 1, x + j + 4, x + j + 7) }
     }.map(_.toByte).toArray
 
-    val spImage = Row(null, height, width, 3, "CV_U8C3", rawData)
+    val spImage = Row(null, height, width, 3, ImageSchema.ocvTypes("CV_8UC3"), rawData)
     val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
 
     for (h <- 0 until height) {

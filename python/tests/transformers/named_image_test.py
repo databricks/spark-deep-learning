@@ -28,6 +28,7 @@ from sparkdl.transformers.named_image import (DeepImagePredictor, DeepImageFeatu
                                               _buildTFGraphForName)
 from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF, getSampleImageList
+from pyspark.ml.image import ImageSchema
 
 
 class KerasApplicationModelTestCase(SparkDLTestCase):
@@ -50,7 +51,6 @@ class KerasApplicationModelTestCase(SparkDLTestCase):
         np.testing.assert_array_almost_equal(sparkdl_preprocessed_input, keras_preprocessed_input,
                                              decimal=5)
 
-
 class NamedImageTransformerBaseTestCase(SparkDLTestCase):
     """
     The tests here are written for Keras application -based models but test the
@@ -63,6 +63,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
     # Allow subclasses to force number of partitions - a hack to avoid OOM issues
     numPartitionsOverride = None
 
+
     @classmethod
     def setUpClass(cls):
         super(NamedImageTransformerBaseTestCase, cls).setUpClass()
@@ -74,19 +75,21 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         imageArray = np.empty((len(images), shape[0], shape[1], 3), 'uint8')
         for i, img in enumerate(images):
             assert img is not None and img.mode == "RGB"
-            imageArray[i] = np.array(img.resize(shape))
+            imageArray[i] = np.array(img.resize(shape))[...,::-1]
         cls.imageArray = imageArray
+        cls.imgFiles = imgFiles
+        cls.fileOrder = {imgFiles[i].split('/')[-1]:i for i in range(len(imgFiles))}
 
         # Predict the class probabilities for the images in our test library using keras API
         # and cache for use by multiple tests.
         preppedImage = cls.appModel._testPreprocess(imageArray.astype('float32'))
-        cls.kerasPredict = cls.appModel._testKerasModel(include_top=True).predict(preppedImage)
+        cls.preppedImage = preppedImage
+        cls.kerasPredict = cls.appModel._testKerasModel(include_top=True).predict(preppedImage,batch_size=1)
         cls.kerasFeatures = cls.appModel._testKerasModel(include_top=False).predict(preppedImage)
 
         cls.imageDF = getSampleImageDF().limit(5)
         if(cls.numPartitionsOverride):
             cls.imageDf = cls.imageDF.coalesce(cls.numPartitionsOverride)
-
 
     def test_buildtfgraphforname(self):
         """"
@@ -114,13 +117,13 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         kerasPredict = self.kerasPredict
         def rowWithImage(img):
             # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
-            row = imageIO.imageArrayToStruct(img.astype('uint8'), imageIO.SparkMode.RGB)
+            row = imageIO.imageArrayToStruct(img.astype('uint8'))
             # re-order row to avoid pyspark bug
-            return [[getattr(row, field.name) for field in imageIO.imageSchema]]
+            return [[getattr(row, field.name) for field in ImageSchema.imageSchema['image'].dataType]]
 
         # test: predictor vs keras on resized images
         rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
-        dfType = StructType([StructField("image", imageIO.imageSchema)])
+        dfType = ImageSchema.imageSchema
         imageDf = rdd.toDF(dfType)
         if self.numPartitionsOverride:
             imageDf = imageDf.coalesce(self.numPartitionsOverride)
@@ -140,9 +143,9 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         kerasPredict = self.kerasPredict
         transformer = DeepImagePredictor(inputCol='image', modelName=self.name,
                                          outputCol="prediction",)
-        fullPredict = transformer.transform(self.imageDF).collect()
+        fileOrder = self.fileOrder
+        fullPredict = sorted(transformer.transform(self.imageDF).collect(),key=lambda x:fileOrder[x['image']['origin'].split('/')[-1]])
         fullPredict = np.array([i.prediction for i in fullPredict])
-
         self.assertEqual(kerasPredict.shape, fullPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, fullPredict, decimal=6)
 
@@ -171,7 +174,8 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         transformer = DeepImageFeaturizer(inputCol="image", outputCol=output_col,
                                           modelName=self.name)
         transformed_df = transformer.transform(self.imageDF)
-        collected = transformed_df.collect()
+        fileOrder = self.fileOrder
+        collected = sorted(transformed_df.collect(),key=lambda x:fileOrder[x['image']['origin'].split('/')[-1]])
         features = np.array([i.prediction for i in collected])
 
         # Note: keras features may be multi-dimensional np arrays, but transformer features
@@ -193,7 +197,9 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         # add arbitrary labels to run logistic regression
         # TODO: it's weird that the test fails on some combinations of labels. check why.
         label_udf = udf(lambda x: abs(hash(x)) % 2, IntegerType())
-        train_df = self.imageDF.withColumn("label", label_udf(self.imageDF["filePath"]))
+        print '***** SCHEMA  ***** '
+        self.imageDF.printSchema()
+        train_df = self.imageDF.withColumn("label", label_udf(self.imageDF["image"]["origin"]))
 
         lrModel = pipeline.fit(train_df)
         # see if we at least get the training examples right.

@@ -16,7 +16,7 @@
 
 package com.databricks.sparkdl
 
-import org.apache.spark.image.ImageSchema
+import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.sql.{DataFrame, Row}

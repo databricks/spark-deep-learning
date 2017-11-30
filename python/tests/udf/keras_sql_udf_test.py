@@ -33,7 +33,8 @@ from sparkdl.graph.tensorframes_udf import makeGraphUDF
 import sparkdl.graph.utils as tfx
 from sparkdl.udf.keras_image_model import registerKerasImageUDF
 from sparkdl.utils import jvmapi as JVMAPI
-from sparkdl.image.imageIO import imageSchema, imageArrayToStruct
+from sparkdl.image.imageIO import imageArrayToStruct
+from pyspark.ml.image import ImageSchema
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import getSampleImagePathsDF
 
@@ -98,14 +99,14 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             from PIL import Image
             import numpy as np
             img_arr = np.array(Image.open(fpath), dtype=np.uint8)
-            return imageArrayToStruct(img_arr)
+            return imageArrayToStruct(img_arr[...,::-1])
 
         def keras_load_spimg(fpath):
-            return imageArrayToStruct(keras_load_img(fpath))
+            return imageArrayToStruct(keras_load_img(fpath)[...,::-1])
 
         # Load image with Keras and store it in our image schema
-        JVMAPI.registerUDF('keras_load_spimg', keras_load_spimg, imageSchema)
-        JVMAPI.registerUDF('pil_load_spimg', pil_load_spimg, imageSchema)
+        JVMAPI.registerUDF('keras_load_spimg', keras_load_spimg, ImageSchema.imageSchema['image'].dataType)
+        JVMAPI.registerUDF('pil_load_spimg', pil_load_spimg, ImageSchema.imageSchema['image'].dataType)
 
         # Register an InceptionV3 model
         registerKerasImageUDF("iv3_img_pred",

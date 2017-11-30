@@ -22,6 +22,7 @@ from sparkdl.transformers.tf_image import TFImageTransformer
 from sparkdl.transformers.keras_utils import KSessionWrap
 
 
+
 class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
                                 CanLoadImage, HasKerasModel, HasOutputMode):
     """

@@ -22,7 +22,7 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
 
 import sparkdl.graph.utils as tfx
-from sparkdl.image.imageIO import resizeImage
+from sparkdl.image.imageIO import resizeImage_python
 import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
@@ -217,7 +217,7 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
                                            inputTensor=modelGraphSpec["inputTensorName"],
                                            outputTensor=modelGraphSpec["outputTensorName"],
                                            outputMode=modelGraphSpec["outputMode"])
-        resizeUdf = resizeImage(modelGraphSpec["inputTensorSize"])
+        resizeUdf = resizeImage_python(modelGraphSpec["inputTensorSize"])
         result = tfTransformer.transform(dataset.withColumn(resizedCol, resizeUdf(inputCol)))
         return result.drop(resizedCol)
 
