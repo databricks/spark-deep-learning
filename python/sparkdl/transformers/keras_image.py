@@ -13,18 +13,13 @@
 # limitations under the License.
 #
 
-import keras.backend as K
-from keras.models import load_model
-
 from pyspark.ml import Transformer
-from pyspark.ml.param import Params, TypeConverters
 
-import sparkdl.graph.utils as tfx
-from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol,
     CanLoadImage, HasKerasModel, HasOutputMode)
 from sparkdl.transformers.tf_image import TFImageTransformer
+from sparkdl.transformers.keras_utils import KSessionWrap
 
 
 class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
@@ -62,28 +57,13 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
         return self
 
     def _transform(self, dataset):
-        graph = self._loadTFGraph()
-        image_df = self.loadImagesInternal(dataset, self.getInputCol())
-
-        assert self._inputTensor is not None, "self._inputTensor must be set"
-        assert self._outputTensor is not None, "self._outputTensor must be set"
-
-        transformer = TFImageTransformer(inputCol=self._loadedImageCol(),
-                                         outputCol=self.getOutputCol(), graph=graph,
-                                         inputTensor=self._inputTensor,
-                                         outputTensor=self._outputTensor,
-                                         outputMode=self.getOrDefault(self.outputMode))
-        return transformer.transform(image_df).drop(self._loadedImageCol())
-
-    def _loadTFGraph(self):
-        with KSessionWrap() as (sess, graph):
-            assert K.backend() == "tensorflow", \
-                "Keras backend is not tensorflow but KerasImageTransformer only supports " + \
-                "tensorflow-backed Keras models."
-            with graph.as_default():
-                K.set_learning_phase(0)  # Testing phase
-                model = load_model(self.getModelFile())
-                out_op_name = tfx.op_name(model.output, graph)
-                self._inputTensor = model.input.name
-                self._outputTensor = model.output.name
-                return tfx.strip_and_freeze_until([out_op_name], graph, sess, return_graph=True)
+        with KSessionWrap() as (sess, keras_graph):
+            graph, inputTensorName, outputTensorName = self._loadTFGraph(sess=sess,
+                                                                         graph=keras_graph)
+            image_df = self.loadImagesInternal(dataset, self.getInputCol())
+            transformer = TFImageTransformer(inputCol=self._loadedImageCol(),
+                                             outputCol=self.getOutputCol(), graph=graph,
+                                             inputTensor=inputTensorName,
+                                             outputTensor=outputTensorName,
+                                             outputMode=self.getOrDefault(self.outputMode))
+            return transformer.transform(image_df).drop(self._loadedImageCol())

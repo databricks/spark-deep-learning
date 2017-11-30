@@ -25,5 +25,5 @@ from .transformers.utils import imageInputPlaceholder
 __all__ = [
     'imageSchema', 'imageType', 'readImages',
     'TFImageTransformer', 'TFInputGraph', 'TFTransformer',
-    'DeepImagePredictor', 'DeepImageFeaturizer', 'KerasImageFileTransformer',
+    'DeepImagePredictor', 'DeepImageFeaturizer', 'KerasImageFileTransformer', 'KerasTransformer',
     'imageInputPlaceholder']

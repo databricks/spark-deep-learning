@@ -13,7 +13,10 @@
 # limitations under the License.
 #
 
+import shutil
 import sys
+import tempfile
+
 import sparkdl
 
 if sys.version_info[:2] <= (2, 6):
@@ -51,11 +54,22 @@ class TestSparkContext(object):
         cls.sql = None
 
 
+class TestTempDir(object):
+    @classmethod
+    def make_tempdir(cls):
+        cls.tempdir = tempfile.mkdtemp("sparkdl_tests", dir="/tmp")
+
+    @classmethod
+    def remove_tempdir(cls):
+        shutil.rmtree(cls.tempdir)
+
+
 class SparkDLTestCase(TestSparkContext, unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls.setup_env()
+
 
     @classmethod
     def tearDownClass(cls):
@@ -63,3 +77,16 @@ class SparkDLTestCase(TestSparkContext, unittest.TestCase):
 
     def assertDfHasCols(self, df, cols = []):
         map(lambda c: self.assertIn(c, df.columns), cols)
+
+
+class SparkDLTempDirTestCase(SparkDLTestCase, TestTempDir):
+
+    @classmethod
+    def setUpClass(cls):
+        super(SparkDLTempDirTestCase, cls).setUpClass()
+        cls.make_tempdir()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(SparkDLTempDirTestCase, cls).tearDownClass()
+        cls.remove_tempdir()

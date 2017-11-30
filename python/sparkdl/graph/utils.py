@@ -158,6 +158,10 @@ def op_name(tfobj_or_name, graph=None):
     else:
         raise TypeError('invalid tf.Operation name query type {}'.format(type(tfobj_or_name)))
 
+def add_scope_to_name(scope, name):
+    """ Prepends the provided scope to the passed-in op or tensor name. """
+    return "%s/%s"%(scope, name)
+
 def validated_output(tfobj_or_name, graph):
     """
     Validate and return the output names useable GraphFunction
