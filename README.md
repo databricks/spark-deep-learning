@@ -227,7 +227,7 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
 
     # Create and save a single-hidden-layer Keras model for binary classification on our data
     # NOTE: In a typical workflow, we'd train the model before exporting it to disk,
-    # but we skip that step here
+    # but we skip that step here for brevity
     model = Sequential()
     model.add(Dense(units=20, input_shape=[num_features], activation='relu'))
     model.add(Dense(units=1, activation='sigmoid'))
