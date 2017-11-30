@@ -161,7 +161,10 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
 
 3.  For Keras users
 
-    For applying Keras models in a distributed manner using Spark, `KerasImageFileTransformer` works on TensorFlow-backed Keras models. It
+    #### Images
+
+    For applying Keras models to images in a distributed manner using Spark,
+    `KerasImageFileTransformer` works on TensorFlow-backed Keras models. It
 
     1.  Internally creates a DataFrame containing a column of images by applying the user-specified image loading and processing function to the input DataFrame containing a column of image URIs
     2.  Loads a Keras model from the given model file path
@@ -204,6 +207,38 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     final_df = transformer.transform(uri_df)
     ```
 
+    #### Other Inputs (1D & 2D)
+
+    `KerasTransformer` applies a Tensorflow-backed Keras model to inputs of up to 2 dimensions. It
+    loads a Keras model from a given model file path and applies the model to a column of arrays
+    (where an array corresponds to a Tensor), outputting a column of arrays.
+
+    ```python
+    from sparkdl import KerasTransformer
+    from keras.models import Sequential
+    from keras.layers import Dense
+    import numpy as np
+
+    # Generate random input data for our transformer
+    num_features = 10
+    num_examples = 100
+    input_data = [{"features" : np.random.randn(num_features).tolist()} for i in range(num_examples)]
+    input_df = sqlContext.createDataFrame(input_data)
+
+    # Create and save a single-hidden-layer Keras model for binary classification on our data
+    # NOTE: In a typical workflow, we'd train the model before exporting it to disk,
+    # but we skip that step here
+    model = Sequential()
+    model.add(Dense(units=20, input_shape=[num_features], activation='relu'))
+    model.add(Dense(units=1, activation='sigmoid'))
+    model_path = "/tmp/simple-binary-classification"
+    model.save(model_path)
+
+    # Create transformer and apply it to our input data
+    transformer = KerasTransformer(inputCol="features", outputCol="predictions",
+                                   modelFile=model_path)
+    final_df = transformer.transform(input_df)
+    ```
 
 ### Deploying models as SQL functions
 
