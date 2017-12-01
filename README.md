@@ -207,9 +207,9 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     final_df = transformer.transform(uri_df)
     ```
 
-    #### Other Inputs (1D & 2D)
+    #### Tensor Inputs
 
-    `KerasTransformer` applies a Tensorflow-backed Keras model to inputs of up to 2 dimensions. It
+    `KerasTransformer` applies a TensorFlow-backed Keras model to inputs of up to 2 dimensions. It
     loads a Keras model from a given model file path and applies the model to a column of arrays
     (where an array corresponds to a Tensor), outputting a column of arrays.
 
@@ -219,13 +219,13 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     from keras.layers import Dense
     import numpy as np
 
-    # Generate random input data for our transformer
+    # Generate random input data
     num_features = 10
     num_examples = 100
     input_data = [{"features" : np.random.randn(num_features).tolist()} for i in range(num_examples)]
     input_df = sqlContext.createDataFrame(input_data)
 
-    # Create and save a single-hidden-layer Keras model for binary classification on our data
+    # Create and save a single-hidden-layer Keras model for binary classification
     # NOTE: In a typical workflow, we'd train the model before exporting it to disk,
     # but we skip that step here for brevity
     model = Sequential()
