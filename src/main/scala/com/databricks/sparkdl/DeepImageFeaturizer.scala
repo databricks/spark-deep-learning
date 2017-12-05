@@ -23,11 +23,10 @@ import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.param.{Param, ParamMap}
-import org.apache.spark.ml.util.{DefaultParamsWritable, Identifiable}
+import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.types.StructType
-
 import org.tensorflow.framework.GraphDef
 import org.tensorframes.{Shape, ShapeDescription}
 import org.tensorframes.impl.DebugRowOps
@@ -126,7 +125,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
   }
 }
 
-object DeepImageFeaturizer {
+object DeepImageFeaturizer extends DefaultParamsReadable[DeepImageFeaturizer] {
   /**
    * The deep image featurizer uses the information provided by named Image model to apply the
    * tensorflow graph, given in NamedImageModel.graph as a GraphDef, to an image column of a

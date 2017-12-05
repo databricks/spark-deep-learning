@@ -23,7 +23,7 @@ import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.scalatest.FunSuite
 
-class DeepImageFeaturizerSuite extends FunSuite with TestSparkContext {
+class DeepImageFeaturizerSuite extends FunSuite with TestSparkContext with DefaultReadWriteTest {
 
   var data: DataFrame = _
 
@@ -117,5 +117,13 @@ class DeepImageFeaturizerSuite extends FunSuite with TestSparkContext {
     assertThrows[IllegalArgumentException] {
       featurizer.setModelName("noSuchModel")
     }
+  }
+
+  test("DeepImageFeaturizer persistence") {
+    val featurizer = new DeepImageFeaturizer()
+      .setModelName("_test")
+      .setInputCol("myInput")
+      .setOutputCol("myOutput")
+    testDefaultReadWrite(featurizer)
   }
 }
