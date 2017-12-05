@@ -53,7 +53,7 @@ def buildSpImageConverter(img_dtype):
         elif img_dtype == 'float32':
             image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
         else:
-            raise ValueError('unsupported image data type "%s"' % img_dtype)
+            raise ValueError('unsupported image data type "%s", currently only know how to handle uint8 and float32')
         image_reshaped = tf.reshape(image_float, shape, name="reshaped")
         image_input = tf.expand_dims(image_reshaped, 0, name="image_input")
         gfn = issn.asGraphFunction([height, width, image_buffer, num_channels], [image_input])

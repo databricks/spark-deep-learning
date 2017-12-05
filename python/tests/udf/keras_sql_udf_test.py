@@ -27,6 +27,7 @@ from keras.models import Sequential
 from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
+from pyspark.ml.image import ImageSchema
 
 from sparkdl.graph.builder import IsolatedSession
 from sparkdl.graph.tensorframes_udf import makeGraphUDF
@@ -34,7 +35,6 @@ import sparkdl.graph.utils as tfx
 from sparkdl.udf.keras_image_model import registerKerasImageUDF
 from sparkdl.utils import jvmapi as JVMAPI
 from sparkdl.image.imageIO import imageArrayToStruct
-from pyspark.ml.image import ImageSchema
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import getSampleImagePathsDF
 

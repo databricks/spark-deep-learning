@@ -1,3 +1,4 @@
+# coding=utf-8
 # Copyright 2017 Databricks, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +21,8 @@
 # 
 # COPYRIGHT
 #
-# All contributions by Francois Chollet:
-# Copyright (c) 2015, Francois Chollet.
+# All contributions by François Chollet:
+# Copyright (c) 2015, François Chollet.
 # All rights reserved.
 #
 # All contributions by Google:
@@ -61,6 +62,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+
 
 
 from abc import ABCMeta, abstractmethod

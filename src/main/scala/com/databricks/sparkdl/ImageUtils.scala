@@ -81,7 +81,7 @@ private[sparkdl] object ImageUtils {
    * @param image Java BufferedImage.
    * @return Row image in spark.ml.image format with 3 channels in BGR order.
    */
-  private[sparkdl] def spImageFromBufferedImage(image: BufferedImage, origin:String = null): Row = {
+  private[sparkdl] def spImageFromBufferedImage(image: BufferedImage, origin: String = null): Row = {
     val channels = 3
     val height = image.getHeight
     val width = image.getWidth
@@ -100,7 +100,6 @@ private[sparkdl] object ImageUtils {
       }
       h += 1
     }
-    // TODO: udpate mode to be Int when spark.ml.image is merged.
     Row(origin, height, width, channels, ImageSchema.ocvTypes("CV_8UC3"), decoded)
   }
 
@@ -139,11 +138,11 @@ private[sparkdl] object ImageUtils {
       val graphic = tgtImg.createGraphics()
       graphic.drawImage(scaledImg, 0, 0, null)
       graphic.dispose()
-      spImageFromBufferedImage(tgtImg,origin=ImageSchema.getOrigin(spImage))
+      spImageFromBufferedImage(tgtImg, origin=ImageSchema.getOrigin(spImage))
     }
   }
 
-  def getResizeImageUDF(h:Int,w:Int): UserDefinedFunction = udf( (x:Row) => {
+  def getResizeImageUDF(h:Int, w:Int): UserDefinedFunction = udf( (x:Row) => {
     resizeImage(h,w,3 /** hardcoded for now, currently resize code only accepts 3 channels **/,x);
   },ImageSchema.columnSchema);
 

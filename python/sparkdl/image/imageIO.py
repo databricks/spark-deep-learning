@@ -54,12 +54,12 @@ __ocvTypesByOrdinal = {m.ord:m for m in supportedOcvTypes}
 
 def imageTypeByOrdinal(ord):
     if not ord in __ocvTypesByOrdinal:
-        raise KeyError("unsupported image type with ordinal " + ord)
+        raise KeyError("unsupported image type with ordinal %d, supported OpenCV types = %s"  % (ord,str(supportedOcvTypes)))
     return __ocvTypesByOrdinal[ord]
 
 def imageTypeByName(name):
     if not name in __ocvTypesByName:
-        raise KeyError("unsupported image type with name " + name)
+        raise KeyError("unsupported image type with name '%s', supported supported OpenCV types = %s" % (name,str(supportedOcvTypes)))
     return __ocvTypesByName[name]
 
 def imageArrayToStruct(imgArray,origin=""):
@@ -130,7 +130,7 @@ def resizeImage_python(size):
     :return: udf, a udf for resizing an image column to `size`.
     """
     if len(size) != 2:
-        raise ValueError("New image size should have for [height, width] but got {}".format(size))
+        raise ValueError("New image size should have format [height, width] but got {}".format(size))
     def _resizeImageAsRow(imgAsRow):
         if (imgAsRow.height,imgAsRow.width) == size:
             return imgAsRow
@@ -138,27 +138,6 @@ def resizeImage_python(size):
         imgAsArray = (np.array(imgAsPil)[...,::-1])
         return imageArrayToStruct(imgAsArray,origin=imgAsRow.origin)
     return udf(_resizeImageAsRow, ImageSchema.imageSchema['image'].dataType)
-
-
-# cache for created udfs
-__resize_udfs = {}
-
-def resizeImage_jvm(size):
-    """ Create a scala udf for resizing image.
-
-   Example usage:
-   dataFrame.select(resizeImage(height, width)('imageColumn'))
-
-   :param size: tuple, target size of new image in the form (height, width).
-   :return: udf, a udf for resizing an image column to `size`.
-   """
-    sc = SparkContext.getOrCreate()
-    height,width = size
-    if not size in __resize_udfs:
-        scala_udf = sc._jvm.com.databricks.sparkdl.ImageUtils.getResizeImageUDF(height,width)
-        __resize_udfs[size] = lambda col:Column(scala_udf.apply(_to_seq(sc, [col], _to_java_column)))
-    return __resize_udfs[size]
-
 
 def filesToDF(sc, path, numPartitions=None):
     """
@@ -195,7 +174,7 @@ def PIL_decode_and_resize(size):
         return np.asarray(Image.open(BytesIO(raw_bytes)).resize(size))[...,::-1]
     return _decode
 
-def readImagesWithCustomLib(path, decode_f,numPartition = None):
+def readImagesWithCustomLib(path, decode_f, numPartition = None):
     """
     Read a directory of images (or a single image) into a DataFrame using a custom library to decode the images.
 
@@ -205,8 +184,8 @@ def readImagesWithCustomLib(path, decode_f,numPartition = None):
     :param numPartition: [optional] int, number or partitions to use for reading files.
     :return: DataFrame with schema == ImageSchema.imageSchema.
     """
-    return _readImagesWithCustomLib(path,decode_f,numPartition, sc = SparkContext.getOrCreate())
-def _readImagesWithCustomLib(path, decode_f,numPartition, sc):
+    return _readImagesWithCustomLib(path, decode_f, numPartition, sc = SparkContext.getOrCreate())
+def _readImagesWithCustomLib(path, decode_f, numPartition, sc):
     def _decode(path,raw_bytes):
         try:
             return imageArrayToStruct(decode_f(raw_bytes),origin=path)

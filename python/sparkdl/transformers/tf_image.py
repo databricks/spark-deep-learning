@@ -219,10 +219,15 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         def to_image(orig_image, numeric_data):
             # Assume the returned image has float pixels but same #channels as input
             mode = imageIO.imageTypeByName('CV_32FC%d' % orig_image.nChannels)
-            return Row(origin="",mode=mode.ord, height=height, width=width, nChannels=orig_image.nChannels, data=bytearray(np.array(numeric_data).astype(np.float32).tobytes()))
+            data = data=bytearray(np.array(numeric_data).astype(np.float32).tobytes())
+            nChannels = orig_image.nChannels
+            return Row(origin="", mode=mode.ord,
+                       height=height, width=width,
+                       nChannels=nChannels, data=data)
         to_image_udf = udf(to_image, ImageSchema.imageSchema['image'].dataType)
-        return df.withColumn(self.getOutputCol(),to_image_udf(df[self.getInputCol()],df[tfs_output_col])).drop(tfs_output_col)
-
+        return df.withColumn(self.getOutputCol(),
+                             to_image_udf(df[self.getInputCol()],df[tfs_output_col])
+                             ).drop(tfs_output_col)
 
     def _convertOutputToVector(self, df, tfs_output_col):
         """

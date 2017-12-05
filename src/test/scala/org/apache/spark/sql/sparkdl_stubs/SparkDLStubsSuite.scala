@@ -27,14 +27,14 @@ import com.databricks.sparkdl.TestSparkContext
  */
 class SparkDLStubSuite extends FunSuite with TestSparkContext {
 
-  test("Registered UDF must be found (1)") {
+  test("Registered UDF must be found") {
     val udfName = "sparkdl_test_udf"
     val udfImpl = { (x: Int, y: Int) => x + y }
     UDFUtils.registerUDF(spark.sqlContext, udfName, udf(udfImpl))
     assert(spark.catalog.functionExists(udfName))
   }
 
-  test("Registered piped UDF must be found (2)") {
+  test("Registered piped UDF must be found") {
     val udfName = "sparkdl_test_piped_udf"
 
     UDFUtils.registerUDF(spark.sqlContext, s"${udfName}_0",

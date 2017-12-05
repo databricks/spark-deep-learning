@@ -91,6 +91,15 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         if(cls.numPartitionsOverride):
             cls.imageDf = cls.imageDF.coalesce(cls.numPartitionsOverride)
 
+    def __sortByFileOrder(self, ary):
+        """
+        This is to ensure we are comparing compatible sequences of predictions.
+        Sorts the results according to the order in which the files have been read by python.
+        Note: Java and python can read files in different order.
+        """
+        fileOrder = self.fileOrder
+        return sorted(ary,key=lambda x:fileOrder[x['image']['origin'].split('/')[-1]])
+
     def test_buildtfgraphforname(self):
         """"
         Run the graph produced by _buildtfgraphforname using tensorflow and compare to keras result.
@@ -143,8 +152,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         kerasPredict = self.kerasPredict
         transformer = DeepImagePredictor(inputCol='image', modelName=self.name,
                                          outputCol="prediction",)
-        fileOrder = self.fileOrder
-        fullPredict = sorted(transformer.transform(self.imageDF).collect(),key=lambda x:fileOrder[x['image']['origin'].split('/')[-1]])
+        fullPredict = self.__sortByFileOrder(transformer.transform(self.imageDF).collect())
         fullPredict = np.array([i.prediction for i in fullPredict])
         self.assertEqual(kerasPredict.shape, fullPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, fullPredict, decimal=6)
@@ -174,8 +182,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         transformer = DeepImageFeaturizer(inputCol="image", outputCol=output_col,
                                           modelName=self.name)
         transformed_df = transformer.transform(self.imageDF)
-        fileOrder = self.fileOrder
-        collected = sorted(transformed_df.collect(),key=lambda x:fileOrder[x['image']['origin'].split('/')[-1]])
+        collected = self.__sortByFileOrder(transformed_df.collect())
         features = np.array([i.prediction for i in collected])
 
         # Note: keras features may be multi-dimensional np arrays, but transformer features
