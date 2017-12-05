@@ -73,6 +73,8 @@ import numpy as np
 import tensorflow as tf
 
 from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
+from sparkdl.image.imageIO import _rgb2bgr
+
 
 
 """
@@ -140,7 +142,7 @@ class InceptionV3Model(KerasApplicationModel):
         # TODO
         # Keras preprocessing flips channel order from RGB -> BGR
         # since we already have the image in BGR, we need to flip it to RGB first, for now
-        return inception_v3.preprocess_input(inputImage[...,::-1])
+        return inception_v3.preprocess_input(_rgb2bgr(inputImage))
 
     def model(self, preprocessed, featurize):
         # Model provided by Keras. All cotributions by Keras are provided subject to the
@@ -174,7 +176,7 @@ class InceptionV3Model(KerasApplicationModel):
 
 class XceptionModel(KerasApplicationModel):
     def preprocess(self, inputImage):
-        return xception.preprocess_input(inputImage[...,::-1])
+        return xception.preprocess_input(_rgb2bgr(inputImage))
 
     def model(self, preprocessed, featurize):
         # Model provided by Keras. All cotributions by Keras are provided subject to the

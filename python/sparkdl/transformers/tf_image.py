@@ -219,7 +219,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         def to_image(orig_image, numeric_data):
             # Assume the returned image has float pixels but same #channels as input
             mode = imageIO.imageTypeByName('CV_32FC%d' % orig_image.nChannels)
-            data = data=bytearray(np.array(numeric_data).astype(np.float32).tobytes())
+            data = bytearray(np.array(numeric_data).astype(np.float32).tobytes())
             nChannels = orig_image.nChannels
             return Row(origin="", mode=mode.ord,
                        height=height, width=width,

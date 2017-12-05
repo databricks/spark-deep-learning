@@ -98,7 +98,7 @@ def imageStructToPIL(imageRow):
         raise ValueError("Can not convert image of type " + imgType.dtype + " to PIL, can only deal with 8U format")
     ary = imageStructToArray(imageRow)
     if imgType.nChannels != 1:
-        ary = ary[...,::-1]
+        ary = _rgb2bgr(ary)
     if imgType.nChannels == 1:
         return Image.fromarray(obj=ary,mode='L')
     elif imgType.nChannels == 3:
@@ -120,6 +120,10 @@ def _arrayToOcvMode(arr):
         raise ValueError("Unsupported type '%s'" % arr.dtype)
     return imageTypeByName(name)
 
+
+def _rgb2bgr(ary):
+    return ary[...,::-1]
+
 def resizeImage_python(size):
     """ Create a udf for resizing image.
 
@@ -131,11 +135,13 @@ def resizeImage_python(size):
     """
     if len(size) != 2:
         raise ValueError("New image size should have format [height, width] but got {}".format(size))
+    sz = (size[1],size[0])
+
     def _resizeImageAsRow(imgAsRow):
-        if (imgAsRow.height,imgAsRow.width) == size:
+        if (imgAsRow.height,imgAsRow.width) == sz:
             return imgAsRow
-        imgAsPil = imageStructToPIL(imgAsRow).resize(size[::-1])
-        imgAsArray = (np.array(imgAsPil)[...,::-1])
+        imgAsPil = imageStructToPIL(imgAsRow).resize(sz)
+        imgAsArray = _rgb2bgr(np.array(imgAsPil))
         return imageArrayToStruct(imgAsArray,origin=imgAsRow.origin)
     return udf(_resizeImageAsRow, ImageSchema.imageSchema['image'].dataType)
 
@@ -161,7 +167,7 @@ def PIL_decode(raw_bytes):
     :param raw_bytes:
     :return: image data as an array in CV_8UC3 format
     """
-    return np.asarray(Image.open(BytesIO(raw_bytes)))[...,::-1]
+    return _rgb2bgr(np.asarray(Image.open(BytesIO(raw_bytes))))
 
 
 def PIL_decode_and_resize(size):
@@ -171,7 +177,7 @@ def PIL_decode_and_resize(size):
     :return: image data as an array in CV_8UC3 format
     """
     def _decode(raw_bytes):
-        return np.asarray(Image.open(BytesIO(raw_bytes)).resize(size))[...,::-1]
+        return _rgb2bgr(np.asarray(Image.open(BytesIO(raw_bytes)).resize(size)))
     return _decode
 
 def readImagesWithCustomLib(path, decode_f, numPartition = None):

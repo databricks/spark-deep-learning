@@ -141,9 +141,4 @@ private[sparkdl] object ImageUtils {
       spImageFromBufferedImage(tgtImg, origin=ImageSchema.getOrigin(spImage))
     }
   }
-
-  def getResizeImageUDF(h:Int, w:Int): UserDefinedFunction = udf( (x:Row) => {
-    resizeImage(h,w,3 /** hardcoded for now, currently resize code only accepts 3 channels **/,x);
-  },ImageSchema.columnSchema);
-
 }

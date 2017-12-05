@@ -35,8 +35,11 @@ import sparkdl.graph.utils as tfx
 from sparkdl.udf.keras_image_model import registerKerasImageUDF
 from sparkdl.utils import jvmapi as JVMAPI
 from sparkdl.image.imageIO import imageArrayToStruct
+from sparkdl.image.imageIO import _rgb2bgr
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import getSampleImagePathsDF
+
+
 
 def get_image_paths_df(sqlCtx):
     df = getSampleImagePathsDF(sqlCtx, "fpath")
@@ -99,10 +102,10 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             from PIL import Image
             import numpy as np
             img_arr = np.array(Image.open(fpath), dtype=np.uint8)
-            return imageArrayToStruct(img_arr[...,::-1])
+            return imageArrayToStruct(_rgb2bgr(img_arr))
 
         def keras_load_spimg(fpath):
-            return imageArrayToStruct(keras_load_img(fpath)[...,::-1])
+            return imageArrayToStruct(_rgb2bgr(keras_load_img(fpath)))
 
         # Load image with Keras and store it in our image schema
         JVMAPI.registerUDF('keras_load_spimg', keras_load_spimg, ImageSchema.imageSchema['image'].dataType)

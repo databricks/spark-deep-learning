@@ -204,7 +204,6 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         # add arbitrary labels to run logistic regression
         # TODO: it's weird that the test fails on some combinations of labels. check why.
         label_udf = udf(lambda x: abs(hash(x)) % 2, IntegerType())
-        print '***** SCHEMA  ***** '
         self.imageDF.printSchema()
         train_df = self.imageDF.withColumn("label", label_udf(self.imageDF["image"]["origin"]))
 

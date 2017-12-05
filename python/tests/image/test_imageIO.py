@@ -23,9 +23,8 @@ import PIL.Image
 from pyspark.sql.functions import col, udf
 from pyspark.sql.types import BinaryType, StringType, StructField, StructType
 
-from pyspark.ml.image import ImageSchema
-
 from sparkdl.image import imageIO
+from pyspark.ml.image import ImageSchema
 from ..tests import SparkDLTestCase
 
 # Create dome fake image data to work with
