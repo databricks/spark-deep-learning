@@ -8,7 +8,8 @@ import org.apache.spark.ml.param.Params
 import org.apache.spark.ml.util.{Identifiable, MLReader, MLWritable, TempDirectory}
 
 /**
- * Copied from Spark.
+ * Copied from Spark (https://github.com/apache/spark/blob/branch-2.2/mllib/src/test/scala/org/
+ * apache/spark/ml/util/DefaultReadWriteTest.scala).
  *
  * Trait containing a default persistence test for Estimators/Transformers whose data is stored
  * entirely in [[org.apache.spark.ml.param.Param]] instances.
