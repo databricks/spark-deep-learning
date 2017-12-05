@@ -19,7 +19,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation, Reshape
 from keras.initializers import glorot_uniform
 
-from sparkdl.transformers.keras_transformer import KerasTransformer
+from sparkdl.transformers.keras_tensor import KerasTransformer
 from ..tests import SparkDLTempDirTestCase
 
 
