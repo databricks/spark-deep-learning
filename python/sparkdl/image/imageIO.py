@@ -25,10 +25,6 @@ from pyspark import Row
 from pyspark import SparkContext
 from pyspark.sql.types import (BinaryType, IntegerType, StringType, StructField, StructType)
 from pyspark.sql.functions import udf
-from pyspark.sql.column import Column
-from pyspark.sql.column import _to_seq
-from pyspark.sql.column import _to_java_column
-
 from pyspark.ml.image import ImageSchema
 
 
@@ -76,8 +72,6 @@ def imageArrayToStruct(imgArray,origin=""):
         imgArray = imgArray.reshape(imgArray.shape[1:])
     imageType = _arrayToOcvMode(imgArray)
     height, width, nChannels = imgArray.shape
-    # Convert the array to match the image type.
-    imgArray = np.array(imgArray, dtype=imageType.dtype, copy=False)
     data = bytearray(imgArray.tobytes())
     return Row(origin=origin,mode=imageType.ord, height=height, width=width, nChannels=nChannels, data=data)
 
@@ -141,7 +135,7 @@ def resizeImage_python(size):
         if (imgAsRow.height,imgAsRow.width) == sz:
             return imgAsRow
         imgAsPil = imageStructToPIL(imgAsRow).resize(sz)
-        imgAsArray = _rgb2bgr(np.array(imgAsPil))
+        imgAsArray = _rgb2bgr(np.asarray(imgAsPil))
         return imageArrayToStruct(imgAsArray,origin=imgAsRow.origin)
     return udf(_resizeImageAsRow, ImageSchema.imageSchema['image'].dataType)
 

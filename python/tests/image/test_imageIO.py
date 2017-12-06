@@ -74,25 +74,36 @@ class TestReadImages(SparkDLTestCase):
         cls.binaryFilesMock = None
 
     def test_resize(self):
-        imgAsRow = imageIO.imageArrayToStruct(array)
+        imgAsRow = imageIO.imageArrayToStruct(imageIO._rgb2bgr(array))
+        imgAsPIL = PIL.Image.fromarray(obj=array).resize((5,4))
+        smallerAry = imageIO._rgb2bgr(np.asarray(imgAsPIL))
         smaller = imageIO.resizeImage_python([4, 5]).func
         smallerImg = smaller(imgAsRow)
+        np.testing.assert_array_equal(smallerAry,imageIO.imageStructToArray(smallerImg))
         for n in ImageSchema.imageSchema['image'].dataType.names:
             smallerImg[n]
         self.assertEqual(smallerImg.height, 4)
         self.assertEqual(smallerImg.width, 5)
         self.assertRaises(ValueError, imageIO.resizeImage_python, [1, 2, 3])
+        sameImage = imageIO.resizeImage_python((imgAsRow.height, imgAsRow.width)).func(imgAsRow)
+        self.assertEqual(imgAsRow, sameImage)
 
-    def test_imageArrayToStruct(self):
-
-        # Check converting with matching types
-        height, width, chan = array.shape
-        imgAsStruct = imageIO.imageArrayToStruct(array)
-        self.assertEqual(imgAsStruct.height, height)
-        self.assertEqual(imgAsStruct.width, width)
-        self.assertEqual(imgAsStruct.data, array.tobytes())
-
-
+    def test_imageConversions(self):
+        """"
+        Test conversion image array <-> image struct
+        """
+        def _test(array):
+            height, width, chan = array.shape
+            imgAsStruct = imageIO.imageArrayToStruct(array)
+            self.assertEqual(imgAsStruct.height, height)
+            self.assertEqual(imgAsStruct.width, width)
+            self.assertEqual(imgAsStruct.data, array.tobytes())
+            imgReconstructed = imageIO.imageStructToArray(imgAsStruct)
+            np.testing.assert_array_equal(array,imgReconstructed)
+        for nChannels in (1,3,4):
+            # unsigned bytes
+            _test(np.random.randint(0, 256, (10, 11, nChannels), 'uint8'))
+            _test(np.random.random_sample((10,11,nChannels)).astype('float32'))
 
     def test_image_round_trip(self):
         # Test round trip: array -> png -> sparkImg -> array
