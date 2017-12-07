@@ -22,6 +22,7 @@ import tensorflow as tf
 
 import sparkdl.graph.utils as tfx
 from sparkdl.image.imageIO import imageStructToArray
+from sparkdl.image import imageIO
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.tf_image import TFImageTransformer
 import sparkdl.transformers.utils as utils
@@ -48,7 +49,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         g = tf.Graph()
         with g.as_default():
             image_arr = utils.imageInputPlaceholder()
-            preprocessed = preprocess_input(image_arr[...,::-1])
+            preprocessed = preprocess_input(imageIO._reverseChannels(image_arr))
 
         output_col = "transformed_image"
         transformer = TFImageTransformer(inputCol="image", outputCol=output_col, graph=g,
@@ -75,7 +76,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         with g.as_default():
             image_arr = utils.imageInputPlaceholder()
             resized_images = tf.image.resize_images(image_arr, InceptionV3Constants.INPUT_SHAPE)
-            processed_images = preprocess_input(resized_images[...,::-1])
+            processed_images = preprocess_input(imageIO._reverseChannels(resized_images))
         self.assertEqual(processed_images.shape[1], InceptionV3Constants.INPUT_SHAPE[0])
         self.assertEqual(processed_images.shape[2], InceptionV3Constants.INPUT_SHAPE[1])
 
@@ -133,7 +134,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                 image_string = utils.imageInputPlaceholder(nChannels = 3)
                 resized_images = tf.image.resize_images(image_string,
                                                         InceptionV3Constants.INPUT_SHAPE)
-                preprocessed = preprocess_input(resized_images[...,::-1])
+                preprocessed = preprocess_input(imageIO._reverseChannels(resized_images))
                 model = InceptionV3(input_tensor=preprocessed, weights="imagenet")
                 graph = tfx.strip_and_freeze_until([model.output], g, sess, return_graph=True)
 

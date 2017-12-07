@@ -14,13 +14,13 @@
 #
 
 
-## hack to import copy-pasted image schema (to be removed in Spark2.3)
+# hack to import copy-pasted image schema (to be removed in Spark2.3)
+# TODO remove in Spark2.3
 import os
 import pyspark.ml
 dir_path = os.path.dirname(os.path.realpath(__file__))
 parentdir = os.path.dirname(dir_path)
-from os import path
-pyspark.ml.__path__.append(path.join(parentdir,"pyspark","ml"))
+pyspark.ml.__path__.append(os.path.join(parentdir, "pyspark", "ml"))
 
 from pyspark.ml.image import ImageSchema
 

@@ -55,7 +55,8 @@ sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.1.1-bin-hadoop2.7 PYSPARK_PYTHON=pyth
 
 
 ## Spark version compatibility
-Spark >= 2.3.0 is required, Python 2.7 is recommended.
+
+Spark 2.1.1 and Python 2.7 are recommended.
 
 
 ## Support
@@ -88,11 +89,11 @@ from pyspark.ml.image import ImageSchema
 image_df = ImageSchema.readImages("/data/myimages")
 ```
 
-or alternatively, using PIL in python
+or if custom image library is needed:
 
 ```python
 from sparkdl.image import imageIO as imageIO
-image_df = imageIO.readImagesWithCustomLib("/data/myimages",decode_f=imageIO.PIL_decode)
+image_df = imageIO.readImagesWithCustomFn("/data/myimages",decode_f=<your image library, see imageIO.PIL_decode>)
 ```
 
 The resulting DataFrame contains a string column named "image" containing an image struct with schema == ImageSchema.

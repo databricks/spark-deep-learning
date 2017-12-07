@@ -87,12 +87,20 @@ def imageStructToArray(imageRow):
     return np.ndarray(shape, imType.dtype, imageRow.data)
 
 def imageStructToPIL(imageRow):
+    """
+    Convert the immage from image schema struct to PIL image
+
+    :param imageRow: Row, must have ImageSchema
+    :return PIL image
+    """
     imgType = imageTypeByOrdinal(imageRow.mode)
     if imgType.dtype != 'uint8':
         raise ValueError("Can not convert image of type " + imgType.dtype + " to PIL, can only deal with 8U format")
     ary = imageStructToArray(imageRow)
+    # PIL expects RGB order, image schema is BGR
+    # => we need to flip the order unless there is only one channel
     if imgType.nChannels != 1:
-        ary = _rgb2bgr(ary)
+        ary = _reverseChannels(ary)
     if imgType.nChannels == 1:
         return Image.fromarray(obj=ary,mode='L')
     elif imgType.nChannels == 3:
@@ -115,10 +123,10 @@ def _arrayToOcvMode(arr):
     return imageTypeByName(name)
 
 
-def _rgb2bgr(ary):
+def _reverseChannels(ary):
     return ary[...,::-1]
 
-def resizeImage_python(size):
+def createResizeImageUDF(size):
     """ Create a udf for resizing image.
 
     Example usage:
@@ -135,7 +143,7 @@ def resizeImage_python(size):
         if (imgAsRow.height,imgAsRow.width) == sz:
             return imgAsRow
         imgAsPil = imageStructToPIL(imgAsRow).resize(sz)
-        imgAsArray = _rgb2bgr(np.asarray(imgAsPil))
+        imgAsArray = _reverseChannels(np.asarray(imgAsPil))
         return imageArrayToStruct(imgAsArray,origin=imgAsRow.origin)
     return udf(_resizeImageAsRow, ImageSchema.imageSchema['image'].dataType)
 
@@ -161,7 +169,7 @@ def PIL_decode(raw_bytes):
     :param raw_bytes:
     :return: image data as an array in CV_8UC3 format
     """
-    return _rgb2bgr(np.asarray(Image.open(BytesIO(raw_bytes))))
+    return _reverseChannels(np.asarray(Image.open(BytesIO(raw_bytes))))
 
 
 def PIL_decode_and_resize(size):
@@ -171,10 +179,10 @@ def PIL_decode_and_resize(size):
     :return: image data as an array in CV_8UC3 format
     """
     def _decode(raw_bytes):
-        return _rgb2bgr(np.asarray(Image.open(BytesIO(raw_bytes)).resize(size)))
+        return _reverseChannels(np.asarray(Image.open(BytesIO(raw_bytes)).resize(size)))
     return _decode
 
-def readImagesWithCustomLib(path, decode_f, numPartition = None):
+def readImagesWithCustomFn(path, decode_f, numPartition = None):
     """
     Read a directory of images (or a single image) into a DataFrame using a custom library to decode the images.
 
@@ -184,8 +192,9 @@ def readImagesWithCustomLib(path, decode_f, numPartition = None):
     :param numPartition: [optional] int, number or partitions to use for reading files.
     :return: DataFrame with schema == ImageSchema.imageSchema.
     """
-    return _readImagesWithCustomLib(path, decode_f, numPartition, sc = SparkContext.getOrCreate())
-def _readImagesWithCustomLib(path, decode_f, numPartition, sc):
+    return _readImagesWithCustomFn(path, decode_f, numPartition, sc = SparkContext.getOrCreate())
+
+def _readImagesWithCustomFn(path, decode_f, numPartition, sc):
     def _decode(path,raw_bytes):
         try:
             return imageArrayToStruct(decode_f(raw_bytes),origin=path)

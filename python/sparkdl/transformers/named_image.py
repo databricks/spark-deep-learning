@@ -22,7 +22,7 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
 
 import sparkdl.graph.utils as tfx
-from sparkdl.image.imageIO import resizeImage_python
+from sparkdl.image.imageIO import createResizeImageUDF
 import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
@@ -113,6 +113,22 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
     def _getIntermediateOutputCol(self):
         return "__tmp_" + self.getOutputCol()
 
+
+class ScalaDeepImageFeaturizer(Transformer,HasInputCol,HasOutputCol):
+    @keyword_only
+    def __init__(self, inputCol=None, outputCol=None, modelName=None):
+        """
+        __init__(self, inputCol=None, outputCol=None, modelName=None)
+        """
+        super(ScalaDeepImageFeaturizer, self).__init__()
+        kwargs = self._input_kwargs
+        self.setParams(**kwargs)
+    def _transform(self, dataset):
+        scalaFeaturizer = sc._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
+        scalaFeaturizer.setModelName(modelName)
+        scalaFeaturizer.setInputCol(inputCol)
+        scalaFeaturizer.setOutputCol(outputCol)
+        return DataFrame(scalaFeaturizer.transform(dataset._jdf),dataset._sc)
 
 # TODO: give an option to take off multiple layers so it can be used in tuning
 #       (could be the name of the layer or int for how many to take off).
@@ -217,7 +233,7 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
                                            inputTensor=modelGraphSpec["inputTensorName"],
                                            outputTensor=modelGraphSpec["outputTensorName"],
                                            outputMode=modelGraphSpec["outputMode"])
-        resizeUdf = resizeImage_python(modelGraphSpec["inputTensorSize"])
+        resizeUdf = createResizeImageUDF(modelGraphSpec["inputTensorSize"])
         result = tfTransformer.transform(dataset.withColumn(resizedCol, resizeUdf(inputCol)))
         return result.drop(resizedCol)
 

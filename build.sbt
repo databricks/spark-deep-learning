@@ -1,27 +1,12 @@
 // Your sbt build file. Guides on how to write one can be found at
 // http://www.scala-sbt.org/0.13/docs/index.html
 
-
-
-//ivyLoggingLevel := UpdateLogging.Full
-//logLevel := Level.Debug
-//
-//assemblyMergeStrategy in assembly := {
-//  case PathList("org","apache", "commons", xs @ _*) => MergeStrategy.last
-//  case x =>
-//    val oldStrategy = (assemblyMergeStrategy in assembly).value
-//    oldStrategy(x)
-//}
-
-
-//val sparkVer = "2.3.0-SNAPSHOT"; //sys.props.getOrElse("spark.version", "2.1.1")
 val sparkVer = sys.props.getOrElse("spark.version", "2.1.1")
 val sparkBranch = sparkVer.substring(0, 3)
 val defaultScalaVer = sparkBranch match {
   case "2.0" => "2.11.8"
   case "2.1" => "2.11.8"
   case "2.2" => "2.11.8"
-  case "2.3" => "2.11.8"
   case _ => throw new IllegalArgumentException(s"Unsupported Spark version: $sparkVer.")
 }
 val scalaVer = sys.props.getOrElse("scala.version", defaultScalaVer)
@@ -57,7 +42,6 @@ spDependencies += s"databricks/tensorframes:0.2.9-s_${scalaMajorVersion}"
 libraryDependencies ++= Seq(
   // These versions are ancient, but they cross-compile around scala 2.10 and 2.11.
   // Update them when dropping support for scala 2.10
-//  "org.apache.hadoop" % "hadoop-client" % "2.7.2",
   "com.typesafe.scala-logging" %% "scala-logging-api" % "2.1.2",
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
   // Matching scalatest versions from TensorFrames

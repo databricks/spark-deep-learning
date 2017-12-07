@@ -74,18 +74,18 @@ class TestReadImages(SparkDLTestCase):
         cls.binaryFilesMock = None
 
     def test_resize(self):
-        imgAsRow = imageIO.imageArrayToStruct(imageIO._rgb2bgr(array))
+        imgAsRow = imageIO.imageArrayToStruct(imageIO._reverseChannels(array))
         imgAsPIL = PIL.Image.fromarray(obj=array).resize((5,4))
-        smallerAry = imageIO._rgb2bgr(np.asarray(imgAsPIL))
-        smaller = imageIO.resizeImage_python([4, 5]).func
+        smallerAry = imageIO._reverseChannels(np.asarray(imgAsPIL))
+        smaller = imageIO.createResizeImageUDF([4, 5]).func
         smallerImg = smaller(imgAsRow)
         np.testing.assert_array_equal(smallerAry,imageIO.imageStructToArray(smallerImg))
         for n in ImageSchema.imageSchema['image'].dataType.names:
             smallerImg[n]
         self.assertEqual(smallerImg.height, 4)
         self.assertEqual(smallerImg.width, 5)
-        self.assertRaises(ValueError, imageIO.resizeImage_python, [1, 2, 3])
-        sameImage = imageIO.resizeImage_python((imgAsRow.height, imgAsRow.width)).func(imgAsRow)
+        self.assertRaises(ValueError, imageIO.createResizeImageUDF, [1, 2, 3])
+        sameImage = imageIO.createResizeImageUDF((imgAsRow.height, imgAsRow.width)).func(imgAsRow)
         self.assertEqual(imgAsRow, sameImage)
 
     def test_imageConversions(self):
@@ -115,7 +115,7 @@ class TestReadImages(SparkDLTestCase):
         imageDF = df.select(decImg("data").alias("image"))
         row = imageDF.first()
 
-        testArray = imageIO.imageStructToArray(row.image)[...,::-1]
+        testArray = imageIO._reverseChannels(imageIO.imageStructToArray(row.image))
         self.assertEqual(testArray.shape, array.shape)
         self.assertEqual(testArray.dtype, array.dtype)
         self.assertTrue(np.all(array == testArray))
@@ -123,7 +123,7 @@ class TestReadImages(SparkDLTestCase):
     # read images now part of spark, no need to test it here
     def test_readImages(self):
         # Test that reading
-        imageDF = imageIO._readImagesWithCustomLib("file/path", decode_f = imageIO.PIL_decode, numPartition=2, sc = self.binaryFilesMock)
+        imageDF = imageIO._readImagesWithCustomFn("file/path", decode_f = imageIO.PIL_decode, numPartition=2, sc = self.binaryFilesMock)
         self.assertTrue("image" in imageDF.schema.names)
 
 
@@ -136,7 +136,7 @@ class TestReadImages(SparkDLTestCase):
         self.assertEqual(img.height, array.shape[0])
         self.assertEqual(img.width, array.shape[1])
         self.assertEqual(imageIO.imageTypeByOrdinal(img.mode).nChannels, array.shape[2])
-        self.assertEqual(img.data, array[...,::-1].tobytes())
+        self.assertEqual(img.data, imageIO._reverseChannels(array).tobytes())
 
     def test_udf_schema(self):
         # Test that utility functions can be used to create a udf that accepts and return
@@ -146,9 +146,9 @@ class TestReadImages(SparkDLTestCase):
             return imageIO.imageArrayToStruct(array)
         do_nothing_udf = udf(do_nothing, ImageSchema.imageSchema['image'].dataType)
 
-        df = imageIO._readImagesWithCustomLib("file/path", decode_f = imageIO.PIL_decode,numPartition=2, sc = self.binaryFilesMock)
+        df = imageIO._readImagesWithCustomFn("file/path", decode_f = imageIO.PIL_decode,numPartition=2, sc = self.binaryFilesMock)
         df = df.filter(col('image').isNotNull()).withColumn("test", do_nothing_udf('image'))
-        self.assertEqual(df.first().test.data, array[...,::-1].tobytes())
+        self.assertEqual(df.first().test.data, imageIO._reverseChannels(array).tobytes())
         df.printSchema()
 
     def test_filesTODF(self):

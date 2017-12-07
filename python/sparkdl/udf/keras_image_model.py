@@ -144,7 +144,7 @@ def _serialize_and_reload_with(preprocessor):
         img_arr_reloaded = preprocessor(temp_fp.name)
         assert isinstance(img_arr_reloaded, np.ndarray), \
             "expect preprocessor to return a numpy array"
-        img_arr_reloaded = imageIO._rgb2bgr(img_arr_reloaded.astype(np.uint8))
+        img_arr_reloaded = imageIO._reverseChannels(img_arr_reloaded.astype(np.uint8))
         return imageArrayToStruct(img_arr_reloaded)
 
     return udf_impl

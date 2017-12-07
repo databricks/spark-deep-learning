@@ -17,6 +17,7 @@ import numpy as np
 from keras.applications import resnet50
 import tensorflow as tf
 
+from pyspark.ml.image import ImageSchema
 from pyspark.ml import Pipeline
 from pyspark.ml.classification import LogisticRegression
 from pyspark.sql.functions import udf
@@ -28,7 +29,7 @@ from sparkdl.transformers.named_image import (DeepImagePredictor, DeepImageFeatu
                                               _buildTFGraphForName)
 from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF, getSampleImageList
-from pyspark.ml.image import ImageSchema
+
 
 
 class KerasApplicationModelTestCase(SparkDLTestCase):
@@ -75,7 +76,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         imageArray = np.empty((len(images), shape[0], shape[1], 3), 'uint8')
         for i, img in enumerate(images):
             assert img is not None and img.mode == "RGB"
-            imageArray[i] = np.array(img.resize(shape))[...,::-1]
+            imageArray[i] = imageIO._reverseChannels(np.array(img.resize(shape)))
         cls.imageArray = imageArray
         cls.imgFiles = imgFiles
         cls.fileOrder = {imgFiles[i].split('/')[-1]:i for i in range(len(imgFiles))}
@@ -91,14 +92,14 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         if(cls.numPartitionsOverride):
             cls.imageDf = cls.imageDF.coalesce(cls.numPartitionsOverride)
 
-    def __sortByFileOrder(self, ary):
+    def _sortByFileOrder(self, ary):
         """
         This is to ensure we are comparing compatible sequences of predictions.
         Sorts the results according to the order in which the files have been read by python.
         Note: Java and python can read files in different order.
         """
         fileOrder = self.fileOrder
-        return sorted(ary,key=lambda x:fileOrder[x['image']['origin'].split('/')[-1]])
+        return sorted(ary, key=lambda x: fileOrder[x['image']['origin'].split('/')[-1]])
 
     def test_buildtfgraphforname(self):
         """"
@@ -152,7 +153,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         kerasPredict = self.kerasPredict
         transformer = DeepImagePredictor(inputCol='image', modelName=self.name,
                                          outputCol="prediction",)
-        fullPredict = self.__sortByFileOrder(transformer.transform(self.imageDF).collect())
+        fullPredict = self._sortByFileOrder(transformer.transform(self.imageDF).collect())
         fullPredict = np.array([i.prediction for i in fullPredict])
         self.assertEqual(kerasPredict.shape, fullPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, fullPredict, decimal=6)
@@ -182,7 +183,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         transformer = DeepImageFeaturizer(inputCol="image", outputCol=output_col,
                                           modelName=self.name)
         transformed_df = transformer.transform(self.imageDF)
-        collected = self.__sortByFileOrder(transformed_df.collect())
+        collected = self._sortByFileOrder(transformed_df.collect())
         features = np.array([i.prediction for i in collected])
 
         # Note: keras features may be multi-dimensional np arrays, but transformer features
@@ -204,7 +205,6 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         # add arbitrary labels to run logistic regression
         # TODO: it's weird that the test fails on some combinations of labels. check why.
         label_udf = udf(lambda x: abs(hash(x)) % 2, IntegerType())
-        self.imageDF.printSchema()
         train_df = self.imageDF.withColumn("label", label_udf(self.imageDF["image"]["origin"]))
 
         lrModel = pipeline.fit(train_df)

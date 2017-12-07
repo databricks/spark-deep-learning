@@ -73,7 +73,7 @@ import numpy as np
 import tensorflow as tf
 
 from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
-from sparkdl.image.imageIO import _rgb2bgr
+from sparkdl.image.imageIO import _reverseChannels
 
 
 
@@ -139,10 +139,8 @@ class KerasApplicationModel:
 
 class InceptionV3Model(KerasApplicationModel):
     def preprocess(self, inputImage):
-        # TODO
-        # Keras preprocessing flips channel order from RGB -> BGR
-        # since we already have the image in BGR, we need to flip it to RGB first, for now
-        return inception_v3.preprocess_input(_rgb2bgr(inputImage))
+        # Keras expects RGB order
+        return inception_v3.preprocess_input(_reverseChannels(inputImage))
 
     def model(self, preprocessed, featurize):
         # Model provided by Keras. All cotributions by Keras are provided subject to the
@@ -176,7 +174,7 @@ class InceptionV3Model(KerasApplicationModel):
 
 class XceptionModel(KerasApplicationModel):
     def preprocess(self, inputImage):
-        return xception.preprocess_input(_rgb2bgr(inputImage))
+        return xception.preprocess_input(_reverseChannels(inputImage))
 
     def model(self, preprocessed, featurize):
         # Model provided by Keras. All cotributions by Keras are provided subject to the
@@ -287,7 +285,7 @@ def _imagenet_preprocess_input(x, input_shape):
     works okay with tf.Tensor inputs. The following was translated to tf ops from
     https://github.com/fchollet/keras/blob/fb4a0849cf4dc2965af86510f02ec46abab1a6a4/keras/applications/imagenet_utils.py#L52
     It's a possibility to change the implementation in keras to look like the
-    following, but not doing it for now.
+    following and modified to work with BGR images (standard in Spark), but not doing it for now.
     """
     # assuming 'BGR'
     # Zero-center by mean pixel

@@ -19,12 +19,10 @@ to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being
 private APIs.
 """
 
+from pyspark.ml.image import ImageSchema
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql.functions import udf
-
 from sparkdl.image.imageIO import imageArrayToStruct
-from pyspark.ml.image import ImageSchema
-
 from sparkdl.param import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
