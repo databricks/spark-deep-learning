@@ -174,6 +174,7 @@ class InceptionV3Model(KerasApplicationModel):
 
 class XceptionModel(KerasApplicationModel):
     def preprocess(self, inputImage):
+        # Keras expects RGB order
         return xception.preprocess_input(_reverseChannels(inputImage))
 
     def model(self, preprocessed, featurize):

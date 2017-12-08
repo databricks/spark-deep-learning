@@ -102,9 +102,11 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             from PIL import Image
             import numpy as np
             img_arr = np.array(Image.open(fpath), dtype=np.uint8)
+            # PIL is RGB, image schema is BGR => need to flip the channels
             return imageArrayToStruct(_reverseChannels(img_arr))
 
         def keras_load_spimg(fpath):
+            # Keras loads image in RGB order, ImageSchema expects BGR => need to flip
             return imageArrayToStruct(_reverseChannels(keras_load_img(fpath)))
 
         # Load image with Keras and store it in our image schema

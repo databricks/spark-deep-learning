@@ -114,22 +114,6 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
         return "__tmp_" + self.getOutputCol()
 
 
-class ScalaDeepImageFeaturizer(Transformer,HasInputCol,HasOutputCol):
-    @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, modelName=None):
-        """
-        __init__(self, inputCol=None, outputCol=None, modelName=None)
-        """
-        super(ScalaDeepImageFeaturizer, self).__init__()
-        kwargs = self._input_kwargs
-        self.setParams(**kwargs)
-    def _transform(self, dataset):
-        scalaFeaturizer = sc._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
-        scalaFeaturizer.setModelName(modelName)
-        scalaFeaturizer.setInputCol(inputCol)
-        scalaFeaturizer.setOutputCol(outputCol)
-        return DataFrame(scalaFeaturizer.transform(dataset._jdf),dataset._sc)
-
 # TODO: give an option to take off multiple layers so it can be used in tuning
 #       (could be the name of the layer or int for how many to take off).
 class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):

@@ -49,6 +49,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         g = tf.Graph()
         with g.as_default():
             image_arr = utils.imageInputPlaceholder()
+            # keras expects array in RGB order, we get it from image schema in BGR => need to flip
             preprocessed = preprocess_input(imageIO._reverseChannels(image_arr))
 
         output_col = "transformed_image"
@@ -76,6 +77,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         with g.as_default():
             image_arr = utils.imageInputPlaceholder()
             resized_images = tf.image.resize_images(image_arr, InceptionV3Constants.INPUT_SHAPE)
+            # keras expects array in RGB order, we get it from image schema in BGR => need to flip
             processed_images = preprocess_input(imageIO._reverseChannels(resized_images))
         self.assertEqual(processed_images.shape[1], InceptionV3Constants.INPUT_SHAPE[0])
         self.assertEqual(processed_images.shape[2], InceptionV3Constants.INPUT_SHAPE[1])
@@ -134,6 +136,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                 image_string = utils.imageInputPlaceholder(nChannels = 3)
                 resized_images = tf.image.resize_images(image_string,
                                                         InceptionV3Constants.INPUT_SHAPE)
+                # keras expects array in RGB order, we get it from image schema in BGR => need to flip
                 preprocessed = preprocess_input(imageIO._reverseChannels(resized_images))
                 model = InceptionV3(input_tensor=preprocessed, weights="imagenet")
                 graph = tfx.strip_and_freeze_until([model.output], g, sess, return_graph=True)

@@ -110,6 +110,10 @@ def imageStructToPIL(imageRow):
     else:
         raise ValueError("don't know how to convert " + imgType.name + " to PIL")
 
+def PIL_to_imageStruct(img):
+    # PIL is RGB based, image schema expetcs BGR ordering => need to flip the channels
+    return _reverseChannels(np.asarray(img))
+
 
 def _arrayToOcvMode(arr):
     assert len(arr.shape) == 3, "Array should have 3 dimensions but has shape {}".format(arr.shape)
@@ -143,6 +147,7 @@ def createResizeImageUDF(size):
         if (imgAsRow.height,imgAsRow.width) == sz:
             return imgAsRow
         imgAsPil = imageStructToPIL(imgAsRow).resize(sz)
+        # PIL is RGB based while image schema is BGR based => we need to flip the channels
         imgAsArray = _reverseChannels(np.asarray(imgAsPil))
         return imageArrayToStruct(imgAsArray,origin=imgAsRow.origin)
     return udf(_resizeImageAsRow, ImageSchema.imageSchema['image'].dataType)
@@ -169,7 +174,7 @@ def PIL_decode(raw_bytes):
     :param raw_bytes:
     :return: image data as an array in CV_8UC3 format
     """
-    return _reverseChannels(np.asarray(Image.open(BytesIO(raw_bytes))))
+    return PIL_to_imageStruct(Image.open(BytesIO(raw_bytes)))
 
 
 def PIL_decode_and_resize(size):
@@ -179,7 +184,7 @@ def PIL_decode_and_resize(size):
     :return: image data as an array in CV_8UC3 format
     """
     def _decode(raw_bytes):
-        return _reverseChannels(np.asarray(Image.open(BytesIO(raw_bytes)).resize(size)))
+        return PIL_to_imageStruct(Image.open(BytesIO(raw_bytes)).resize(size))
     return _decode
 
 def readImagesWithCustomFn(path, decode_f, numPartition = None):
