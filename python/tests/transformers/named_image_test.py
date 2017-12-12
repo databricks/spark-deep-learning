@@ -17,7 +17,6 @@ import numpy as np
 from keras.applications import resnet50
 import tensorflow as tf
 
-from pyspark.ml.image import ImageSchema
 from pyspark.ml import Pipeline
 from pyspark.ml.classification import LogisticRegression
 from pyspark.sql.functions import udf
@@ -27,6 +26,9 @@ from sparkdl.image import imageIO
 import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.transformers.named_image import (DeepImagePredictor, DeepImageFeaturizer,
                                               _buildTFGraphForName)
+
+from pyspark.ml.image import ImageSchema
+
 from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF, getSampleImageList
 

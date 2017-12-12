@@ -27,7 +27,7 @@ from sparkdl.image import imageIO
 from pyspark.ml.image import ImageSchema
 from ..tests import SparkDLTestCase
 
-# Create dome fake image data to work with
+# Create some fake image data to work with
 def create_image_data():
     # Random image-like data
     array = np.random.randint(0, 256, (10, 11, 3), 'uint8')

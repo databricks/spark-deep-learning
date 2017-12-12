@@ -1,5 +1,3 @@
-# NOTE: This file is copied from Spark2.3 in order to be able to use this in allready released spark versions.
-# TODO: remove this when Spark 2.3 is out!
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+# NOTE: This file is copied from Spark2.3 in order to be able to use this in already released spark versions.
+# TODO: remove this when Spark 2.3 is out!
 
 """
 .. attribute:: ImageSchema

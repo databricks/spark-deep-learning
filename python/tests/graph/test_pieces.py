@@ -23,6 +23,7 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 import numpy.random as prng
 import tensorflow as tf
+
 import keras.backend as K
 from keras.applications import InceptionV3
 from keras.applications import inception_v3 as iv3
@@ -36,11 +37,12 @@ from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
-from sparkdl.image.imageIO import imageArrayToStruct
-from sparkdl.image.imageIO import imageTypeByOrdinal
 from sparkdl.graph.builder import IsolatedSession, GraphFunction
 import sparkdl.graph.pieces as gfac
 import sparkdl.graph.utils as tfx
+from sparkdl.image.imageIO import imageArrayToStruct
+from sparkdl.image.imageIO import imageTypeByOrdinal
+
 
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF

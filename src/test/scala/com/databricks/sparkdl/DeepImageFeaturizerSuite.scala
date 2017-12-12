@@ -16,12 +16,14 @@
 
 package com.databricks.sparkdl
 
+import org.scalatest.FunSuite
+
 import org.apache.spark.ml.image.ImageSchema
-import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.ml.linalg.{Vector, Vectors}
+import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types.{StructField, StructType}
-import org.scalatest.FunSuite
+
 
 class DeepImageFeaturizerSuite extends FunSuite with TestSparkContext with DefaultReadWriteTest {
 

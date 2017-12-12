@@ -21,8 +21,10 @@ import java.io.File
 import javax.imageio.ImageIO
 
 import scala.util.Random
+
 import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.sql.Row
+
 import org.scalatest.FunSuite
 
 object ImageUtilsSuite {

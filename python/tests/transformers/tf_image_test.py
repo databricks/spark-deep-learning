@@ -148,7 +148,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         self.assertDfHasCols(transformed_df, [output_col])
         collected = transformed_df.collect()
         transformer_values, transformer_topK = self.transformOutputToComparables(collected,
-                                                                                 output_col,lambda row: row['image']['origin'])
+                                                                                 output_col, lambda row: row['image']['origin'])
 
         tf_values, tf_topK = self._executeTensorflow(graph, image_string.name, model.output.name,
                                                      image_df)

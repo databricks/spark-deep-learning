@@ -17,19 +17,20 @@ import numpy as np
 import tensorflow as tf
 import tensorframes as tfs
 
+from pyspark import Row
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
 
-
-from pyspark.ml.image import ImageSchema
+import sparkdl.graph.utils as tfx
+import sparkdl.image.imageIO as imageIO
 from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters, HasOutputMode)
 import sparkdl.transformers.utils as utils
 import sparkdl.utils.jvmapi as JVMAPI
-import sparkdl.graph.utils as tfx
-import sparkdl.image.imageIO as imageIO
-from pyspark import Row
+
+from pyspark.ml.image import ImageSchema
+
 
 __all__ = ['TFImageTransformer']
 

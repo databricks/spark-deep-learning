@@ -23,9 +23,11 @@ from PIL import Image
 # pyspark
 from pyspark import Row
 from pyspark import SparkContext
-from pyspark.sql.types import (BinaryType, IntegerType, StringType, StructField, StructType)
-from pyspark.sql.functions import udf
 from pyspark.ml.image import ImageSchema
+from pyspark.sql.functions import udf
+from pyspark.sql.types import (BinaryType, IntegerType, StringType, StructField, StructType)
+
+
 
 
 # ImageType represents supported OpenCV types
@@ -111,7 +113,7 @@ def imageStructToPIL(imageRow):
         raise ValueError("don't know how to convert " + imgType.name + " to PIL")
 
 def PIL_to_imageStruct(img):
-    # PIL is RGB based, image schema expetcs BGR ordering => need to flip the channels
+    # PIL is RGB based, image schema expects BGR ordering => need to flip the channels
     return _reverseChannels(np.asarray(img))
 
 
