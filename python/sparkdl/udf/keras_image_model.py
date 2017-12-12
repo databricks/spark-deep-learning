@@ -144,8 +144,9 @@ def _serialize_and_reload_with(preprocessor):
         img_arr_reloaded = preprocessor(temp_fp.name)
         assert isinstance(img_arr_reloaded, np.ndarray), \
             "expect preprocessor to return a numpy array"
-        # preprocessors is expected to return image in RGB (Keras convention) order => flip it to BGR
-        img_arr_reloaded = imageIO._reverseChannels(img_arr_reloaded.astype(np.uint8))
+        # preprocessors is expected to return image in order matching the model
+        # (and preferably compatible with image schema)
+        img_arr_reloaded = img_arr_reloaded.astype(np.uint8)
         return imageArrayToStruct(img_arr_reloaded)
 
     return udf_impl
