@@ -129,6 +129,18 @@ def _arrayToOcvMode(arr):
     return imageTypeByName(name)
 
 
+def fixColorChannelOrdering(currentOrder,imgAry):
+    if currentOrder == 'RGB':
+        return _reverseChannels(imgAry)
+    elif currentOrder == 'BGR':
+        return imgAry
+    elif currentOrder == 'L':
+        if len(img.shape) != 1:
+            raise ValueError("channel order suggests only one color channel but got shape " + str(img.shape))
+        return imgAry
+    else:
+        raise ValueError("Unexpected channel order, expected one of L,RGB,BGR but got " + currentChannelOrder)
+
 def _reverseChannels(ary):
     return ary[...,::-1]
 

@@ -65,22 +65,27 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     outputTensor = Param(Params._dummy(), "outputTensor",
                          "A TensorFlow tensor object or name representing the output",
                          typeConverter=SparkDLTypeConverters.toTFTensorName)
+    channelOrder = Param(Params._dummy(),"channelOrder",
+                         "Strign specifying the expected color channel order, can be one of L,RGB,BGR",
+                         typeConverter=None)
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, graph=None,
+    def __init__(self, channelOrder,inputCol=None, outputCol=None, graph=None,
                  inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                  outputMode="vector"):
         """
-        __init__(self, inputCol=None, outputCol=None, graph=None,
+        __init__(self, channelOrder, inputCol=None, outputCol=None, graph=None,
                  inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                  outputMode="vector")
+          :param: channelOrder: specify the ordering of the color channel, can be one of RGB, BGR, L (grayscale)
         """
         super(TFImageTransformer, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
+        self.channelOrder = channelOrder
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, graph=None,
+    def setParams(self, channelOrder=None, inputCol=None, outputCol=None, graph=None,
                   inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                   outputMode="vector"):
         """
@@ -159,6 +164,8 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         img_type = imageIO.imageTypeByOrdinal(img.mode)
         return img_type.dtype
 
+    # TODO: duplicate code, same functionality as sparkdl.graph.pieces.py::builSpImageConverter
+    # TODO: It should be extracted as a util function and shared
     def _addReshapeLayers(self, tf_graph, dtype="uint8"):
         input_tensor_name = self.getInputTensor().name
 
@@ -181,6 +188,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                 assert dtype == "float32", "Unsupported dtype for image: %s" % dtype
                 image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
             image_reshaped = tf.reshape(image_float, shape, name="reshaped")
+            image_reshaped = imageIO.fixColorChannelOrdering(self.channelOrder,image_reshaped)
             image_reshaped_expanded = tf.expand_dims(image_reshaped, 0, name="expanded")
 
             # Add on the original graph

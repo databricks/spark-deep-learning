@@ -101,7 +101,7 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
             ImageSchema.imageSchema['image'].dataType)
         keras_udf_name = '{}__model_predict'.format(udf_name)
 
-    stages = [('spimg', buildSpImageConverter("uint8")),
+    stages = [('spimg', buildSpImageConverter('RGB',"uint8")),
               ('model', GraphFunction.fromKeras(keras_model_or_file_path)),
               ('final', buildFlattener())]
     gfn = GraphFunction.fromList(stages)
@@ -144,9 +144,9 @@ def _serialize_and_reload_with(preprocessor):
         img_arr_reloaded = preprocessor(temp_fp.name)
         assert isinstance(img_arr_reloaded, np.ndarray), \
             "expect preprocessor to return a numpy array"
-        # preprocessors is expected to return image in order matching the model
-        # (and preferably compatible with image schema)
         img_arr_reloaded = img_arr_reloaded.astype(np.uint8)
+        # Keras works in RGB order, need to fix the order
+        img_arr_reloaded = imageIO.fixColorChannelOrdering(currentOrder='RGB',imgAry=img_arr_reloaded)
         return imageArrayToStruct(img_arr_reloaded)
 
     return udf_impl

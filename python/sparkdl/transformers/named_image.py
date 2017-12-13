@@ -211,12 +211,14 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
         modelGraphSpec = _buildTFGraphForName(self.getModelName(), self.getFeaturize())
         inputCol = self.getInputCol()
         resizedCol = "__sdl_imagesResized"
-        tfTransformer = TFImageTransformer(inputCol=resizedCol,
-                                           outputCol=self.getOutputCol(),
-                                           graph=modelGraphSpec["graph"],
-                                           inputTensor=modelGraphSpec["inputTensorName"],
-                                           outputTensor=modelGraphSpec["outputTensorName"],
-                                           outputMode=modelGraphSpec["outputMode"])
+        tfTransformer = TFImageTransformer(
+            channelOrder = 'BGR',
+            inputCol=resizedCol,
+            outputCol=self.getOutputCol(),
+            graph=modelGraphSpec["graph"],
+            inputTensor=modelGraphSpec["inputTensorName"],
+            outputTensor=modelGraphSpec["outputTensorName"],
+            outputMode=modelGraphSpec["outputMode"])
         resizeUdf = createResizeImageUDF(modelGraphSpec["inputTensorSize"])
         result = tfTransformer.transform(dataset.withColumn(resizedCol, resizeUdf(inputCol)))
         return result.drop(resizedCol)

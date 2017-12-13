@@ -55,7 +55,7 @@ class GraphPiecesTest(SparkDLTestCase):
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
         def exec_gfn_spimg_decode(spimg_dict, img_dtype):
-            gfn = gfac.buildSpImageConverter(img_dtype)
+            gfn = gfac.buildSpImageConverter('BGR',img_dtype)
             with IsolatedSession() as issn:
                 feeds, fetches = issn.importGraphFunction(gfn, prefix="")
                 feed_dict = dict((tnsr, spimg_dict[tfx.op_name(tnsr, issn.graph)]) for tnsr in feeds)
@@ -146,7 +146,7 @@ class GraphPiecesTest(SparkDLTestCase):
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
         xcpt_model = Xception(weights="imagenet")
-        stages = [('spimage', gfac.buildSpImageConverter('float32')),
+        stages = [('spimage', gfac.buildSpImageConverter('BGR','float32')),
                   ('xception', GraphFunction.fromKeras(xcpt_model))]
         piped_model = GraphFunction.fromList(stages)
 

@@ -23,6 +23,7 @@ from pyspark.ml.image import ImageSchema
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql.functions import udf
 from sparkdl.image.imageIO import imageArrayToStruct
+from sparkdl.image.imageIO import _reverseChannels
 from sparkdl.param import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
@@ -71,7 +72,7 @@ class CanLoadImage(Params):
     imageLoader = Param(Params._dummy(), "imageLoader",
                         "Function containing the logic for loading and pre-processing images. " +
                         "The function should take in a URI string and return a 4-d numpy.array " +
-                        "with shape (batch_size (1), height, width, num_channels).")
+                        "with shape (batch_size (1), height, width, num_channels). Expected to return result with color channels in RGB order.")
 
     def setImageLoader(self, value):
         return self._set(imageLoader=value)
@@ -92,7 +93,7 @@ class CanLoadImage(Params):
         # Load from external resources can fail, so we should allow None to be returned
         def load_image_uri_impl(uri):
             try:
-                return imageArrayToStruct(loader(uri))
+                return imageArrayToStruct(_reverseChannels(loader(uri)))
             except:  # pylint: disable=bare-except
                 return None
         load_udf = udf(load_image_uri_impl, ImageSchema.imageSchema['image'].dataType)
