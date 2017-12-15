@@ -146,7 +146,7 @@ def _serialize_and_reload_with(preprocessor):
             "expect preprocessor to return a numpy array"
         img_arr_reloaded = img_arr_reloaded.astype(np.uint8)
         # Keras works in RGB order, need to fix the order
-        img_arr_reloaded = imageIO.fixColorChannelOrdering(currentOrder='RGB',imgAry=img_arr_reloaded)
+        img_arr_reloaded = imageIO.fixColorChannelOrdering(currentOrder='RGB', imgAry=img_arr_reloaded)
         return imageArrayToStruct(img_arr_reloaded)
 
     return udf_impl

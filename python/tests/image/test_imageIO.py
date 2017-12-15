@@ -75,20 +75,24 @@ class TestReadImages(SparkDLTestCase):
         cls.binaryFilesMock = None
 
     def test_resize(self):
-        # array comes from PIL and is in RGB order
+        self.assertRaises(ValueError, imageIO.createResizeImageUDF, [1, 2, 3])
+
+        make_smaller = imageIO.createResizeImageUDF([4, 5]).func
         imgAsRow = imageIO.imageArrayToStruct(array)
-        imgAsPIL = PIL.Image.fromarray(obj=imageIO._reverseChannels(array)).resize((5,4))
-        smallerAry = imageIO._reverseChannels(np.asarray(imgAsPIL))
-        smaller = imageIO.createResizeImageUDF([4, 5]).func
-        smallerImg = smaller(imgAsRow)
-        np.testing.assert_array_equal(smallerAry,imageIO.imageStructToArray(smallerImg))
-        for n in ImageSchema.imageSchema['image'].dataType.names:
-            smallerImg[n]
+        smallerImg = make_smaller(imgAsRow)
         self.assertEqual(smallerImg.height, 4)
         self.assertEqual(smallerImg.width, 5)
-        self.assertRaises(ValueError, imageIO.createResizeImageUDF, [1, 2, 3])
+
+        # Compare to PIL resizing
+        imgAsPIL = PIL.Image.fromarray(obj=imageIO._reverseChannels(array)).resize((5, 4))
+        smallerAry = imageIO._reverseChannels(np.asarray(imgAsPIL))
+        np.testing.assert_array_equal(smallerAry, imageIO.imageStructToArray(smallerImg))
+        # Test that resize with the same size is a no-op
         sameImage = imageIO.createResizeImageUDF((imgAsRow.height, imgAsRow.width)).func(imgAsRow)
         self.assertEqual(imgAsRow, sameImage)
+        # Test that we have a valid image schema (all fields are in)
+        for n in ImageSchema.imageSchema['image'].dataType.names:
+            smallerImg[n]
 
     def test_imageConversions(self):
         """"

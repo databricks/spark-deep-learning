@@ -70,7 +70,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                          typeConverter=None)
 
     @keyword_only
-    def __init__(self, channelOrder,inputCol=None, outputCol=None, graph=None,
+    def __init__(self, channelOrder, inputCol=None, outputCol=None, graph=None,
                  inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                  outputMode="vector"):
         """
@@ -188,7 +188,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                 assert dtype == "float32", "Unsupported dtype for image: %s" % dtype
                 image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
             image_reshaped = tf.reshape(image_float, shape, name="reshaped")
-            image_reshaped = imageIO.fixColorChannelOrdering(self.channelOrder,image_reshaped)
+            image_reshaped = imageIO.fixColorChannelOrdering(self.channelOrder, image_reshaped)
             image_reshaped_expanded = tf.expand_dims(image_reshaped, 0, name="expanded")
 
             # Add on the original graph
@@ -230,13 +230,10 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
             mode = imageIO.imageTypeByName('CV_32FC%d' % orig_image.nChannels)
             data = bytearray(np.array(numeric_data).astype(np.float32).tobytes())
             nChannels = orig_image.nChannels
-            return Row(origin="", mode=mode.ord,
-                       height=height, width=width,
-                       nChannels=nChannels, data=data)
+            return Row(origin="", mode=mode.ord, height=height, width=width, nChannels=nChannels, data=data)
         to_image_udf = udf(to_image, ImageSchema.imageSchema['image'].dataType)
-        return df.withColumn(self.getOutputCol(),
-                             to_image_udf(df[self.getInputCol()],df[tfs_output_col])
-                             ).drop(tfs_output_col)
+        resDf =  df.withColumn(self.getOutputCol(), to_image_udf(df[self.getInputCol()], df[tfs_output_col]))
+        return resDf.drop(tfs_output_col)
 
     def _convertOutputToVector(self, df, tfs_output_col):
         """

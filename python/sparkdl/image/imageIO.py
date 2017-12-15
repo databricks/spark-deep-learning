@@ -36,28 +36,31 @@ from pyspark.sql.types import (BinaryType, IntegerType, StringType, StructField,
 #   ord - Ordinal of the corresponding OpenCV mode (stored in mode field of ImageSchema).
 #   nChannels - number of channels in the image
 #   dtype - data type of the image's array, sorted as a numpy compatible string.
-OcvType = namedtuple("OcvType",["name","ord","nChannels","dtype"])
+#
+#  NOTE: likely to be migrated to Spark ImageSchema code in the near future.
+_OcvType = namedtuple("OcvType",["name","ord","nChannels","dtype"])
 
-supportedOcvTypes = (
-    OcvType(name="CV_8UC1",  ord=0,  nChannels=1, dtype="uint8"  ),
-    OcvType(name="CV_32FC1", ord=5,  nChannels=1, dtype="float32"),
-    OcvType(name="CV_8UC3",  ord=16, nChannels=3, dtype="uint8"  ),
-    OcvType(name="CV_32FC3", ord=21, nChannels=3, dtype="float32"),
-    OcvType(name="CV_8UC4",  ord=24, nChannels=4, dtype="uint8"  ),
-    OcvType(name="CV_32FC4", ord=29, nChannels=4, dtype="float32"),
+#  NOTE: likely to be migrated to Spark ImageSchema code in the near future.
+_supportedOcvTypes = (
+    _OcvType(name="CV_8UC1",  ord=0,  nChannels=1, dtype="uint8"  ),
+    _OcvType(name="CV_32FC1", ord=5,  nChannels=1, dtype="float32"),
+    _OcvType(name="CV_8UC3",  ord=16, nChannels=3, dtype="uint8"  ),
+    _OcvType(name="CV_32FC3", ord=21, nChannels=3, dtype="float32"),
+    _OcvType(name="CV_8UC4",  ord=24, nChannels=4, dtype="uint8"  ),
+    _OcvType(name="CV_32FC4", ord=29, nChannels=4, dtype="float32"),
 )
 
-__ocvTypesByName = {m.name:m for m in supportedOcvTypes}
-__ocvTypesByOrdinal = {m.ord:m for m in supportedOcvTypes}
+__ocvTypesByName = {m.name:m for m in _supportedOcvTypes}
+__ocvTypesByOrdinal = {m.ord:m for m in _supportedOcvTypes}
 
 def imageTypeByOrdinal(ord):
     if not ord in __ocvTypesByOrdinal:
-        raise KeyError("unsupported image type with ordinal %d, supported OpenCV types = %s"  % (ord,str(supportedOcvTypes)))
+        raise KeyError("unsupported image type with ordinal %d, supported OpenCV types = %s"  % (ord,str(_supportedOcvTypes)))
     return __ocvTypesByOrdinal[ord]
 
 def imageTypeByName(name):
     if not name in __ocvTypesByName:
-        raise KeyError("unsupported image type with name '%s', supported supported OpenCV types = %s" % (name,str(supportedOcvTypes)))
+        raise KeyError("unsupported image type with name '%s', supported supported OpenCV types = %s" % (name,str(_supportedOcvTypes)))
     return __ocvTypesByName[name]
 
 def imageArrayToStruct(imgArray,origin=""):

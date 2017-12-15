@@ -87,7 +87,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         # and cache for use by multiple tests.
         preppedImage = cls.appModel._testPreprocess(imageArray.astype('float32'))
         cls.preppedImage = preppedImage
-        cls.kerasPredict = cls.appModel._testKerasModel(include_top=True).predict(preppedImage,batch_size=1)
+        cls.kerasPredict = cls.appModel._testKerasModel(include_top=True).predict(preppedImage, batch_size=1)
         cls.kerasFeatures = cls.appModel._testKerasModel(include_top=False).predict(preppedImage)
 
         cls.imageDF = getSampleImageDF().limit(5)
@@ -215,3 +215,27 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         pred_df_collected = lrModel.transform(train_df).collect()
         for row in pred_df_collected:
             self.assertEqual(int(row.prediction), row.label)
+<<<<<<< Updated upstream
+=======
+
+    def test_scala_vs_py(self):
+        # test results on already resized images
+        name = self.name
+        model = keras_apps.KERAS_APPLICATION_MODELS[name]()
+        imgs = imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(),decode_f=imageIO.PIL_decode_and_resize((model.inputShape())))
+        featurizer_sc = DeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features")
+        features_sc = featurizer_sc.transform(imgs).select("features").collect()
+        featurizer_py = PyDeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features")
+        features_py = featurizer_py.transform(imgs).select("features").collect()
+        N = len(features_sc)
+        for i in range(N):
+            np.testing.assert_array_almost_equal(features_py[i]['features'], features_sc[i]['features'], decimal=6)
+        # test results on not yet resized images - not the same due to different libraries used to resize (PIL vs Java)
+        imgs = imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(),decode_f=imageIO.PIL_decode)
+        featurizer_sc = DeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features", scaleFast=True)
+        features_sc = featurizer_sc.transform(imgs).select("features").collect()
+        featurizer_py = PyDeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features")
+        features_py = featurizer_py.transform(imgs).select("features").collect()
+        N = len(features_sc)
+        self.assertAlmostEqual(0,sum([spatial.distance.cosine(features_sc[i]['features'],features_py[i]['features']) for i in range(N)])/float(N),decimal=2)
+>>>>>>> Stashed changes
