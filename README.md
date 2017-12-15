@@ -85,7 +85,7 @@ The first step to applying deep learning on images is the ability to load the im
 Using Spark's ImageSchema
 
 ```python
-from pyspark.ml.image import ImageSchema
+from sparkdl.image.image import ImageSchema
 image_df = ImageSchema.readImages("/data/myimages")
 ```
 
@@ -136,7 +136,7 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     There are many well-known deep learning models for images. If the task at hand is very similar to what the models provide (e.g. object recognition with ImageNet classes), or for pure exploration, one can use the Transformer `DeepImagePredictor` by simply specifying the model name.
 
     ```python
-    from pyspark.ml.image import ImageSchema
+    from sparkdl.image.image import ImageSchema
 
     from sparkdl import DeepImagePredictor
 
@@ -151,7 +151,7 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     Deep Learning Pipelines provides a Transformer that will apply the given TensorFlow Graph to a DataFrame containing a column of images (e.g. loaded using the utilities described in the previous section). Here is a very simple example of how a TensorFlow Graph can be used with the Transformer. In practice, the TensorFlow Graph will likely be restored from files before calling `TFImageTransformer`.
 
     ```python
-    from pyspark.ml.image import ImageSchema
+    from sparkdl.image.image import ImageSchema
     from sparkdl import TFImageTransformer
     import sparkdl.graph.utils as tfx
     from sparkdl.transformers import utils

@@ -23,7 +23,7 @@ from sparkdl.utils import jvmapi as JVMAPI
 
 import sparkdl.image.imageIO as imageIO
 
-from pyspark.ml.image import ImageSchema
+from sparkdl.image.image import ImageSchema
 
 logger = logging.getLogger('sparkdl')
 

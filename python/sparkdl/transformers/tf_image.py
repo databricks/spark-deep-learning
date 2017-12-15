@@ -29,7 +29,7 @@ from sparkdl.param import (
 import sparkdl.transformers.utils as utils
 import sparkdl.utils.jvmapi as JVMAPI
 
-from pyspark.ml.image import ImageSchema
+from sparkdl.image.image import ImageSchema
 
 
 __all__ = ['TFImageTransformer']

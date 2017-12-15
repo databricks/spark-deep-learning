@@ -27,7 +27,7 @@ import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.transformers.named_image import (DeepImagePredictor, DeepImageFeaturizer,
                                               _buildTFGraphForName)
 
-from pyspark.ml.image import ImageSchema
+from sparkdl.image.image import ImageSchema
 
 from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF, getSampleImageList
