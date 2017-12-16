@@ -189,11 +189,14 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         Tests that featurizer returns (almost) the same values as Keras.
         """
         output_col = "prediction"
-        transformer = DeepImageFeaturizer(inputCol="image", outputCol=output_col,
-                                          modelName=self.name)
-        transformed_df = transformer.transform(self.imageDF)
+        resizedCol = "__sdl_imagesResized"
+        transformer = DeepImageFeaturizer(inputCol=resizedCol, outputCol=output_col,
+                                          modelName=self.name, scaleFast=True)
+
+        transformed_df = transformer.transform(self.imageDF.withColumn(resizedCol,imageIO.createResizeImageUDF(self.appModel.inputShape())("image")))
         collected = self._sortByFileOrder(transformed_df.collect())
         features = np.array([i.prediction for i in collected])
+        transformed_df.drop(resizedCol)
 
         # Note: keras features may be multi-dimensional np arrays, but transformer features
         # will be 1-d vectors. Regardless, the dimensions should add up to the same.

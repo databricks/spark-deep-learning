@@ -16,9 +16,11 @@
 
 package com.databricks.sparkdl
 
+import java.awt
 import java.awt.image.BufferedImage
 import java.awt.{Color, Image}
 
+import com.sun.javafx.iio.ImageStorage.ImageType
 import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.expressions.UserDefinedFunction
@@ -119,7 +121,8 @@ private[sparkdl] object ImageUtils {
     tgtHeight: Int,
     tgtWidth: Int,
     tgtChannels: Int,
-    spImage: Row): Row = {
+    spImage: Row,
+    fastResize: Boolean = false): Row = {
     require(tgtChannels == 3, s"`tgtChannels` was set to $tgtChannels, must be 3.")
 
     val height = ImageSchema.getHeight(spImage)
@@ -133,7 +136,8 @@ private[sparkdl] object ImageUtils {
       val tgtImg = new BufferedImage(tgtWidth, tgtHeight, BufferedImage.TYPE_3BYTE_BGR)
 
       // scaledImg is a java.awt.Image which supports drawing but not pixel lookup by index.
-      val scaledImg = srcImg.getScaledInstance(tgtWidth, tgtHeight, Image.SCALE_AREA_AVERAGING)
+      val resizeFlag = if (fastResize) Image.SCALE_FAST else Image.SCALE_AREA_AVERAGING
+      val scaledImg = srcImg.getScaledInstance(tgtWidth, tgtHeight, resizeFlag)
       // Draw scaledImage onto resized (usually smaller) tgtImg so extract individual pixel values.
       val graphic = tgtImg.createGraphics()
       graphic.drawImage(scaledImg, 0, 0, null)

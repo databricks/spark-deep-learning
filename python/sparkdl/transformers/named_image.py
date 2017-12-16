@@ -18,6 +18,7 @@ import numpy as np
 
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
+from pyspark.sql import DataFrame
 from pyspark.sql.functions import udf
 from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
 
@@ -115,49 +116,29 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
         return "__tmp_" + self.getOutputCol()
 
 
-# TODO: give an option to take off multiple layers so it can be used in tuning
-#       (could be the name of the layer or int for how many to take off).
-class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
-    """
-    Applies the model specified by its popular name, with its prediction layer(s) chopped off,
-    to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
-    can be used in a MLlib Pipeline.
-    The input image column should be 3-channel SpImage.
-    """
 
-    modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
-
+class DeepImageFeaturizer(Transformer,HasInputCol,HasOutputCol):
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, modelName=None):
+    def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleFast = False):
         """
         __init__(self, inputCol=None, outputCol=None, modelName=None)
         """
         super(DeepImageFeaturizer, self).__init__()
-        kwargs = self._input_kwargs
-        self.setParams(**kwargs)
-
-    @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, modelName=None):
-        """
-        setParams(self, inputCol=None, outputCol=None, modelName=None)
-        """
-        kwargs = self._input_kwargs
-        self._set(**kwargs)
-        return self
-
-    def setModelName(self, value):
-        return self._set(modelName=value)
-
-    def getModelName(self):
-        return self.getOrDefault(self.modelName)
+        self.inputCol = inputCol
+        self.outputCol = outputCol
+        self.modelName = modelName
+        self.scaleFast = scaleFast
 
     def _transform(self, dataset):
-        transformer = _NamedImageTransformer(inputCol=self.getInputCol(),
-                                             outputCol=self.getOutputCol(),
-                                             modelName=self.getModelName(), featurize=True)
-        return transformer.transform(dataset)
+        scalaFeaturizer = dataset._sc._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
+        scalaFeaturizer.setModelName(self.modelName)
+        scalaFeaturizer.setInputCol(self.inputCol)
+        scalaFeaturizer.setOutputCol(self.outputCol)
+        scalaFeaturizer.setResizeFlag(self.scaleFast)
+        return DataFrame(scalaFeaturizer.transform(dataset._jdf),dataset.sql_ctx)
 
+# TODO: give an option to take off multiple layers so it can be used in tuning
+#       (could be the name of the layer or int for how many to take off).
 
 class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
     """
@@ -234,5 +215,46 @@ def _buildTFGraphForName(name, featurize):
     outputTensorName = modelData["outputTensorName"]
     graph = tfx.strip_and_freeze_until([outputTensorName], sess.graph, sess, return_graph=True)
     modelData["graph"] = graph
-
     return modelData
+
+class PyDeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
+    """
+    Applies the model specified by its popular name, with its prediction layer(s) chopped off,
+    to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
+    can be used in a MLlib Pipeline.
+    The input image column should be 3-channel SpImage.
+    """
+
+    modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
+                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
+
+    @keyword_only
+    def __init__(self, inputCol=None, outputCol=None, modelName=None):
+        """
+        __init__(self, inputCol=None, outputCol=None, modelName=None)
+        """
+        super(PyDeepImageFeaturizer, self).__init__()
+        kwargs = self._input_kwargs
+        self.setParams(**kwargs)
+
+    @keyword_only
+    def setParams(self, inputCol=None, outputCol=None, modelName=None):
+        """
+        setParams(self, inputCol=None, outputCol=None, modelName=None)
+        """
+        kwargs = self._input_kwargs
+        self._set(**kwargs)
+        return self
+
+    def setModelName(self, value):
+        return self._set(modelName=value)
+
+    def getModelName(self):
+        return self.getOrDefault(self.modelName)
+
+    def _transform(self, dataset):
+        transformer = _NamedImageTransformer(inputCol=self.getInputCol(),
+                                             outputCol=self.getOutputCol(),
+                                             modelName=self.getModelName(), featurize=True)
+        return transformer.transform(dataset)
+
