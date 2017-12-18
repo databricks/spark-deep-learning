@@ -166,6 +166,11 @@ class SparkDLTypeConverters(object):
             raise TypeError(err_msg.format(type(value), value))
 
         return value
+    @staticmethod
+    def toChannelOrder(value):
+        if not value in ('RGB','BGR'):
+            raise ValueError("Unsupported channel order. Expected one of ('RGB','BGR') but got '%s'") % value
+        return value
 
 
 def _check_is_tensor_name(_maybe_tnsr_name):

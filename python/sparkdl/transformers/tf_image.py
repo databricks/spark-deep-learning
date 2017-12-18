@@ -67,7 +67,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                          typeConverter=SparkDLTypeConverters.toTFTensorName)
     channelOrder = Param(Params._dummy(),"channelOrder",
                          "Strign specifying the expected color channel order, can be one of L,RGB,BGR",
-                         typeConverter=None)
+                         typeConverter=SparkDLTypeConverters.toChannelOrder)
 
     @keyword_only
     def __init__(self, channelOrder, inputCol=None, outputCol=None, graph=None,
