@@ -186,31 +186,45 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             # TODO: actually check the value of the output to see if they are reasonable
             # e.g. -- compare to just running with keras.
 
+
+    def test_featurization_no_reshape(self):
+        """
+        Run sparkDL predictor on manually-resized images and compare result to the
+        keras result.
+        """
+        imageArray = self.imageArray
+        kerasPredict = self.kerasPredict
+
+        def rowWithImage(img):
+            # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
+            row = imageIO.imageArrayToStruct(img.astype('uint8'))
+            # re-order row to avoid pyspark bug
+            return [[getattr(row, field.name) for field in ImageSchema.imageSchema['image'].dataType]]
+
+        # test: predictor vs keras on resized images
+        rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
+        dfType = ImageSchema.imageSchema
+        imageDf = rdd.toDF(dfType)
+        if self.numPartitionsOverride:
+            imageDf = imageDf.coalesce(self.numPartitionsOverride)
+
+        transformer = DeepImageFeaturizer(inputCol='image', modelName=self.name,
+                                         outputCol="features")
+        dfFeatures = transformer.transform(imageDf).collect()
+        dfFeatures = np.array([i.features for i in dfFeatures])
+        kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
+        np.testing.assert_array_almost_equal(kerasReshaped, dfFeatures)
+
     def test_featurization(self):
         """
         Tests that featurizer returns (almost) the same values as Keras.
         """
-        output_col = "prediction"
-        resizedCol = "__sdl_imagesResized"
-        transformer = DeepImageFeaturizer(inputCol=resizedCol, outputCol=output_col,
-                                          modelName=self.name, scaleHint = "SCALE_FAST")
-
-        transformed_df = transformer.transform(self.imageDF.withColumn(resizedCol,imageIO.createResizeImageUDF(self.appModel.inputShape())("image")))
-        collected = self._sortByFileOrder(transformed_df.collect())
-        features = np.array([i.prediction for i in collected])
-        transformed_df.drop(resizedCol)
-
-        # Note: keras features may be multi-dimensional np arrays, but transformer features
-        # will be 1-d vectors. Regardless, the dimensions should add up to the same.
-        self.assertEqual(np.prod(self.kerasFeatures.shape), np.prod(features.shape))
-        kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
-        np.testing.assert_array_almost_equal(kerasReshaped, features, decimal=6)
-
-        # test on non-resized images
-        # results are not be the same due to different library used for resizing
-        # at least compare cosine distance is < 1e-2
+        # Since we use different libraries for image resizing (PIL in python vs. java.awt.Image in scala),
+        # the result will not match keras exactly. In fact the best we can do is a "somewhat similar" result.
+        # At least compare cosine distance is < 1e-2
         featurizer_sc = DeepImageFeaturizer(modelName=self.name, inputCol="image", outputCol="features", scaleHint = "SCALE_FAST")
         features_sc = np.array([i.features for i in featurizer_sc.transform(self.imageDF).select("features").collect()])
+        kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
         diffs = [spatial.distance.cosine(kerasReshaped[i],features_sc[i]) for i in range(len(features_sc))]
         np.testing.assert_array_almost_equal([0 for i in range(len(features_sc))],diffs,decimal=2)
 

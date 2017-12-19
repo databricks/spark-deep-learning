@@ -120,6 +120,8 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
 
 class DeepImageFeaturizer(Transformer,HasInputCol,HasOutputCol):
 
+    inputCol = Param(Params._dummy(), "inputCol","Input column for the featurizer, expected to be ImageSchema.")
+    outputCol = Param(Params._dummy(), "outputCol","Column to store the result (features) in.")
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
 
