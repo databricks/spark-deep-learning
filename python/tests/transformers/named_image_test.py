@@ -30,8 +30,7 @@ from sparkdl.transformers.named_image import (DeepImagePredictor, DeepImageFeatu
 from sparkdl.image.image import ImageSchema
 
 from ..tests import SparkDLTestCase
-from .image_utils import getSampleImageDF, getSampleImageList
-
+from .image_utils import getSampleImageDF
 
 
 class KerasApplicationModelTestCase(SparkDLTestCase):
@@ -68,21 +67,28 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
 
 
     @classmethod
+    def getSampleImageList(cls):
+        imageFiles = glob(os.path.join(_getSampleJPEGDir(), "*"))
+        images = []
+        for f in imageFiles:
+            try:
+                img = PIL.Image.open(f)
+                shape = cls.appModel.inputShape()
+                images.append(imageIO._reverseChannels(np.array(img.resize(shape))))
+            except IOError:
+                warn("Could not read file in image directory.")
+                images.append(None)
+        return imageFiles, np.array(images)
+
+
+    @classmethod
     def setUpClass(cls):
         super(NamedImageTransformerBaseTestCase, cls).setUpClass()
-
         cls.appModel = keras_apps.getKerasApplicationModel(cls.name)
-        shape = cls.appModel.inputShape()
-
-        imgFiles, images = getSampleImageList()
-        imageArray = np.empty((len(images), shape[0], shape[1], 3), 'uint8')
-        for i, img in enumerate(images):
-            assert img is not None and img.mode == "RGB"
-            imageArray[i] = imageIO._reverseChannels(np.array(img.resize(shape)))
+        imgFiles, imageArray = getSampleImageList()
         cls.imageArray = imageArray
         cls.imgFiles = imgFiles
         cls.fileOrder = {imgFiles[i].split('/')[-1]:i for i in range(len(imgFiles))}
-
         # Predict the class probabilities for the images in our test library using keras API
         # and cache for use by multiple tests.
         preppedImage = cls.appModel._testPreprocess(imageArray.astype('float32'))

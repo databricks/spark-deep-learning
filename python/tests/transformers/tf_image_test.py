@@ -37,14 +37,12 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
     # Test loading & pre-processing as an example of a simple graph
     # NOTE: resizing here/tensorflow and in keras workflow are different, so the
     # test would fail with resizing added in.
-
     def _loadImageViaKeras(self, raw_uri):
         uri = raw_uri[5:] if raw_uri.startswith("file:/") else raw_uri
         image = img_to_array(load_img(uri))
         image = np.expand_dims(image, axis=0)
         return preprocess_input(image)
 
-    # TODO: I believe this is already tested in named_image_test, should we remove it?
     def test_load_image_vs_keras(self):
         g = tf.Graph()
         with g.as_default():
@@ -53,7 +51,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             preprocessed = preprocess_input(imageIO._reverseChannels(image_arr))
 
         output_col = "transformed_image"
-        transformer = TFImageTransformer(channelOrder='BGR',inputCol="image", outputCol=output_col, graph=g,
+        transformer = TFImageTransformer(channelOrder='BGR', inputCol="image", outputCol=output_col, graph=g,
                                          inputTensor=image_arr, outputTensor=preprocessed.name,
                                          outputMode="vector")
 
@@ -70,7 +68,6 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             self.assertTrue( (processed == keras_processed).all() )
 
 
-            # TODO: I believe this is already tested in named_image_test, should we remove it?
     def test_load_image_vs_keras_RGB(self):
         g = tf.Graph()
         with g.as_default():
@@ -108,7 +105,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         self.assertEqual(processed_images.shape[1], InceptionV3Constants.INPUT_SHAPE[0])
         self.assertEqual(processed_images.shape[2], InceptionV3Constants.INPUT_SHAPE[1])
 
-        transformer = TFImageTransformer(channelOrder='BGR',inputCol="image", outputCol=outputCol, graph=g,
+        transformer = TFImageTransformer(channelOrder='BGR', inputCol="image", outputCol=outputCol, graph=g,
                                          inputTensor=image_arr.name, outputTensor=processed_images,
                                          outputMode=outputMode)
         image_df = image_utils.getSampleImageDF()
@@ -167,7 +164,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                 model = InceptionV3(input_tensor=preprocessed, weights="imagenet")
                 graph = tfx.strip_and_freeze_until([model.output], g, sess, return_graph=True)
 
-        transformer = TFImageTransformer(channelOrder='BGR',inputCol="image", outputCol=output_col, graph=graph,
+        transformer = TFImageTransformer(channelOrder='BGR', inputCol="image", outputCol=output_col, graph=graph,
                                          inputTensor=image_string, outputTensor=model.output,
                                          outputMode="vector")
         transformed_df = transformer.transform(image_df.limit(10))

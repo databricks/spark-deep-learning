@@ -111,21 +111,6 @@ class TestReadImages(SparkDLTestCase):
             _test(np.random.randint(0, 256, (10, 11, nChannels), 'uint8'))
             _test(np.random.random_sample((10,11,nChannels)).astype('float32'))
 
-    def test_image_round_trip(self):
-        # Test round trip: array -> png -> sparkImg -> array
-        binarySchema = StructType([StructField("data", BinaryType(), False)])
-        df = self.session.createDataFrame([[bytearray(pngData)]], binarySchema)
-
-        # Convert to images
-        decImg = udf(lambda x:imageIO.imageArrayToStruct(imageIO.PIL_decode(x)), ImageSchema.imageSchema['image'].dataType)
-        imageDF = df.select(decImg("data").alias("image"))
-        row = imageDF.first()
-        # array comes out of PIL and is in RGB order
-        testArray = imageIO.imageStructToArray(row.image)
-        self.assertEqual(testArray.shape, array.shape)
-        self.assertEqual(testArray.dtype, array.dtype)
-        self.assertTrue(np.all(array == testArray))
-
     # read images now part of spark, no need to test it here
     def test_readImages(self):
         # Test that reading

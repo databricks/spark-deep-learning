@@ -92,19 +92,6 @@ class ImageNetOutputComparisonTestCase(unittest.TestCase):
             self.assertEqual(set([v[1] for v in v1]), set([v[1] for v in preds2[k]]))
 
 
-def getSampleImageList():
-    imageFiles = glob(os.path.join(_getSampleJPEGDir(), "*"))
-    images = []
-    for f in imageFiles:
-        try:
-            img = PIL.Image.open(f)
-        except IOError:
-            warn("Could not read file in image directory.")
-            images.append(None)
-        else:
-            images.append(img)
-    return imageFiles, images
-
 
 def executeKerasInceptionV3(image_df, uri_col="filePath"):
     """
