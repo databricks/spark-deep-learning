@@ -176,7 +176,6 @@ class SparkDLTypeConverters(object):
         return value
 
 
-
 def _check_is_tensor_name(_maybe_tnsr_name):
     """ Check if the input is a valid tensor name or raise a `TypeError` otherwise. """
     if not isinstance(_maybe_tnsr_name, six.string_types):

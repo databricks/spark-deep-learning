@@ -117,11 +117,13 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
         return "__tmp_" + self.getOutputCol()
 
 
+class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
 
-class DeepImageFeaturizer(Transformer,HasInputCol,HasOutputCol):
-
-    inputCol = Param(Params._dummy(), "inputCol","Input column for the featurizer, expected to be ImageSchema.")
-    outputCol = Param(Params._dummy(), "outputCol","Column to store the result (features) in.")
+    inputCol = Param(
+        Params._dummy(),
+        "inputCol",
+        "Input column for the featurizer, expected to be ImageSchema.")
+    outputCol = Param(Params._dummy(), "outputCol", "Column to store the result (features) in.")
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
 
@@ -129,14 +131,13 @@ class DeepImageFeaturizer(Transformer,HasInputCol,HasOutputCol):
                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(dict(SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer.scaleHintsJava()).keys()))
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint = None):
+    def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint=None):
         """
         __init__(self, inputCol=None, outputCol=None, modelName=None)
         """
         super(DeepImageFeaturizer, self).__init__()
         kwargs = self._input_kwargs
         self._set(**kwargs)
-
 
     def _transform(self, dataset):
         scalaFeaturizer = dataset._sc._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
@@ -145,10 +146,11 @@ class DeepImageFeaturizer(Transformer,HasInputCol,HasOutputCol):
         scalaFeaturizer.setOutputCol(self.getOrDefault(self.outputCol))
         if(self.isDefined(self.scaleHint)):
             scalaFeaturizer.setResizeFlag(self.getOrDefault(self.scaleHint))
-        return DataFrame(scalaFeaturizer.transform(dataset._jdf),dataset.sql_ctx)
+        return DataFrame(scalaFeaturizer.transform(dataset._jdf), dataset.sql_ctx)
 
 # TODO: give an option to take off multiple layers so it can be used in tuning
 #       (could be the name of the layer or int for how many to take off).
+
 
 class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
     """

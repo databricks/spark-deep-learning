@@ -1,4 +1,19 @@
 #!/bin/python
+
+# Copyright 2017 Databricks, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # NOTE: Run from project's root directory
 # Generate TF graphs for DeepImageFeaturizer.
 #
@@ -10,14 +25,17 @@
 #
 # Output: model *.pb files in the working directory.
 #
+from base64 import b64encode
+from hashlib import sha256
+import os
 
 import tensorflow as tf
 import keras.backend as K
 
 from sparkdl.graph import utils as tfx
-from sparkdl.transformers import *
+#from sparkdl.transformers import *
 from sparkdl.transformers.keras_applications import *
-from sparkdl.transformers.named_image import *
+#from sparkdl.transformers.named_image import *
 
 scala_template = """
   private[sparkdl] object %(name)s extends NamedImageModel {
@@ -31,136 +49,159 @@ scala_template = """
         "https://s3-us-west-2.amazonaws.com/spark-deep-learning-models/sparkdl-%(name)s_v%(version)d.pb",
         fileName = "sparkdl-inceptionV3_v%(version)d.pb",
         base64Hash = "%(base64)s"
-    )        
+    )
   }
 """
 
 
-from hashlib import sha256
-from base64 import b64encode
-
-def gen_model(name,model, model_file, version=1,featurize=True):
+def gen_model(name, model, model_file, version=1, featurize=True):
     g = tf.Graph()
     with g.as_default():
         session = tf.Session()
         with session.as_default():
             K.set_learning_phase(0)
-            inTensor = tf.placeholder(dtype=tf.string, shape=[], name="%s_input"%name)
+            inTensor = tf.placeholder(dtype=tf.string, shape=[], name="%s_input" % name)
             decoded = tf.decode_raw(inTensor, tf.uint8)
-            imageTensor = tf.to_float(tf.reshape(decoded, shape=[1, model.inputShape()[0],model.inputShape()[1], 3]))
+            imageTensor = tf.to_float(
+                tf.reshape(
+                    decoded,
+                    shape=[
+                        1,
+                        model.inputShape()[0],
+                        model.inputShape()[1],
+                        3]))
             m = model.model(preprocessed=model.preprocess(imageTensor), featurize=featurize)
-            outTensor = tf.to_double(tf.reshape(m.output, [-1]), name="%s_sparkdl_output__"%name)
+            outTensor = tf.to_double(tf.reshape(m.output, [-1]), name="%s_sparkdl_output__" % name)
             gdef = tfx.strip_and_freeze_until([outTensor], session.graph, session, False)
             g2 = tf.Graph()
             with g2.as_default():
                 tf.import_graph_def(gdef, name='')
-                filename = "sparkdl-%s_v%d.pb" % (name,version)
-                print 'writing out ',filename
-                tf.train.write_graph(g2.as_graph_def(),logdir="./",name=filename, as_text=False)
-                with open("./" + filename,"r") as f:
+                filename = "sparkdl-%s_v%d.pb" % (name, version)
+                print 'writing out ', filename
+                tf.train.write_graph(g2.as_graph_def(), logdir="./", name=filename, as_text=False)
+                with open("./" + filename, "r") as f:
                     h = sha256(f.read()).digest()
                     base64_hash = b64encode(h)
-                    print 'h',base64_hash
-                model_file.write(scala_template %{"name":name,"height":model.inputShape()[0],"width":model.inputShape()[1],"version":version,"base64":base64_hash})
+                    print 'h', base64_hash
+                model_file.write(
+                    scala_template % {
+                        "name": name,
+                        "height": model.inputShape()[0],
+                        "width": model.inputShape()[1],
+                        "version": version,
+                        "base64": base64_hash})
                 return g2
-
-import os
 
 
 if __name__ == '__main__':
     x = os.path.abspath(__file__)
     for i in range(4):
         x = os.path.split(x)[-2]
-    filename = os.path.join(x,"src","main","scala","com","databricks","sparkdl","Models.scala")
-    print('generating',filename)
-    with open(filename,"w") as f:
+    filename = os.path.join(
+        x,
+        "src",
+        "main",
+        "scala",
+        "com",
+        "databricks",
+        "sparkdl",
+        "Models.scala")
+    print('generating', filename)
+    with open(filename, "w") as f:
         f.write("""
         package com.databricks.sparkdl
-        
-        import java.nio.file.Paths        
-        import org.tensorflow.framework.GraphDef        
+
+        import java.nio.file.Paths
+        import org.tensorflow.framework.GraphDef
         import com.databricks.sparkdl.DeepImageFeaturizer.NamedImageModel
-        
+
         /**
-         * File generated by sparkdl.utils.generate_app_models.  
+         * File generated by sparkdl.utils.generate_app_models.
          * Models defined in sparkdl.transformers.keras_applications.py
          */
         object Models {
-          private[sparkdl] object TestNet extends NamedImageModel { 
-          /**
-           * A simple test graph used for testing DeepImageFeaturizer 
-           */ 
-          override val name = "_test"
-          override val height = 60
-          override val width = 40
-          override val graphInputNode = "input"
-          override val graphOutputNode = "sparkdl_output__"
-          
-          override def graph: GraphDef = {
-            val file = getClass.getResource("/sparkdl/test_net.pb").getFile
-            ModelFetcher.importGraph(Paths.get(file), "jVCEKp1bV53eib8d8OKreTH4fHu/Ji5NHMOsgdVwbMg=")
-            .getOrElse { throw new Exception(s""\"The hash of file $file did not match the expected value.""\".stripMargin)            
-          }
-        }  
-      }
-    """)
+          private[sparkdl] object TestNet extends NamedImageModel {
+            /**
+             * A simple test graph used for testing DeepImageFeaturizer
+             */
+            override val name = "_test"
+            override val height = 60
+            override val width = 40
+            override val graphInputNode = "input"
+            override val graphOutputNode = "sparkdl_output__"
 
-        for name,modelConstructor in sorted(keras_applications.KERAS_APPLICATION_MODELS.items(),key=lambda x: x[0]):
-            print 'generating model',name
-            g = gen_model(name=name,model=modelConstructor(),model_file=f)
-            print 'placeholders',[x for x in g._nodes_by_id.values() if x.type=='Placeholder']
-        f.write("  val _supportedModels = Set[NamedImageModel](TestNet," + ",".join(keras_applications.KERAS_APPLICATION_MODELS.keys()) + ")\n")
+            override def graph: GraphDef = {
+              val file = getClass.getResource("/sparkdl/test_net.pb").getFile
+              ModelFetcher.importGraph(Paths.get(file), "jVCEKp1bV53eib8d8OKreTH4fHu/Ji5NHMOsgdVwbMg=")
+              .getOrElse {
+                  throw new Exception(s""\"The hash of file $file did not match the expected value.""\".stripMargin)
+              }
+            }
+          }
+    """)
+        for name, modelConstructor in sorted(
+                keras_applications.KERAS_APPLICATION_MODELS.items(), key=lambda x: x[0]):
+            print 'generating model', name
+            g = gen_model(name=name, model=modelConstructor(), model_file=f)
+            print 'placeholders', [x for x in g._nodes_by_id.values() if x.type == 'Placeholder']
+        f.write(
+            "  val _supportedModels = Set[NamedImageModel](TestNet," +
+            ",".join(
+                keras_applications.KERAS_APPLICATION_MODELS.keys()) +
+            ")\n")
         f.write("}\n")
         f.write("\n")
 
 
-
-import tensorflow as tf
-import keras.backend as K
-from scipy import spatial
-
-from sparkdl.graph import utils as tfx
-from sparkdl.image import imageIO
-from sparkdl.transformers import *
-from sparkdl.transformers.keras_applications import *
-from sparkdl.transformers.named_image import *
-
-
-
-def _getSampleJPEGDir():
-    return '/Users/tomas/dev/spark-deep-learning/python/tests/resources/images'
-
-
-def test():
-    return """
-        package com.databricks.sparkdl
-        
-        import java.nio.file.Paths        
-        import org.tensorflow.framework.GraphDef        
-        import com.databricks.sparkdl.DeepImageFeaturizer.NamedImageModel
-        
-        /**
-         * File generated by sparkdl.utils.generate_app_models.  
-         * Models defined in sparkdl.transformers.keras_applications.py
-         */
-        object Models {
-          private[sparkdl] object TestNet extends NamedImageModel { 
-          /**
-           * A simple test graph used for testing DeepImageFeaturizer 
-           */ 
-          override val name = "_test"
-          override val height = 60
-          override val width = 40
-          override val graphInputNode = "input"
-          override val graphOutputNode = "sparkdl_output__"
-          
-          override def graph: GraphDef = {
-            val file = getClass.getResource("/sparkdl/test_net.pb").getFile
-            ModelFetcher.importGraph(Paths.get(file), "jVCEKp1bV53eib8d8OKreTH4fHu/Ji5NHMOsgdVwbMg=")
-            .getOrElse { throw new Exception(s""\"The hash of file $file did not match the expected value.""\".stripMargin)            
-          }
-        }  
-      }
-    """
-
-print test()
+#
+# import tensorflow as tf
+# import keras.backend as K
+# from scipy import spatial
+#
+# from sparkdl.graph import utils as tfx
+# from sparkdl.image import imageIO
+# from sparkdl.transformers import *
+# from sparkdl.transformers.keras_applications import *
+# from sparkdl.transformers.named_image import *
+#
+#
+#
+# def _getSampleJPEGDir():
+#     return '/Users/tomas/dev/spark-deep-learning/python/tests/resources/images'
+#
+#
+# def test():
+#     return """
+#         package com.databricks.sparkdl
+#
+#         import java.nio.file.Paths
+#         import org.tensorflow.framework.GraphDef
+#         import com.databricks.sparkdl.DeepImageFeaturizer.NamedImageModel
+#
+#         /**
+#          * File generated by sparkdl.utils.generate_app_models.
+#          * Models defined in sparkdl.transformers.keras_applications.py
+#          */
+#         object Models {
+#           private[sparkdl] object TestNet extends NamedImageModel {
+#             /**
+#              * A simple test graph used for testing DeepImageFeaturizer
+#              */
+#             override val name = "_test"
+#             override val height = 60
+#             override val width = 40
+#             override val graphInputNode = "input"
+#             override val graphOutputNode = "sparkdl_output__"
+#
+#             override def graph: GraphDef = {
+#               val file = getClass.getResource("/sparkdl/test_net.pb").getFile
+#               ModelFetcher.importGraph(Paths.get(file), "jVCEKp1bV53eib8d8OKreTH4fHu/Ji5NHMOsgdVwbMg=")
+#               .getOrElse {
+#                   throw new Exception(s""\"The hash of file $file did not match the expected value.""\".stripMargin)
+#               }
+#             }
+#           }
+#     """
+#
+# print test()
+#
