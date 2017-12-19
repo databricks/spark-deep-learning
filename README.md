@@ -80,14 +80,23 @@ To try running the examples below, check out the Databricks notebook [DeepLearni
 
 ### Working with images in Spark
 
-The first step to applying deep learning on images is the ability to load the images. Deep Learning Pipelines includes utility functions that can load millions of images into a Spark DataFrame and decode them automatically in a distributed fashion, allowing manipulation at scale.
+The first step to applying deep learning on images is the ability to load the images. Spark and Deep Learning Pipelines include utility functions that can load millions of images into a Spark DataFrame and decode them automatically in a distributed fashion, allowing manipulation at scale.
+
+Using Spark's ImageSchema
 
 ```python
-from sparkdl import readImages
-image_df = readImages("/data/myimages")
+from sparkdl.image.image import ImageSchema
+image_df = ImageSchema.readImages("/data/myimages")
 ```
 
-The resulting DataFrame contains a string column named "filePath" containing the path to each image file, and a image struct ("`SpImage`") column named "image" containing the decoded image data.
+or if custom image library is needed:
+
+```python
+from sparkdl.image import imageIO as imageIO
+image_df = imageIO.readImagesWithCustomFn("/data/myimages",decode_f=<your image library, see imageIO.PIL_decode>)
+```
+
+The resulting DataFrame contains a string column named "image" containing an image struct with schema == ImageSchema.
 
 ```python
 image_df.show()
@@ -109,7 +118,7 @@ featurizer = DeepImageFeaturizer(inputCol="image", outputCol="features", modelNa
 lr = LogisticRegression(maxIter=20, regParam=0.05, elasticNetParam=0.3, labelCol="label")
 p = Pipeline(stages=[featurizer, lr])
 
-model = p.fit(train_images_df)    # train_images_df is a dataset of images (SpImage) and labels
+model = p.fit(train_images_df)    # train_images_df is a dataset of images and labels
 
 # Inspect training error
 df = model.transform(train_images_df.limit(10)).select("image", "probability",  "uri", "label")
@@ -127,11 +136,13 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     There are many well-known deep learning models for images. If the task at hand is very similar to what the models provide (e.g. object recognition with ImageNet classes), or for pure exploration, one can use the Transformer `DeepImagePredictor` by simply specifying the model name.
 
     ```python
-    from sparkdl import readImages, DeepImagePredictor
+    from sparkdl.image.image import ImageSchema
+
+    from sparkdl import DeepImagePredictor
 
     predictor = DeepImagePredictor(inputCol="image", outputCol="predicted_labels",
                                    modelName="InceptionV3", decodePredictions=True, topK=10)
-    image_df = readImages("/data/myimages")
+    image_df = ImageSchema.readImages("/data/myimages")
     predictions_df = predictor.transform(image_df)
     ```
 
@@ -140,7 +151,8 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     Deep Learning Pipelines provides a Transformer that will apply the given TensorFlow Graph to a DataFrame containing a column of images (e.g. loaded using the utilities described in the previous section). Here is a very simple example of how a TensorFlow Graph can be used with the Transformer. In practice, the TensorFlow Graph will likely be restored from files before calling `TFImageTransformer`.
 
     ```python
-    from sparkdl import readImages, TFImageTransformer
+    from sparkdl.image.image import ImageSchema
+    from sparkdl import TFImageTransformer
     import sparkdl.graph.utils as tfx
     from sparkdl.transformers import utils
     import tensorflow as tf
@@ -155,7 +167,7 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     transformer = TFImageTransformer(inputCol="image", outputCol="predictions", graph=frozen_graph,
                                      inputTensor=image_arr, outputTensor=resized_images,
                                      outputMode="image")
-    image_df = readImages("/data/myimages")
+    image_df = ImageSchema.readImages("/data/myimages")
     processed_image_df = transformer.transform(image_df)
     ```
 

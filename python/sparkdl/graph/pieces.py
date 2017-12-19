@@ -18,7 +18,7 @@ import logging
 import tensorflow as tf
 
 from sparkdl.graph.builder import IsolatedSession
-from sparkdl.image.imageIO import SparkMode
+from sparkdl.image import imageIO
 
 logger = logging.getLogger('sparkdl')
 
@@ -29,7 +29,8 @@ TODO: We might want to cache some of the big models in their GraphFunction forma
       Deserializing ProtocolBuffer bytes is in general faster than directly loading Keras models.
 """
 
-def buildSpImageConverter(img_dtype):
+
+def buildSpImageConverter(channelOrder, img_dtype):
     """
     Convert a imageIO byte encoded image into a image tensor suitable as input to ConvNets
     The name of the input must be a subset of those specified in `image.imageIO.imageSchema`.
@@ -48,23 +49,25 @@ def buildSpImageConverter(img_dtype):
         # This is the default behavior of Python Image Library
         shape = tf.reshape(tf.stack([height, width, num_channels], axis=0),
                            shape=(3,), name='shape')
-        if img_dtype == SparkMode.RGB:
+        if img_dtype == 'uint8':
             image_uint8 = tf.decode_raw(image_buffer, tf.uint8, name="decode_raw")
             image_float = tf.to_float(image_uint8)
-        else:
-            assert img_dtype == SparkMode.RGB_FLOAT32, \
-                "Unsupported dtype for image: {}".format(img_dtype)
+        elif img_dtype == 'float32':
             image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
-
+        else:
+            raise ValueError(
+                'unsupported image data type "%s", currently only know how to handle uint8 and float32' % img_dtype)
         image_reshaped = tf.reshape(image_float, shape, name="reshaped")
+        image_reshaped = imageIO.fixColorChannelOrdering(channelOrder, image_reshaped)
         image_input = tf.expand_dims(image_reshaped, 0, name="image_input")
         gfn = issn.asGraphFunction([height, width, image_buffer, num_channels], [image_input])
 
     return gfn
 
+
 def buildFlattener():
-    """ 
-    Build a flattening layer to remove the extra leading tensor dimension. 
+    """
+    Build a flattening layer to remove the extra leading tensor dimension.
     e.g. a tensor of shape [1, W, H, C] will have a shape [W, H, C] after applying this.
     """
     with IsolatedSession() as issn:

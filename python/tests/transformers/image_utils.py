@@ -14,10 +14,11 @@
 #
 
 import os
-from glob import glob
 import tempfile
 import unittest
+from glob import glob
 from warnings import warn
+
 
 from keras.applications import InceptionV3
 from keras.applications.inception_v3 import preprocess_input, decode_predictions
@@ -25,6 +26,7 @@ from keras.preprocessing.image import img_to_array, load_img
 import keras.backend as K
 import numpy as np
 import PIL.Image
+
 
 from pyspark.sql.types import StringType
 
@@ -38,14 +40,19 @@ def _getSampleJPEGDir():
     cur_dir = os.path.dirname(__file__)
     return os.path.join(cur_dir, "../resources/images")
 
+def getImageFiles():
+    return glob(os.path.join(_getSampleJPEGDir(), "*"))
+
 def getSampleImageDF():
-    return imageIO.readImages(_getSampleJPEGDir())
+    return imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(), decode_f=imageIO.PIL_decode)
+
 
 def getSampleImagePaths():
     dirpath = _getSampleJPEGDir()
     files = [os.path.abspath(os.path.join(dirpath, f)) for f in os.listdir(dirpath)
              if f.endswith('.jpg')]
     return files
+
 
 def getSampleImagePathsDF(sqlContext, colName):
     files = getSampleImagePaths()
@@ -54,16 +61,16 @@ def getSampleImagePathsDF(sqlContext, colName):
 # Methods for making comparisons between outputs of using different frameworks.
 # For ImageNet.
 
+
 class ImageNetOutputComparisonTestCase(unittest.TestCase):
 
-    def transformOutputToComparables(self, collected, uri_col, output_col):
+    def transformOutputToComparables(self, collected, output_col, get_uri):
         values = {}
         topK = {}
         for row in collected:
-            uri = row[uri_col]
+            uri = get_uri(row)
             predictions = row[output_col]
             self.assertEqual(len(predictions), ImageNetConstants.NUM_CLASSES)
-
             values[uri] = np.expand_dims(predictions, axis=0)
             topK[uri] = decode_predictions(values[uri], top=5)[0]
         return values, topK
@@ -92,20 +99,6 @@ class ImageNetOutputComparisonTestCase(unittest.TestCase):
             self.assertEqual(set([v[1] for v in v1]), set([v[1] for v in preds2[k]]))
 
 
-def getSampleImageList():
-    imageFiles = glob(os.path.join(_getSampleJPEGDir(), "*"))
-    images = []
-    for f in imageFiles:
-        try:
-            img = PIL.Image.open(f)
-        except IOError:
-            warn("Could not read file in image directory.")
-            images.append(None)
-        else:
-            images.append(img)
-    return imageFiles, images
-
-
 def executeKerasInceptionV3(image_df, uri_col="filePath"):
     """
     Apply Keras InceptionV3 Model on input DataFrame.
@@ -127,12 +120,14 @@ def executeKerasInceptionV3(image_df, uri_col="filePath"):
         topK[raw_uri] = decode_predictions(values[raw_uri], top=5)[0]
     return values, topK
 
+
 def loadAndPreprocessKerasInceptionV3(raw_uri):
     # this is the canonical way to load and prep images in keras
     uri = raw_uri[5:] if raw_uri.startswith("file:/") else raw_uri
     image = img_to_array(load_img(uri, target_size=InceptionV3Constants.INPUT_SHAPE))
     image = np.expand_dims(image, axis=0)
     return preprocess_input(image)
+
 
 def prepInceptionV3KerasModelFile(fileName):
     model_dir_tmp = tempfile.mkdtemp("sparkdl_keras_tests", dir="/tmp")

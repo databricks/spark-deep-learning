@@ -18,7 +18,7 @@ package com.databricks.sparkdl
 
 import java.nio.file.Paths
 
-import org.apache.spark.image.ImageSchema
+import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vectors

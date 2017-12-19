@@ -23,6 +23,7 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 import numpy.random as prng
 import tensorflow as tf
+
 import keras.backend as K
 from keras.applications import InceptionV3
 from keras.applications import inception_v3 as iv3
@@ -36,10 +37,12 @@ from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
 
-from sparkdl.image.imageIO import imageArrayToStruct, SparkMode
 from sparkdl.graph.builder import IsolatedSession, GraphFunction
 import sparkdl.graph.pieces as gfac
 import sparkdl.graph.utils as tfx
+from sparkdl.image.imageIO import imageArrayToStruct
+from sparkdl.image.imageIO import imageTypeByOrdinal
+
 
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
@@ -52,17 +55,19 @@ class GraphPiecesTest(SparkDLTestCase):
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
         def exec_gfn_spimg_decode(spimg_dict, img_dtype):
-            gfn = gfac.buildSpImageConverter(img_dtype)
+            gfn = gfac.buildSpImageConverter('BGR', img_dtype)
             with IsolatedSession() as issn:
                 feeds, fetches = issn.importGraphFunction(gfn, prefix="")
-                feed_dict = dict((tnsr, spimg_dict[tfx.op_name(tnsr, issn.graph)]) for tnsr in feeds)
+                feed_dict = dict(
+                    (tnsr, spimg_dict[tfx.op_name(tnsr, issn.graph)]) for tnsr in feeds)
                 img_out = issn.run(fetches[0], feed_dict=feed_dict)
             return img_out
 
         def check_image_round_trip(img_arr):
             spimg_dict = imageArrayToStruct(img_arr).asDict()
             spimg_dict['data'] = bytes(spimg_dict['data'])
-            img_arr_out = exec_gfn_spimg_decode(spimg_dict, spimg_dict['mode'])
+            img_arr_out = exec_gfn_spimg_decode(
+                spimg_dict, imageTypeByOrdinal(spimg_dict['mode']).dtype)
             self.assertTrue(np.all(img_arr_out == img_arr))
 
         for fp in img_fpaths:
@@ -71,7 +76,7 @@ class GraphPiecesTest(SparkDLTestCase):
             img_arr_byte = img_to_array(img).astype(np.uint8)
             check_image_round_trip(img_arr_byte)
 
-            img_arr_float = img_to_array(img).astype(np.float)
+            img_arr_float = img_to_array(img).astype(np.float32)
             check_image_round_trip(img_arr_float)
 
             img_arr_preproc = iv3.preprocess_input(img_to_array(img))
@@ -143,7 +148,7 @@ class GraphPiecesTest(SparkDLTestCase):
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
         xcpt_model = Xception(weights="imagenet")
-        stages = [('spimage', gfac.buildSpImageConverter(SparkMode.RGB_FLOAT32)),
+        stages = [('spimage', gfac.buildSpImageConverter('BGR', 'float32')),
                   ('xception', GraphFunction.fromKeras(xcpt_model))]
         piped_model = GraphFunction.fromList(stages)
 
@@ -159,7 +164,8 @@ class GraphPiecesTest(SparkDLTestCase):
             with IsolatedSession() as issn:
                 # Need blank import scope name so that spimg fields match the input names
                 feeds, fetches = issn.importGraphFunction(piped_model, prefix="")
-                feed_dict = dict((tnsr, spimg_input_dict[tfx.op_name(tnsr, issn.graph)]) for tnsr in feeds)
+                feed_dict = dict(
+                    (tnsr, spimg_input_dict[tfx.op_name(tnsr, issn.graph)]) for tnsr in feeds)
                 preds_tgt = issn.run(fetches[0], feed_dict=feed_dict)
                 # Uncomment the line below to see the graph
                 # tfx.write_visualization_html(issn.graph,

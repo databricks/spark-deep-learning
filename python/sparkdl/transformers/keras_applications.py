@@ -1,3 +1,4 @@
+# coding=utf-8
 # Copyright 2017 Databricks, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +15,10 @@
 #
 
 #
-# Models marked below as provided by Keras are provided subject to the 
-# below copyright and licenses (and any additional copyrights and 
+# Models marked below as provided by Keras are provided subject to the
+# below copyright and licenses (and any additional copyrights and
 # licenses specified).
-# 
+#
 # COPYRIGHT
 #
 # All contributions by François Chollet:
@@ -71,12 +72,15 @@ import numpy as np
 import tensorflow as tf
 
 from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Constants)
+from sparkdl.image.imageIO import _reverseChannels
 
 
 """
 Essentially a factory function for getting the correct KerasApplicationModel class
 for the network name.
 """
+
+
 def getKerasApplicationModel(name):
     try:
         return KERAS_APPLICATION_MODELS[name]()
@@ -108,9 +112,9 @@ class KerasApplicationModel:
     @abstractmethod
     def model(self, preprocessed, featurize):
         """
-        Models marked as *provided by Keras* are provided subject to the MIT 
+        Models marked as *provided by Keras* are provided subject to the MIT
         license located at https://github.com/fchollet/keras/blob/master/LICENSE
-        and subject to any additional copyrights and licenses specified in the 
+        and subject to any additional copyrights and licenses specified in the
         code or documentation.
         """
         pass
@@ -135,7 +139,8 @@ class KerasApplicationModel:
 
 class InceptionV3Model(KerasApplicationModel):
     def preprocess(self, inputImage):
-        return inception_v3.preprocess_input(inputImage)
+        # Keras expects RGB order
+        return inception_v3.preprocess_input(_reverseChannels(inputImage))
 
     def model(self, preprocessed, featurize):
         # Model provided by Keras. All cotributions by Keras are provided subject to the
@@ -167,9 +172,11 @@ class InceptionV3Model(KerasApplicationModel):
     def _testKerasModel(self, include_top):
         return inception_v3.InceptionV3(weights="imagenet", include_top=include_top)
 
+
 class XceptionModel(KerasApplicationModel):
     def preprocess(self, inputImage):
-        return xception.preprocess_input(inputImage)
+        # Keras expects RGB order
+        return xception.preprocess_input(_reverseChannels(inputImage))
 
     def model(self, preprocessed, featurize):
         # Model provided by Keras. All cotributions by Keras are provided subject to the
@@ -182,6 +189,7 @@ class XceptionModel(KerasApplicationModel):
 
     def _testKerasModel(self, include_top):
         return xception.Xception(weights="imagenet", include_top=include_top)
+
 
 class ResNet50Model(KerasApplicationModel):
     def preprocess(self, inputImage):
@@ -222,6 +230,7 @@ class ResNet50Model(KerasApplicationModel):
     def _testKerasModel(self, include_top):
         return resnet50.ResNet50(weights="imagenet", include_top=include_top)
 
+
 class VGG16Model(KerasApplicationModel):
     def preprocess(self, inputImage):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
@@ -232,7 +241,7 @@ class VGG16Model(KerasApplicationModel):
         # and subject to the below additional copyrights and licenses.
         #
         # Copyright 2014 Oxford University
-        # 
+        #
         # Licensed under the Creative Commons Attribution License CC BY 4.0 ("License").
         # You may obtain a copy of the License at
         #
@@ -247,6 +256,7 @@ class VGG16Model(KerasApplicationModel):
     def _testKerasModel(self, include_top):
         return vgg16.VGG16(weights="imagenet", include_top=include_top)
 
+
 class VGG19Model(KerasApplicationModel):
     def preprocess(self, inputImage):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
@@ -257,7 +267,7 @@ class VGG19Model(KerasApplicationModel):
         # and subject to the below additional copyrights and licenses.
         #
         # Copyright 2014 Oxford University
-        # 
+        #
         # Licensed under the Creative Commons Attribution License CC BY 4.0 ("License").
         # You may obtain a copy of the License at
         #
@@ -280,16 +290,16 @@ def _imagenet_preprocess_input(x, input_shape):
     works okay with tf.Tensor inputs. The following was translated to tf ops from
     https://github.com/fchollet/keras/blob/fb4a0849cf4dc2965af86510f02ec46abab1a6a4/keras/applications/imagenet_utils.py#L52
     It's a possibility to change the implementation in keras to look like the
-    following, but not doing it for now.
+    following and modified to work with BGR images (standard in Spark), but not doing it for now.
     """
-    # 'RGB'->'BGR'
-    x = x[..., ::-1]
+    # assuming 'BGR'
     # Zero-center by mean pixel
     mean = np.ones(input_shape + (3,), dtype=np.float32)
     mean[..., 0] = 103.939
     mean[..., 1] = 116.779
     mean[..., 2] = 123.68
     return x - mean
+
 
 KERAS_APPLICATION_MODELS = {
     "InceptionV3": InceptionV3Model,

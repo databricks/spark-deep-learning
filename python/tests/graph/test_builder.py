@@ -104,7 +104,6 @@ class GraphFunctionWithIsolatedSessionTest(SparkDLTestCase):
         self.assertEqual(gfn_tgt.output_names, gfn_ref.output_names)
         self.assertEqual(str(gfn_tgt.graph_def), str(gfn_ref.graph_def))
 
-
     def test_keras_consistency(self):
         """ Exported model in Keras should get same result as original """
 

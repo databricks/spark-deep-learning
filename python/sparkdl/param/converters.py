@@ -35,6 +35,7 @@ import sparkdl.utils.keras_model as kmutil
 
 __all__ = ['SparkDLTypeConverters']
 
+
 class SparkDLTypeConverters(object):
     """
     .. note:: DeveloperApi
@@ -165,6 +166,13 @@ class SparkDLTypeConverters(object):
             err_msg = "Named optimizer not supported in Keras: [type {}] {}"
             raise TypeError(err_msg.format(type(value), value))
 
+        return value
+
+    @staticmethod
+    def toChannelOrder(value):
+        if not value in ('L', 'RGB', 'BGR'):
+            raise ValueError(
+                "Unsupported channel order. Expected one of ('L', 'RGB', 'BGR') but got '%s'") % value
         return value
 
 

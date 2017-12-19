@@ -32,6 +32,7 @@ from pyspark import SparkContext
 from pyspark.sql import SQLContext
 from pyspark.sql import SparkSession
 
+
 class PythonUnitTestCase(unittest.TestCase):
     # We try to use unittest2 for python 2.6 or earlier
     # This class is created to avoid replicating this logic in various places.
@@ -70,12 +71,11 @@ class SparkDLTestCase(TestSparkContext, unittest.TestCase):
     def setUpClass(cls):
         cls.setup_env()
 
-
     @classmethod
     def tearDownClass(cls):
         cls.tear_down_env()
 
-    def assertDfHasCols(self, df, cols = []):
+    def assertDfHasCols(self, df, cols=[]):
         map(lambda c: self.assertIn(c, df.columns), cols)
 
 

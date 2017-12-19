@@ -16,7 +16,8 @@
 import os
 from .named_image_test import NamedImageTransformerBaseTestCase
 
+
 class NamedImageTransformerVGG19Test(NamedImageTransformerBaseTestCase):
     __test__ = os.getenv('RUN_ONLY_LIGHT_TESTS', False) != "True"
     name = "VGG19"
-    numPartitionsOverride = 1 # hits OOM if more than 2 threads
+    numPartitionsOverride = 1  # hits OOM if more than 2 threads

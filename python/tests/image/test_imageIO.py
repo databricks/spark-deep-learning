@@ -24,9 +24,12 @@ from pyspark.sql.functions import col, udf
 from pyspark.sql.types import BinaryType, StringType, StructField, StructType
 
 from sparkdl.image import imageIO
+from sparkdl.image.image import ImageSchema
 from ..tests import SparkDLTestCase
 
-# Create dome fake image data to work with
+# Create some fake image data to work with
+
+
 def create_image_data():
     # Random image-like data
     array = np.random.randint(0, 256, (10, 11, 3), 'uint8')
@@ -38,7 +41,9 @@ def create_image_data():
 
     # Get Png data as stream
     pngData = imgFile.read()
-    return array, pngData
+    # PIL is RGB but image schema is BGR => flip the channels
+    return imageIO._reverseChannels(array), pngData
+
 
 array, pngData = create_image_data()
 
@@ -72,71 +77,49 @@ class TestReadImages(SparkDLTestCase):
         super(TestReadImages, cls).tearDownClass()
         cls.binaryFilesMock = None
 
-    def test_decodeImage(self):
-        badImg = imageIO._decodeImage(b"xxx")
-        self.assertIsNone(badImg)
-        imgRow = imageIO._decodeImage(pngData)
-        self.assertIsNotNone(imgRow)
-        self.assertEqual(len(imgRow), len(imageIO.imageSchema.names))
-        for n in imageIO.imageSchema.names:
-            imgRow[n]
-
     def test_resize(self):
+        self.assertRaises(ValueError, imageIO.createResizeImageUDF, [1, 2, 3])
+
+        make_smaller = imageIO.createResizeImageUDF([4, 5]).func
         imgAsRow = imageIO.imageArrayToStruct(array)
-        smaller = imageIO._resizeFunction([4, 5])
-        smallerImg = smaller(imgAsRow)
-        for n in imageIO.imageSchema.names:
-            smallerImg[n]
+        smallerImg = make_smaller(imgAsRow)
         self.assertEqual(smallerImg.height, 4)
         self.assertEqual(smallerImg.width, 5)
 
-        sameImage = imageIO._resizeFunction([imgAsRow.height, imgAsRow.width])(imgAsRow)
-        self.assertEqual(sameImage, sameImage)
+        # Compare to PIL resizing
+        imgAsPIL = PIL.Image.fromarray(obj=imageIO._reverseChannels(array)).resize((5, 4))
+        smallerAry = imageIO._reverseChannels(np.asarray(imgAsPIL))
+        np.testing.assert_array_equal(smallerAry, imageIO.imageStructToArray(smallerImg))
+        # Test that resize with the same size is a no-op
+        sameImage = imageIO.createResizeImageUDF((imgAsRow.height, imgAsRow.width)).func(imgAsRow)
+        self.assertEqual(imgAsRow, sameImage)
+        # Test that we have a valid image schema (all fields are in)
+        for n in ImageSchema.imageSchema['image'].dataType.names:
+            smallerImg[n]
 
-        self.assertRaises(ValueError, imageIO._resizeFunction, [1, 2, 3])
+    def test_imageConversions(self):
+        """"
+        Test conversion image array <-> image struct
+        """
+        def _test(array):
+            height, width, chan = array.shape
+            imgAsStruct = imageIO.imageArrayToStruct(array)
+            self.assertEqual(imgAsStruct.height, height)
+            self.assertEqual(imgAsStruct.width, width)
+            self.assertEqual(imgAsStruct.data, array.tobytes())
+            imgReconstructed = imageIO.imageStructToArray(imgAsStruct)
+            np.testing.assert_array_equal(array, imgReconstructed)
+        for nChannels in (1, 3, 4):
+            # unsigned bytes
+            _test(np.random.randint(0, 256, (10, 11, nChannels), 'uint8'))
+            _test(np.random.random_sample((10, 11, nChannels)).astype('float32'))
 
-    def test_imageArrayToStruct(self):
-        SparkMode = imageIO.SparkMode
-        # Check converting with matching types
-        height, width, chan = array.shape
-        imgAsStruct = imageIO.imageArrayToStruct(array)
-        self.assertEqual(imgAsStruct.height, height)
-        self.assertEqual(imgAsStruct.width, width)
-        self.assertEqual(imgAsStruct.data, array.tobytes())
-
-        # Check casting
-        imgAsStruct = imageIO.imageArrayToStruct(array, SparkMode.RGB_FLOAT32)
-        self.assertEqual(imgAsStruct.height, height)
-        self.assertEqual(imgAsStruct.width, width)
-        self.assertEqual(len(imgAsStruct.data), array.size * 4)
-
-        # Check channel mismatch
-        self.assertRaises(ValueError, imageIO.imageArrayToStruct, array, SparkMode.FLOAT32)
-
-        # Check that unsafe cast raises error
-        floatArray = np.zeros((3, 4, 3), dtype='float32')
-        self.assertRaises(ValueError, imageIO.imageArrayToStruct, floatArray, SparkMode.RGB)
-
-    def test_image_round_trip(self):
-        # Test round trip: array -> png -> sparkImg -> array
-        binarySchema = StructType([StructField("data", BinaryType(), False)])
-        df = self.session.createDataFrame([[bytearray(pngData)]], binarySchema)
-
-        # Convert to images
-        decImg = udf(imageIO._decodeImage, imageIO.imageSchema)
-        imageDF = df.select(decImg("data").alias("image"))
-        row = imageDF.first()
-
-        testArray = imageIO.imageStructToArray(row.image)
-        self.assertEqual(testArray.shape, array.shape)
-        self.assertEqual(testArray.dtype, array.dtype)
-        self.assertTrue(np.all(array == testArray))
-
+    # read images now part of spark, no need to test it here
     def test_readImages(self):
         # Test that reading
-        imageDF = imageIO._readImages("some/path", 2, self.binaryFilesMock)
+        imageDF = imageIO._readImagesWithCustomFn(
+            "file/path", decode_f=imageIO.PIL_decode, numPartition=2, sc=self.binaryFilesMock)
         self.assertTrue("image" in imageDF.schema.names)
-        self.assertTrue("filePath" in imageDF.schema.names)
 
         # The DF should have 2 images and 1 null.
         self.assertEqual(imageDF.count(), 3)
@@ -146,19 +129,20 @@ class TestReadImages(SparkDLTestCase):
         img = validImages.first().image
         self.assertEqual(img.height, array.shape[0])
         self.assertEqual(img.width, array.shape[1])
-        self.assertEqual(imageIO.imageType(img).nChannels, array.shape[2])
+        self.assertEqual(imageIO.imageTypeByOrdinal(img.mode).nChannels, array.shape[2])
+        # array comes out of PIL and is in RGB order
         self.assertEqual(img.data, array.tobytes())
 
     def test_udf_schema(self):
         # Test that utility functions can be used to create a udf that accepts and return
         # imageSchema
         def do_nothing(imgRow):
-            imType = imageIO.imageType(imgRow)
             array = imageIO.imageStructToArray(imgRow)
-            return imageIO.imageArrayToStruct(array, imType.sparkMode)
-        do_nothing_udf = udf(do_nothing, imageIO.imageSchema)
+            return imageIO.imageArrayToStruct(array)
+        do_nothing_udf = udf(do_nothing, ImageSchema.imageSchema['image'].dataType)
 
-        df = imageIO._readImages("path", 2, self.binaryFilesMock)
+        df = imageIO._readImagesWithCustomFn(
+            "file/path", decode_f=imageIO.PIL_decode, numPartition=2, sc=self.binaryFilesMock)
         df = df.filter(col('image').isNotNull()).withColumn("test", do_nothing_udf('image'))
         self.assertEqual(df.first().test.data, array.tobytes())
         df.printSchema()

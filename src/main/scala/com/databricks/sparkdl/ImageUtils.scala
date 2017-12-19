@@ -19,8 +19,10 @@ package com.databricks.sparkdl
 import java.awt.image.BufferedImage
 import java.awt.{Color, Image}
 
-import org.apache.spark.image.ImageSchema
+import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.functions.udf
 
 private[sparkdl] object ImageUtils {
 
@@ -79,7 +81,7 @@ private[sparkdl] object ImageUtils {
    * @param image Java BufferedImage.
    * @return Row image in spark.ml.image format with 3 channels in BGR order.
    */
-  private[sparkdl] def spImageFromBufferedImage(image: BufferedImage): Row = {
+  private[sparkdl] def spImageFromBufferedImage(image: BufferedImage, origin: String = null): Row = {
     val channels = 3
     val height = image.getHeight
     val width = image.getWidth
@@ -98,8 +100,7 @@ private[sparkdl] object ImageUtils {
       }
       h += 1
     }
-    // TODO: udpate mode to be Int when spark.ml.image is merged.
-    Row(null, height, width, channels, "CV_U8C3", decoded)
+    Row(origin, height, width, channels, ImageSchema.ocvTypes("CV_8UC3"), decoded)
   }
 
   /**
@@ -137,8 +138,7 @@ private[sparkdl] object ImageUtils {
       val graphic = tgtImg.createGraphics()
       graphic.drawImage(scaledImg, 0, 0, null)
       graphic.dispose()
-
-      spImageFromBufferedImage(tgtImg)
+      spImageFromBufferedImage(tgtImg, origin=ImageSchema.getOrigin(spImage))
     }
   }
 }

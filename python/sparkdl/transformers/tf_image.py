@@ -17,22 +17,27 @@ import numpy as np
 import tensorflow as tf
 import tensorframes as tfs
 
+from pyspark import Row
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
 
-from sparkdl.image.imageIO import imageSchema, sparkModeLookup, SparkMode
+import sparkdl.graph.utils as tfx
+import sparkdl.image.imageIO as imageIO
 from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters, HasOutputMode)
 import sparkdl.transformers.utils as utils
 import sparkdl.utils.jvmapi as JVMAPI
-import sparkdl.graph.utils as tfx
+
+from sparkdl.image.image import ImageSchema
+
 
 __all__ = ['TFImageTransformer']
 
 IMAGE_INPUT_TENSOR_NAME = tfx.tensor_name(utils.IMAGE_INPUT_PLACEHOLDER_NAME)
 USER_GRAPH_NAMESPACE = 'given'
 NEW_OUTPUT_PREFIX = 'sdl_flattened'
+
 
 class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     """
@@ -61,22 +66,27 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     outputTensor = Param(Params._dummy(), "outputTensor",
                          "A TensorFlow tensor object or name representing the output",
                          typeConverter=SparkDLTypeConverters.toTFTensorName)
+    channelOrder = Param(Params._dummy(), "channelOrder",
+                         "Strign specifying the expected color channel order, can be one of L,RGB,BGR",
+                         typeConverter=SparkDLTypeConverters.toChannelOrder)
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, graph=None,
+    def __init__(self, channelOrder, inputCol=None, outputCol=None, graph=None,
                  inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                  outputMode="vector"):
         """
-        __init__(self, inputCol=None, outputCol=None, graph=None,
+        __init__(self, channelOrder, inputCol=None, outputCol=None, graph=None,
                  inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                  outputMode="vector")
+          :param: channelOrder: specify the ordering of the color channel, can be one of RGB, BGR, L (grayscale)
         """
         super(TFImageTransformer, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
+        self.channelOrder = channelOrder
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, graph=None,
+    def setParams(self, channelOrder=None, inputCol=None, outputCol=None, graph=None,
                   inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                   outputMode="vector"):
         """
@@ -117,11 +127,11 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         with final_graph.as_default():
             image = dataset[self.getInputCol()]
             image_df_exploded = (dataset
-              .withColumn("__sdl_image_height", image.height)
-              .withColumn("__sdl_image_width", image.width)
-              .withColumn("__sdl_image_nchannels", image.nChannels)
-              .withColumn("__sdl_image_data", image.data)
-            )
+                                 .withColumn("__sdl_image_height", image.height)
+                                 .withColumn("__sdl_image_width", image.width)
+                                 .withColumn("__sdl_image_nchannels", image.nChannels)
+                                 .withColumn("__sdl_image_data", image.data)
+                                 )
 
             final_output_name = self._getFinalOutputTensorName()
             output_tensor = final_graph.get_tensor_by_name(final_output_name)
@@ -152,9 +162,11 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         # Assumes that the dtype for all images is the same in the given dataframe.
         pdf = dataset.select(self.getInputCol()).take(1)
         img = pdf[0][self.getInputCol()]
-        img_type = sparkModeLookup[img.mode]
+        img_type = imageIO.imageTypeByOrdinal(img.mode)
         return img_type.dtype
 
+    # TODO: duplicate code, same functionality as sparkdl.graph.pieces.py::builSpImageConverter
+    # TODO: It should be extracted as a util function and shared
     def _addReshapeLayers(self, tf_graph, dtype="uint8"):
         input_tensor_name = self.getInputTensor().name
 
@@ -174,9 +186,10 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                 image_uint8 = tf.decode_raw(image_buffer, tf.uint8, name="decode_raw")
                 image_float = tf.to_float(image_uint8)
             else:
-                assert dtype == SparkMode.FLOAT32, "Unsupported dtype for image: %s" % dtype
+                assert dtype == "float32", "Unsupported dtype for image: %s" % dtype
                 image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
             image_reshaped = tf.reshape(image_float, shape, name="reshaped")
+            image_reshaped = imageIO.fixColorChannelOrdering(self.channelOrder, image_reshaped)
             image_reshaped_expanded = tf.expand_dims(image_reshaped, 0, name="expanded")
 
             # Add on the original graph
@@ -213,17 +226,18 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         assert len(output_shape) == 4, str(output_shape) + " does not have 4 dimensions"
         height = int(output_shape[1])
         width = int(output_shape[2])
+
         def to_image(orig_image, numeric_data):
             # Assume the returned image has float pixels but same #channels as input
-            mode = orig_image.mode if orig_image.mode == "float32" else "RGB-float32"
-            return [mode, height, width, orig_image.nChannels,
-                    bytearray(np.array(numeric_data).astype(np.float32).tobytes())]
-        to_image_udf = udf(to_image, imageSchema)
-        return (
-            df.withColumn(self.getOutputCol(),
-                          to_image_udf(df[self.getInputCol()], df[tfs_output_col]))
-              .drop(tfs_output_col)
-        )
+            mode = imageIO.imageTypeByName('CV_32FC%d' % orig_image.nChannels)
+            data = bytearray(np.array(numeric_data).astype(np.float32).tobytes())
+            nChannels = orig_image.nChannels
+            return Row(origin="", mode=mode.ord, height=height,
+                       width=width, nChannels=nChannels, data=data)
+        to_image_udf = udf(to_image, ImageSchema.imageSchema['image'].dataType)
+        resDf = df.withColumn(self.getOutputCol(), to_image_udf(
+            df[self.getInputCol()], df[tfs_output_col]))
+        return resDf.drop(tfs_output_col)
 
     def _convertOutputToVector(self, df, tfs_output_col):
         """

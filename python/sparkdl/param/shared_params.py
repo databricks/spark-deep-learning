@@ -178,7 +178,7 @@ class HasKerasModel(Params):
         keras_backend = K.backend()
         assert keras_backend == "tensorflow", \
             "Only tensorflow-backed Keras models are supported, tried to load Keras model " \
-            "with backend %s."%(keras_backend)
+            "with backend %s." % (keras_backend)
         with graph.as_default():
             K.set_learning_phase(0)  # Inference phase
             model = load_model(self.getModelFile())

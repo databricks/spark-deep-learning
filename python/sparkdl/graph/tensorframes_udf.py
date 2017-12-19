@@ -23,6 +23,7 @@ from sparkdl.utils import jvmapi as JVMAPI
 
 logger = logging.getLogger('sparkdl')
 
+
 def makeGraphUDF(graph, udf_name, fetches, feeds_to_fields_map=None, blocked=False, register=True):
     """
     Create a Spark SQL UserDefinedFunction from a given TensorFlow Graph

@@ -23,6 +23,7 @@ __all__ = ["TFInputGraph"]
 
 # pylint: disable=invalid-name,wrong-spelling-in-comment,wrong-spelling-in-docstring
 
+
 class TFInputGraph(object):
     """
     An opaque object containing TensorFlow graph.
@@ -83,7 +84,6 @@ class TFInputGraph(object):
     :param output_tensor_name_from_signature: dict, signature key names mapped to tensor names
                                               Please see the example above.
     """
-
 
     def __init__(self, graph_def, input_tensor_name_from_signature,
                  output_tensor_name_from_signature):
@@ -280,6 +280,7 @@ def _from_checkpoint_impl(checkpoint_dir, signature_def_key, feed_names, fetch_n
         else:
             return _build_with_feeds_fetches(sess=sess, graph=graph, feed_names=feed_names,
                                              fetch_names=fetch_names)
+
 
 def _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key, feed_names, fetch_names):
     """

@@ -15,7 +15,6 @@
 
 from io import BytesIO
 from collections import namedtuple
-from warnings import warn
 
 # 3rd party
 import numpy as np
@@ -24,91 +23,69 @@ from PIL import Image
 # pyspark
 from pyspark import Row
 from pyspark import SparkContext
-from pyspark.sql.types import (BinaryType, IntegerType, StringType, StructField, StructType)
+from sparkdl.image.image import ImageSchema
 from pyspark.sql.functions import udf
+from pyspark.sql.types import (
+    BinaryType, IntegerType, StringType, StructField, StructType)
 
 
-imageSchema = StructType([StructField("mode", StringType(), False),
-                          StructField("height", IntegerType(), False),
-                          StructField("width", IntegerType(), False),
-                          StructField("nChannels", IntegerType(), False),
-                          StructField("data", BinaryType(), False)])
-
-
-# ImageType class for holding metadata about images stored in DataFrames.
+# ImageType represents supported OpenCV types
 # fields:
+#   name - OpenCvMode
+#   ord - Ordinal of the corresponding OpenCV mode (stored in mode field of ImageSchema).
 #   nChannels - number of channels in the image
-#   dtype - data type of the image's "data" Column, sorted as a numpy compatible string.
-#   channelContent - info about the contents of each channel currently only "I" (intensity) and
-#     "RGB" are supported for 1 and 3 channel data respectively.
-#   pilMode - The mode that should be used to convert to a PIL image.
-#   sparkMode - Unique identifier string used in spark image representation.
-ImageType = namedtuple("ImageType", ["nChannels",
-                                     "dtype",
-                                     "channelContent",
-                                     "pilMode",
-                                     "sparkMode",
-                                     ])
-class SparkMode(object):
-    RGB = "RGB"
-    FLOAT32 = "float32"
-    RGB_FLOAT32 = "RGB-float32"
-
-supportedImageTypes = [
-    ImageType(3, "uint8", "RGB", "RGB", SparkMode.RGB),
-    ImageType(1, "float32", "I", "F", SparkMode.FLOAT32),
-    ImageType(3, "float32", "RGB", None, SparkMode.RGB_FLOAT32),
-]
-pilModeLookup = {t.pilMode: t for t in supportedImageTypes
-                 if t.pilMode is not None}
-sparkModeLookup = {t.sparkMode: t for t in supportedImageTypes}
+#   dtype - data type of the image's array, sorted as a numpy compatible string.
+#
+#  NOTE: likely to be migrated to Spark ImageSchema code in the near future.
+_OcvType = namedtuple("OcvType", ["name", "ord", "nChannels", "dtype"])
 
 
-def imageArrayToStruct(imgArray, sparkMode=None):
+_supportedOcvTypes = (
+    _OcvType(name="CV_8UC1", ord=0, nChannels=1, dtype="uint8"),
+    _OcvType(name="CV_32FC1", ord=5, nChannels=1, dtype="float32"),
+    _OcvType(name="CV_8UC3", ord=16, nChannels=3, dtype="uint8"),
+    _OcvType(name="CV_32FC3", ord=21, nChannels=3, dtype="float32"),
+    _OcvType(name="CV_8UC4", ord=24, nChannels=4, dtype="uint8"),
+    _OcvType(name="CV_32FC4", ord=29, nChannels=4, dtype="float32"),
+)
+
+#  NOTE: likely to be migrated to Spark ImageSchema code in the near future.
+_ocvTypesByName = {m.name: m for m in _supportedOcvTypes}
+_ocvTypesByOrdinal = {m.ord: m for m in _supportedOcvTypes}
+
+
+def imageTypeByOrdinal(ord):
+    if not ord in _ocvTypesByOrdinal:
+        raise KeyError("unsupported image type with ordinal %d, supported OpenCV types = %s" % (
+            ord, str(_supportedOcvTypes)))
+    return _ocvTypesByOrdinal[ord]
+
+
+def imageTypeByName(name):
+    if not name in _ocvTypesByName:
+        raise KeyError("unsupported image type with name '%s', supported supported OpenCV types = %s" % (
+            name, str(_supportedOcvTypes)))
+    return _ocvTypesByName[name]
+
+
+def imageArrayToStruct(imgArray, origin=""):
     """
-    Create a row representation of an image from an image array and (optional) imageType.
-
-    to_image_udf = udf(arrayToImageRow, imageSchema)
-    df.withColumn("output_img", to_image_udf(df["np_arr_col"])
+    Create a row representation of an image from an image array.
 
     :param imgArray: ndarray, image data.
-    :param sparkMode: spark mode, type information for the image, will be inferred from array if
-        the mode is not provide. See SparkMode for valid modes.
-    :return: Row, image as a DataFrame Row.
+    :return: Row, image as a DataFrame Row with schema==ImageSchema.
     """
     # Sometimes tensors have a leading "batch-size" dimension. Assume to be 1 if it exists.
     if len(imgArray.shape) == 4:
         if imgArray.shape[0] != 1:
-            raise ValueError("The first dimension of a 4-d image array is expected to be 1.")
+            raise ValueError(
+                "The first dimension of a 4-d image array is expected to be 1.")
         imgArray = imgArray.reshape(imgArray.shape[1:])
-
-    if sparkMode is None:
-        sparkMode = _arrayToSparkMode(imgArray)
-    imageType = sparkModeLookup[sparkMode]
-
+    imageType = _arrayToOcvMode(imgArray)
     height, width, nChannels = imgArray.shape
-    if imageType.nChannels != nChannels:
-        msg = "Image of type {} should have {} channels, but array has {} channels."
-        raise ValueError(msg.format(sparkMode, imageType.nChannels, nChannels))
-
-    # Convert the array to match the image type.
-    if not np.can_cast(imgArray, imageType.dtype, 'same_kind'):
-        msg = "Array of type {} cannot safely be cast to image type {}."
-        raise ValueError(msg.format(imgArray.dtype, imageType.dtype))
-    imgArray = np.array(imgArray, dtype=imageType.dtype, copy=False)
-
     data = bytearray(imgArray.tobytes())
-    return Row(mode=sparkMode, height=height, width=width, nChannels=nChannels, data=data)
-
-
-def imageType(imageRow):
-    """
-    Get type information about the image.
-
-    :param imageRow: spark image row.
-    :return: ImageType
-    """
-    return sparkModeLookup[imageRow.mode]
+    return Row(origin=origin, mode=imageType.ord, height=height,
+               width=width, nChannels=nChannels, data=data)
 
 
 def imageStructToArray(imageRow):
@@ -118,89 +95,98 @@ def imageStructToArray(imageRow):
     :param imageRow: Row, must use imageSchema.
     :return: ndarray, image data.
     """
-    imType = imageType(imageRow)
+    imType = imageTypeByOrdinal(imageRow.mode)
     shape = (imageRow.height, imageRow.width, imageRow.nChannels)
     return np.ndarray(shape, imType.dtype, imageRow.data)
 
 
-def _arrayToSparkMode(arr):
-    assert len(arr.shape) == 3, "Array should have 3 dimensions but has shape {}".format(arr.shape)
-    num_channels = arr.shape[2]
-    if num_channels == 1:
-        if arr.dtype not in [np.float16, np.float32, np.float64]:
-            raise ValueError("incompatible dtype (%s) for numpy array for float32 mode" %
-                             arr.dtype.string)
-        return SparkMode.FLOAT32
-    elif num_channels != 3:
-        raise ValueError("number of channels of the input array (%d) is not supported" %
-                         num_channels)
-    elif arr.dtype == np.uint8:
-        return SparkMode.RGB
-    elif arr.dtype in [np.float16, np.float32, np.float64]:
-        return SparkMode.RGB_FLOAT32
-    else:
-        raise ValueError("did not find a sparkMode for the given array with num_channels = %d " +
-                         "and dtype %s" % (num_channels, arr.dtype.string))
-
-
-def _resizeFunction(size):
-    """ Creates a resize function.
-    
-    :param size: tuple, size of new image: (height, width). 
-    :return: function: image => image, a function that converts an input image to an image with 
-    of `size`.
+def imageStructToPIL(imageRow):
     """
+    Convert the immage from image schema struct to PIL image
 
-    if len(size) != 2:
-        raise ValueError("New image size should have for [hight, width] but got {}".format(size))
+    :param imageRow: Row, must have ImageSchema
+    :return PIL image
+    """
+    imgType = imageTypeByOrdinal(imageRow.mode)
+    if imgType.dtype != 'uint8':
+        raise ValueError("Can not convert image of type " +
+                         imgType.dtype + " to PIL, can only deal with 8U format")
+    ary = imageStructToArray(imageRow)
+    # PIL expects RGB order, image schema is BGR
+    # => we need to flip the order unless there is only one channel
+    if imgType.nChannels != 1:
+        ary = _reverseChannels(ary)
+    if imgType.nChannels == 1:
+        return Image.fromarray(obj=ary, mode='L')
+    elif imgType.nChannels == 3:
+        return Image.fromarray(obj=ary, mode='RGB')
+    elif imgType.nChannels == 4:
+        return Image.fromarray(obj=ary, mode='RGBA')
+    else:
+        raise ValueError("don't know how to convert " +
+                         imgType.name + " to PIL")
 
-    def resizeImageAsRow(imgAsRow):
-        imgAsArray = imageStructToArray(imgAsRow)
-        imgType = imageType(imgAsRow)
-        imgAsPil = Image.fromarray(imgAsArray, imgType.pilMode)
-        imgAsPil = imgAsPil.resize(size[::-1])
-        imgAsArray = np.array(imgAsPil)
-        return imageArrayToStruct(imgAsArray, imgType.sparkMode)
 
-    return resizeImageAsRow
+def PIL_to_imageStruct(img):
+    # PIL is RGB based, image schema expects BGR ordering => need to flip the channels
+    return _reverseChannels(np.asarray(img))
 
 
-def resizeImage(size):
+def _arrayToOcvMode(arr):
+    assert len(arr.shape) == 3, "Array should have 3 dimensions but has shape {}".format(
+        arr.shape)
+    num_channels = arr.shape[2]
+    if arr.dtype == "uint8":
+        name = "CV_8UC%d" % num_channels
+    elif arr.dtype == "float32":
+        name = "CV_32FC%d" % num_channels
+    else:
+        raise ValueError("Unsupported type '%s'" % arr.dtype)
+    return imageTypeByName(name)
+
+
+def fixColorChannelOrdering(currentOrder, imgAry):
+    if currentOrder == 'RGB':
+        return _reverseChannels(imgAry)
+    elif currentOrder == 'BGR':
+        return imgAry
+    elif currentOrder == 'L':
+        if len(img.shape) != 1:
+            raise ValueError(
+                "channel order suggests only one color channel but got shape " + str(img.shape))
+        return imgAry
+    else:
+        raise ValueError(
+            "Unexpected channel order, expected one of L,RGB,BGR but got " + currentChannelOrder)
+
+
+def _reverseChannels(ary):
+    return ary[..., ::-1]
+
+
+def createResizeImageUDF(size):
     """ Create a udf for resizing image.
-    
+
     Example usage:
     dataFrame.select(resizeImage((height, width))('imageColumn'))
-    
-    :param size: tuple, target size of new image in the form (height, width). 
+
+    :param size: tuple, target size of new image in the form (height, width).
     :return: udf, a udf for resizing an image column to `size`.
     """
-    return udf(_resizeFunction(size), imageSchema)
+    if len(size) != 2:
+        raise ValueError(
+            "New image size should have format [height, width] but got {}".format(size))
+    sz = (size[1], size[0])
 
+    def _resizeImageAsRow(imgAsRow):
+        if (imgAsRow.height, imgAsRow.width) == sz:
+            return imgAsRow
+        imgAsPil = imageStructToPIL(imgAsRow).resize(sz)
+        # PIL is RGB based while image schema is BGR based => we need to flip the channels
+        imgAsArray = _reverseChannels(np.asarray(imgAsPil))
+        return imageArrayToStruct(imgAsArray, origin=imgAsRow.origin)
+    return udf(_resizeImageAsRow, ImageSchema.imageSchema['image'].dataType)
 
-def _decodeImage(imageData):
-    """
-    Decode compressed image data into a DataFrame image row.
-
-    :param imageData: (bytes, bytearray) compressed image data in PIL compatible format.
-    :return: Row, decoded image.
-    """
-    try:
-        img = Image.open(BytesIO(imageData))
-    except IOError:
-        return None
-
-    if img.mode in pilModeLookup:
-        mode = pilModeLookup[img.mode]
-    else:
-        msg = "We don't currently support images with mode: {mode}"
-        warn(msg.format(mode=img.mode))
-        return None
-    imgArray = np.asarray(img)
-    image = imageArrayToStruct(imgArray, mode.sparkMode)
-    return image
-
-# Creating a UDF on import can cause SparkContext issues sometimes.
-# decodeImage = udf(_decodeImage, imageSchema)
 
 def filesToDF(sc, path, numPartitions=None):
     """
@@ -214,24 +200,51 @@ def filesToDF(sc, path, numPartitions=None):
     numPartitions = numPartitions or sc.defaultParallelism
     schema = StructType([StructField("filePath", StringType(), False),
                          StructField("fileData", BinaryType(), False)])
-    rdd = sc.binaryFiles(path, minPartitions=numPartitions).repartition(numPartitions)
+    rdd = sc.binaryFiles(
+        path, minPartitions=numPartitions).repartition(numPartitions)
     rdd = rdd.map(lambda x: (x[0], bytearray(x[1])))
     return rdd.toDF(schema)
 
 
-def readImages(imageDirectory, numPartition=None):
+def PIL_decode(raw_bytes):
     """
-    Read a directory of images (or a single image) into a DataFrame.
-
-    :param sc: spark context
-    :param imageDirectory: str, file path.
-    :param numPartition: int, number or partitions to use for reading files.
-    :return: DataFrame, with columns: (filepath: str, image: imageSchema).
+    Decode a raw image bytes using PIL.
+    :param raw_bytes:
+    :return: image data as an array in CV_8UC3 format
     """
-    return _readImages(imageDirectory, numPartition, SparkContext.getOrCreate())
+    return PIL_to_imageStruct(Image.open(BytesIO(raw_bytes)))
 
 
-def _readImages(imageDirectory, numPartition, sc):
-    decodeImage = udf(_decodeImage, imageSchema)
-    imageData = filesToDF(sc, imageDirectory, numPartitions=numPartition)
-    return imageData.select("filePath", decodeImage("fileData").alias("image"))
+def PIL_decode_and_resize(size):
+    """
+    Decode a raw image bytes using PIL and resize it to target dimension, both using PIL.
+    :param raw_bytes:
+    :return: image data as an array in CV_8UC3 format
+    """
+    def _decode(raw_bytes):
+        return PIL_to_imageStruct(Image.open(BytesIO(raw_bytes)).resize(size))
+    return _decode
+
+
+def readImagesWithCustomFn(path, decode_f, numPartition=None):
+    """
+    Read a directory of images (or a single image) into a DataFrame using a custom library to decode the images.
+
+    :param path: str, file path.
+    :param decode_f: function to decode the raw bytes into an array compatible with one of the supported OpenCv modes.
+                 see @imageIO.PIL_decode for an example.
+    :param numPartition: [optional] int, number or partitions to use for reading files.
+    :return: DataFrame with schema == ImageSchema.imageSchema.
+    """
+    return _readImagesWithCustomFn(path, decode_f, numPartition, sc=SparkContext.getOrCreate())
+
+
+def _readImagesWithCustomFn(path, decode_f, numPartition, sc):
+    def _decode(path, raw_bytes):
+        try:
+            return imageArrayToStruct(decode_f(raw_bytes), origin=path)
+        except BaseException:
+            return None
+    decodeImage = udf(_decode, ImageSchema.imageSchema['image'].dataType)
+    imageData = filesToDF(sc, path, numPartitions=numPartition)
+    return imageData.select(decodeImage("filePath", "fileData").alias("image"))

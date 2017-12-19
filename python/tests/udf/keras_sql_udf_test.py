@@ -27,20 +27,24 @@ from keras.models import Sequential
 from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
+from sparkdl.image.image import ImageSchema
 
 from sparkdl.graph.builder import IsolatedSession
 from sparkdl.graph.tensorframes_udf import makeGraphUDF
 import sparkdl.graph.utils as tfx
 from sparkdl.udf.keras_image_model import registerKerasImageUDF
 from sparkdl.utils import jvmapi as JVMAPI
-from sparkdl.image.imageIO import imageSchema, imageArrayToStruct
+from sparkdl.image.imageIO import imageArrayToStruct
+from sparkdl.image.imageIO import _reverseChannels
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import getSampleImagePathsDF
+
 
 def get_image_paths_df(sqlCtx):
     df = getSampleImagePathsDF(sqlCtx, "fpath")
     df.createOrReplaceTempView("_test_image_paths_df")
     return df
+
 
 class SqlUserDefinedFunctionTest(SparkDLTestCase):
 
@@ -55,7 +59,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         # The leading batch size is taken care of by Keras
         with IsolatedSession(using_keras=True) as issn:
             model = Sequential()
-            model.add(Flatten(input_shape=(640,480,3)))
+            model.add(Flatten(input_shape=(640, 480, 3)))
             model.add(Dense(units=64))
             model.add(Activation('relu'))
             model.add(Dense(units=10))
@@ -98,14 +102,18 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             from PIL import Image
             import numpy as np
             img_arr = np.array(Image.open(fpath), dtype=np.uint8)
-            return imageArrayToStruct(img_arr)
+            # PIL is RGB, image schema is BGR => need to flip the channels
+            return imageArrayToStruct(_reverseChannels(img_arr))
 
         def keras_load_spimg(fpath):
-            return imageArrayToStruct(keras_load_img(fpath))
+            # Keras loads image in RGB order, ImageSchema expects BGR => need to flip
+            return imageArrayToStruct(_reverseChannels(keras_load_img(fpath)))
 
         # Load image with Keras and store it in our image schema
-        JVMAPI.registerUDF('keras_load_spimg', keras_load_spimg, imageSchema)
-        JVMAPI.registerUDF('pil_load_spimg', pil_load_spimg, imageSchema)
+        JVMAPI.registerUDF('keras_load_spimg', keras_load_spimg,
+                           ImageSchema.imageSchema['image'].dataType)
+        JVMAPI.registerUDF('pil_load_spimg', pil_load_spimg,
+                           ImageSchema.imageSchema['image'].dataType)
 
         # Register an InceptionV3 model
         registerKerasImageUDF("iv3_img_pred",
@@ -149,7 +157,6 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         print("df2 = %s" % df2)
         data2 = df2.collect()
         assert data2[0].z == 3.0, data2
-
 
     def test_map_blocks_sql_1(self):
         data = [Row(x=float(x)) for x in range(5)]

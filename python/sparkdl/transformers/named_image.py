@@ -22,14 +22,14 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
 
 import sparkdl.graph.utils as tfx
-from sparkdl.image.imageIO import resizeImage
+from sparkdl.image.imageIO import createResizeImageUDF
 import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
 from sparkdl.transformers.tf_image import TFImageTransformer
 
 
-SUPPORTED_MODELS = ["InceptionV3", "Xception", "ResNet50","VGG16","VGG19"]
+SUPPORTED_MODELS = ["InceptionV3", "Xception", "ResNet50", "VGG16", "VGG19"]
 
 
 class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
@@ -94,6 +94,7 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
         # Also, we could put the computation directly in the main computation
         # graph or use a scala UDF for potentially better performance.
         topK = self.getOrDefault(self.topK)
+
         def decode(predictions):
             pred_arr = np.expand_dims(np.array(predictions), axis=0)
             decoded = decode_predictions(pred_arr, top=topK)[0]
@@ -211,13 +212,15 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
         modelGraphSpec = _buildTFGraphForName(self.getModelName(), self.getFeaturize())
         inputCol = self.getInputCol()
         resizedCol = "__sdl_imagesResized"
-        tfTransformer = TFImageTransformer(inputCol=resizedCol,
-                                           outputCol=self.getOutputCol(),
-                                           graph=modelGraphSpec["graph"],
-                                           inputTensor=modelGraphSpec["inputTensorName"],
-                                           outputTensor=modelGraphSpec["outputTensorName"],
-                                           outputMode=modelGraphSpec["outputMode"])
-        resizeUdf = resizeImage(modelGraphSpec["inputTensorSize"])
+        tfTransformer = TFImageTransformer(
+            channelOrder='BGR',
+            inputCol=resizedCol,
+            outputCol=self.getOutputCol(),
+            graph=modelGraphSpec["graph"],
+            inputTensor=modelGraphSpec["inputTensorName"],
+            outputTensor=modelGraphSpec["outputTensorName"],
+            outputMode=modelGraphSpec["outputMode"])
+        resizeUdf = createResizeImageUDF(modelGraphSpec["inputTensorSize"])
         result = tfTransformer.transform(dataset.withColumn(resizedCol, resizeUdf(inputCol)))
         return result.drop(resizedCol)
 

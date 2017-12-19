@@ -27,6 +27,7 @@ from sparkdl.transformers.tf_tensor import TFTransformer
 
 from ..tests import SparkDLTestCase
 
+
 class TFTransformerTests(SparkDLTestCase):
     def test_graph_novar(self):
         transformer = _build_transformer(lambda session:
@@ -79,6 +80,7 @@ def _build_graph(sess):
     x = tf.placeholder(tf.float64, shape=[None, _tensor_size], name=_tensor_input_name)
     _ = tf.reduce_max(x, axis=1, name=_tensor_output_name)
 
+
 def _build_local_features():
     """
     Build numpy array (i.e. local) features.
@@ -94,6 +96,7 @@ def _build_local_features():
         local_features.append(Row(**_dict))
 
     return local_features
+
 
 def _get_expected_result(gin, local_features):
     """
@@ -122,6 +125,7 @@ def _get_expected_result(gin, local_features):
         expected = np.hstack(_results)
 
     return expected
+
 
 def _check_transformer_output(transformer, dataset, expected):
     """

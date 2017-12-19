@@ -22,6 +22,7 @@ import tensorflow as tf
 
 import sparkdl.graph.utils as tfx
 from sparkdl.image.imageIO import imageStructToArray
+from sparkdl.image import imageIO
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.tf_image import TFImageTransformer
 import sparkdl.transformers.utils as utils
@@ -36,7 +37,6 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
     # Test loading & pre-processing as an example of a simple graph
     # NOTE: resizing here/tensorflow and in keras workflow are different, so the
     # test would fail with resizing added in.
-
     def _loadImageViaKeras(self, raw_uri):
         uri = raw_uri[5:] if raw_uri.startswith("file:/") else raw_uri
         image = img_to_array(load_img(uri))
@@ -47,10 +47,11 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         g = tf.Graph()
         with g.as_default():
             image_arr = utils.imageInputPlaceholder()
-            preprocessed = preprocess_input(image_arr)
+            # keras expects array in RGB order, we get it from image schema in BGR => need to flip
+            preprocessed = preprocess_input(imageIO._reverseChannels(image_arr))
 
         output_col = "transformed_image"
-        transformer = TFImageTransformer(inputCol="image", outputCol=output_col, graph=g,
+        transformer = TFImageTransformer(channelOrder='BGR', inputCol="image", outputCol=output_col, graph=g,
                                          inputTensor=image_arr, outputTensor=preprocessed.name,
                                          outputMode="vector")
 
@@ -60,12 +61,35 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         for row in df.collect():
             processed = np.array(row[output_col]).astype(np.float32)
             # compare to keras loading
-            images = self._loadImageViaKeras(row["filePath"])
+            images = self._loadImageViaKeras(row["image"]['origin'])
             image = images[0]
             image.shape = (1, image.shape[0] * image.shape[1] * image.shape[2])
             keras_processed = image[0]
-            self.assertTrue( (processed == keras_processed).all() )
+            self.assertTrue((processed == keras_processed).all())
 
+    def test_load_image_vs_keras_RGB(self):
+        g = tf.Graph()
+        with g.as_default():
+            image_arr = utils.imageInputPlaceholder()
+            # keras expects array in RGB order, we get it from image schema in BGR => need to flip
+            preprocessed = preprocess_input(image_arr)
+
+        output_col = "transformed_image"
+        transformer = TFImageTransformer(channelOrder='RGB', inputCol="image", outputCol=output_col, graph=g,
+                                         inputTensor=image_arr, outputTensor=preprocessed.name,
+                                         outputMode="vector")
+
+        image_df = image_utils.getSampleImageDF()
+        df = transformer.transform(image_df.limit(5))
+
+        for row in df.collect():
+            processed = np.array(row[output_col]).astype(np.float32)
+            # compare to keras loading
+            images = self._loadImageViaKeras(row["image"]['origin'])
+            image = images[0]
+            image.shape = (1, image.shape[0] * image.shape[1] * image.shape[2])
+            keras_processed = image[0]
+            self.assertTrue((processed == keras_processed).all())
 
     # Test full pre-processing for InceptionV3 as an example of a simple computation graph
 
@@ -74,11 +98,12 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         with g.as_default():
             image_arr = utils.imageInputPlaceholder()
             resized_images = tf.image.resize_images(image_arr, InceptionV3Constants.INPUT_SHAPE)
-            processed_images = preprocess_input(resized_images)
+            # keras expects array in RGB order, we get it from image schema in BGR => need to flip
+            processed_images = preprocess_input(imageIO._reverseChannels(resized_images))
         self.assertEqual(processed_images.shape[1], InceptionV3Constants.INPUT_SHAPE[0])
         self.assertEqual(processed_images.shape[2], InceptionV3Constants.INPUT_SHAPE[1])
 
-        transformer = TFImageTransformer(inputCol="image", outputCol=outputCol, graph=g,
+        transformer = TFImageTransformer(channelOrder='BGR', inputCol="image", outputCol=outputCol, graph=g,
                                          inputTensor=image_arr.name, outputTensor=processed_images,
                                          outputMode=outputMode)
         image_df = image_utils.getSampleImageDF()
@@ -99,11 +124,10 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
 
     # TODO: add tests for non-RGB8 images, at least RGB-float32.
 
-
     # Test InceptionV3 prediction as an example of applying a trained model.
 
     def _executeTensorflow(self, graph, input_tensor_name, output_tensor_name,
-                           df, id_col="filePath", input_col="image"):
+                           df,  input_col="image"):
         with tf.Session(graph=graph) as sess:
             output_tensor = graph.get_tensor_by_name(output_tensor_name)
             image_collected = df.collect()
@@ -111,11 +135,11 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             topK = {}
             for img_row in image_collected:
                 image = np.expand_dims(imageStructToArray(img_row[input_col]), axis=0)
-                uri = img_row[id_col]
+                uri = img_row['image']['origin']
                 output = sess.run([output_tensor],
                                   feed_dict={
                                       graph.get_tensor_by_name(input_tensor_name): image
-                                  })
+                })
                 values[uri] = np.array(output[0])
                 topK[uri] = decode_predictions(values[uri], top=5)[0]
         return values, topK
@@ -129,22 +153,22 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             with g.as_default():
                 K.set_learning_phase(0)    # this is important but it's on the user to call it.
                 # nChannels needed for input_tensor in the InceptionV3 call below
-                image_string = utils.imageInputPlaceholder(nChannels = 3)
+                image_string = utils.imageInputPlaceholder(nChannels=3)
                 resized_images = tf.image.resize_images(image_string,
                                                         InceptionV3Constants.INPUT_SHAPE)
-                preprocessed = preprocess_input(resized_images)
+                # keras expects array in RGB order, we get it from image schema in BGR => need to flip
+                preprocessed = preprocess_input(imageIO._reverseChannels(resized_images))
                 model = InceptionV3(input_tensor=preprocessed, weights="imagenet")
                 graph = tfx.strip_and_freeze_until([model.output], g, sess, return_graph=True)
 
-        transformer = TFImageTransformer(inputCol="image", outputCol=output_col, graph=graph,
+        transformer = TFImageTransformer(channelOrder='BGR', inputCol="image", outputCol=output_col, graph=graph,
                                          inputTensor=image_string, outputTensor=model.output,
                                          outputMode="vector")
         transformed_df = transformer.transform(image_df.limit(10))
         self.assertDfHasCols(transformed_df, [output_col])
         collected = transformed_df.collect()
         transformer_values, transformer_topK = self.transformOutputToComparables(collected,
-                                                                                 "filePath",
-                                                                                 output_col)
+                                                                                 output_col, lambda row: row['image']['origin'])
 
         tf_values, tf_topK = self._executeTensorflow(graph, image_string.name, model.output.name,
                                                      image_df)

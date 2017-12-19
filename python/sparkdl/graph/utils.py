@@ -31,6 +31,7 @@ We provide some methods to map whatever we have as input to
 one of the four target variants.
 """
 
+
 def validated_graph(graph):
     """
     Check if the input is a valid :py:class:`tf.Graph` and return it.
@@ -40,6 +41,7 @@ def validated_graph(graph):
     """
     assert isinstance(graph, tf.Graph), 'must provide tf.Graph, but get {}'.format(type(graph))
     return graph
+
 
 def get_shape(tfobj_or_name, graph):
     """
@@ -51,6 +53,7 @@ def get_shape(tfobj_or_name, graph):
     graph = validated_graph(graph)
     _shape = get_tensor(tfobj_or_name, graph).get_shape().as_list()
     return [-1 if x is None else x for x in _shape]
+
 
 def get_op(tfobj_or_name, graph):
     """
@@ -76,6 +79,7 @@ def get_op(tfobj_or_name, graph):
     assert isinstance(op, tf.Operation), err_msg.format(_op_name, type(op), op)
     return op
 
+
 def get_tensor(tfobj_or_name, graph):
     """
     Get a :py:class:`tf.Tensor` object
@@ -99,6 +103,7 @@ def get_tensor(tfobj_or_name, graph):
     err_msg = 'cannot locate tensor {} in the current graph, got [type {}] {}'
     assert isinstance(tnsr, tf.Tensor), err_msg.format(_tensor_name, type(tnsr), tnsr)
     return tnsr
+
 
 def tensor_name(tfobj_or_name, graph=None):
     """
@@ -130,6 +135,7 @@ def tensor_name(tfobj_or_name, graph=None):
     else:
         raise TypeError('invalid tf.Tensor name query type {}'.format(type(tfobj_or_name)))
 
+
 def op_name(tfobj_or_name, graph=None):
     """
     Derive the :py:class:`tf.Operation` name from a :py:class:`tf.Operation` or
@@ -158,9 +164,11 @@ def op_name(tfobj_or_name, graph=None):
     else:
         raise TypeError('invalid tf.Operation name query type {}'.format(type(tfobj_or_name)))
 
+
 def add_scope_to_name(scope, name):
     """ Prepends the provided scope to the passed-in op or tensor name. """
-    return "%s/%s"%(scope, name)
+    return "%s/%s" % (scope, name)
+
 
 def validated_output(tfobj_or_name, graph):
     """
@@ -171,6 +179,7 @@ def validated_output(tfobj_or_name, graph):
     """
     graph = validated_graph(graph)
     return op_name(tfobj_or_name, graph)
+
 
 def validated_input(tfobj_or_name, graph):
     """
@@ -185,6 +194,7 @@ def validated_input(tfobj_or_name, graph):
     assert 'Placeholder' == op.type, \
         ('input must be Placeholder, but get', op.type)
     return name
+
 
 def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
     """

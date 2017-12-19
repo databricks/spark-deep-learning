@@ -27,6 +27,7 @@ import sparkdl.graph.utils as tfx
 
 logger = logging.getLogger('sparkdl')
 
+
 class IsolatedSession(object):
     """
     Provide an isolated session to work with mixed Keras and TensorFlow
@@ -43,6 +44,7 @@ class IsolatedSession(object):
                         In this case, all Keras models loaded in this session will be accessible
                         as a subgraph of of `graph`
     """
+
     def __init__(self, graph=None, using_keras=False):
         self.graph = graph or tf.Graph()
         self.sess = tf.Session(graph=self.graph)
@@ -166,7 +168,7 @@ class GraphFunction(object):
             'Keras model must be specified as HDF5 file'
 
         with IsolatedSession(using_keras=True) as issn:
-            K.set_learning_phase(0) # Testing phase
+            K.set_learning_phase(0)  # Testing phase
             model = load_model(file_path)
             gfn = issn.asGraphFunction(model.inputs, model.outputs)
 
@@ -223,7 +225,8 @@ class GraphFunction(object):
             # We currently only support single input/output for intermediary stages
             # The functions could still take multi-dimensional tensor, but only one
             if len(gfn_out.input_names) != 1:
-                raise NotImplementedError("Only support single input/output for intermediary layers")
+                raise NotImplementedError(
+                    "Only support single input/output for intermediary layers")
 
         # Acquire initial placeholders' properties
         # We want the input names of the merged function are not under scoped

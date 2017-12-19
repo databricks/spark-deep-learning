@@ -63,13 +63,13 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
         id_col = "id"
 
         # Create Keras model, persist it to disk, and create KerasTransformer
-        save_filename = "%s.h5"%(model_filename)
+        save_filename = "%s.h5" % (model_filename)
         model_path = self._writeKerasModelFile(model, save_filename)
         transformer = KerasTransformer(inputCol=input_col, outputCol=output_col,
                                        modelFile=model_path)
 
         # Load dataset, transform it with KerasTransformer
-        input_shape = list(model.input_shape[1:]) # Get shape of a single example
+        input_shape = list(model.input_shape[1:])  # Get shape of a single example
         df = self._getInputDF(self.sql, inputShape=input_shape, inputCol=input_col, idCol=id_col)
         final_df = transformer.transform(df)
         sparkdl_predictions = self._convertOutputToComparables(final_df, id_col, output_col)
@@ -85,7 +85,7 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
         diff_tolerance = 1e-5
         assert np.allclose(sparkdl_predictions, keras_predictions, atol=diff_tolerance), "" \
             "KerasTransformer output differed (absolute difference) from Keras model output by " \
-            "as much as %s, maximum allowed deviation = %s"%(max_pred_diff, diff_tolerance)
+            "as much as %s, maximum allowed deviation = %s" % (max_pred_diff, diff_tolerance)
 
     def _getKerasModelWeightInitializer(self):
         """
@@ -105,7 +105,7 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
     def _getInputDF(self, sqlContext, inputShape, inputCol, idCol):
         """ Return a DataFrame containing a long ID column and an input column of arrays. """
         x_train = self._createNumpyData(num_examples=20, example_shape=inputShape)
-        train_rows = [{idCol : i, inputCol : x_train[i].tolist()} for i in range(len(x_train))]
+        train_rows = [{idCol: i, inputCol: x_train[i].tolist()} for i in range(len(x_train))]
         return sqlContext.createDataFrame(train_rows)
 
     def _writeKerasModelFile(self, model, filename):

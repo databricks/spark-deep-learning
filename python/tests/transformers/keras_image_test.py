@@ -60,7 +60,8 @@ class KerasImageFileTransformerExamplesTest(SparkDLTestCase, ImageNetOutputCompa
         self.assertEqual(len(final_df.columns), 2)
 
         collected = final_df.collect()
-        tvals, ttopK = self.transformOutputToComparables(collected, input_col, output_col)
+        tvals, ttopK = self.transformOutputToComparables(
+            collected, output_col, lambda row: row["uri"])
         kvals, ktopK = image_utils.executeKerasInceptionV3(uri_df, uri_col=input_col)
 
         self.compareClassSets(ktopK, ttopK)

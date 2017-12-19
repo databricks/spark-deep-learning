@@ -40,6 +40,7 @@ _tnsr2col_test_cases = _shared_invalid_test_cases + [
              description='tensor name required'),
 ]
 
+
 class ParamsConverterTest(PythonUnitTestCase):
     """
     Test MLlib Params introduced in Spark Deep Learning Pipeline

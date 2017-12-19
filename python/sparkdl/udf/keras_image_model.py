@@ -19,10 +19,14 @@ import logging
 from sparkdl.graph.builder import GraphFunction, IsolatedSession
 from sparkdl.graph.pieces import buildSpImageConverter, buildFlattener
 from sparkdl.graph.tensorframes_udf import makeGraphUDF
-from sparkdl.image.imageIO import imageSchema
 from sparkdl.utils import jvmapi as JVMAPI
 
+import sparkdl.image.imageIO as imageIO
+
+from sparkdl.image.image import ImageSchema
+
 logger = logging.getLogger('sparkdl')
+
 
 def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None):
     """
@@ -95,10 +99,10 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
         JVMAPI.registerUDF(
             preproc_udf_name,
             _serialize_and_reload_with(preprocessor),
-            imageSchema)
+            ImageSchema.imageSchema['image'].dataType)
         keras_udf_name = '{}__model_predict'.format(udf_name)
 
-    stages = [('spimg', buildSpImageConverter("RGB")),
+    stages = [('spimg', buildSpImageConverter('RGB', "uint8")),
               ('model', GraphFunction.fromKeras(keras_model_or_file_path)),
               ('final', buildFlattener())]
     gfn = GraphFunction.fromList(stages)
@@ -116,6 +120,7 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
 
     return gfn
 
+
 def _serialize_and_reload_with(preprocessor):
     """
     Retruns a function that performs the following steps
@@ -131,13 +136,10 @@ def _serialize_and_reload_with(preprocessor):
     """
     def udf_impl(spimg):
         import numpy as np
-        from PIL import Image
         from tempfile import NamedTemporaryFile
-        from sparkdl.image.imageIO import imageArrayToStruct, imageType
+        from sparkdl.image.imageIO import imageArrayToStruct
 
-        pil_mode = imageType(spimg).pilMode
-        img_shape = (spimg.width, spimg.height)
-        img = Image.frombytes(pil_mode, img_shape, bytes(spimg.data))
+        img = imageIO.imageStructToPIL(spimg)
         # Warning: must use lossless format to guarantee consistency
         temp_fp = NamedTemporaryFile(suffix='.png')
         img.save(temp_fp, 'PNG')
@@ -145,6 +147,9 @@ def _serialize_and_reload_with(preprocessor):
         assert isinstance(img_arr_reloaded, np.ndarray), \
             "expect preprocessor to return a numpy array"
         img_arr_reloaded = img_arr_reloaded.astype(np.uint8)
+        # Keras works in RGB order, need to fix the order
+        img_arr_reloaded = imageIO.fixColorChannelOrdering(
+            currentOrder='RGB', imgAry=img_arr_reloaded)
         return imageArrayToStruct(img_arr_reloaded)
 
     return udf_impl

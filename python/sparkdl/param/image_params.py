@@ -19,13 +19,15 @@ to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being
 private APIs.
 """
 
+from sparkdl.image.image import ImageSchema
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql.functions import udf
-
-from sparkdl.image.imageIO import imageArrayToStruct, imageSchema
+from sparkdl.image.imageIO import imageArrayToStruct
+from sparkdl.image.imageIO import _reverseChannels
 from sparkdl.param import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
+
 
 class HasInputImageNodeName(Params):
     # TODO: docs
@@ -38,6 +40,7 @@ class HasInputImageNodeName(Params):
 
     def getInputImageNodeName(self):
         return self.getOrDefault(self.inputImageNodeName)
+
 
 class CanLoadImage(Params):
     """
@@ -71,7 +74,7 @@ class CanLoadImage(Params):
     imageLoader = Param(Params._dummy(), "imageLoader",
                         "Function containing the logic for loading and pre-processing images. " +
                         "The function should take in a URI string and return a 4-d numpy.array " +
-                        "with shape (batch_size (1), height, width, num_channels).")
+                        "with shape (batch_size (1), height, width, num_channels). Expected to return result with color channels in RGB order.")
 
     def setImageLoader(self, value):
         return self._set(imageLoader=value)
@@ -89,15 +92,14 @@ class CanLoadImage(Params):
         # plan 1: udf(loader() + convert from np.array to imageSchema) -> call TFImageTransformer
         # plan 2: udf(loader()) ... we don't support np.array as a dataframe column type...
         loader = self.getImageLoader()
-
         # Load from external resources can fail, so we should allow None to be returned
+
         def load_image_uri_impl(uri):
             try:
-                return imageArrayToStruct(loader(uri))
-            except:  # pylint: disable=bare-except
+                return imageArrayToStruct(_reverseChannels(loader(uri)))
+            except BaseException:  # pylint: disable=bare-except
                 return None
-
-        load_udf = udf(load_image_uri_impl, imageSchema)
+        load_udf = udf(load_image_uri_impl, ImageSchema.imageSchema['image'].dataType)
         return dataframe.withColumn(self._loadedImageCol(), load_udf(dataframe[inputCol]))
 
 
