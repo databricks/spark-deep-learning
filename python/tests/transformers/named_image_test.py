@@ -16,6 +16,8 @@
 import numpy as np
 import os
 
+from scipy import spatial
+
 from glob import glob
 from PIL import Image
 
@@ -191,7 +193,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         output_col = "prediction"
         resizedCol = "__sdl_imagesResized"
         transformer = DeepImageFeaturizer(inputCol=resizedCol, outputCol=output_col,
-                                          modelName=self.name, scaleFast=True)
+                                          modelName=self.name, scaleHint = "SCALE_FAST")
 
         transformed_df = transformer.transform(self.imageDF.withColumn(resizedCol,imageIO.createResizeImageUDF(self.appModel.inputShape())("image")))
         collected = self._sortByFileOrder(transformed_df.collect())
@@ -203,6 +205,14 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         self.assertEqual(np.prod(self.kerasFeatures.shape), np.prod(features.shape))
         kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
         np.testing.assert_array_almost_equal(kerasReshaped, features, decimal=6)
+
+        # test on non-resized images
+        # results are not be the same due to different library used for resizing
+        # at least compare cosine distance is < 1e-2
+        featurizer_sc = DeepImageFeaturizer(modelName=self.name, inputCol="image", outputCol="features", scaleHint = "SCALE_FAST")
+        features_sc = np.array([i.features for i in featurizer_sc.transform(self.imageDF).select("features").collect()])
+        diffs = [spatial.distance.cosine(kerasReshaped[i],features_sc[i]) for i in range(len(features_sc))]
+        np.testing.assert_array_almost_equal([0 for i in range(len(features_sc))],diffs,decimal=2)
 
     def test_featurizer_in_pipeline(self):
         """

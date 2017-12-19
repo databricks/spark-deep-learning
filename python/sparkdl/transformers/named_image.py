@@ -16,6 +16,7 @@
 from keras.applications.imagenet_utils import decode_predictions
 import numpy as np
 
+from pyspark import SparkContext
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql import DataFrame
@@ -118,23 +119,30 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
 
 
 class DeepImageFeaturizer(Transformer,HasInputCol,HasOutputCol):
+
+    modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
+                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
+
+    scaleHint = Param(Params._dummy(), "scaleHint", "Hint which algorthitm to use for image resizing",
+                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(dict(SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer.scaleHintsJava()).keys()))
+
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleFast = False):
+    def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint = None):
         """
         __init__(self, inputCol=None, outputCol=None, modelName=None)
         """
         super(DeepImageFeaturizer, self).__init__()
-        self.inputCol = inputCol
-        self.outputCol = outputCol
-        self.modelName = modelName
-        self.scaleFast = scaleFast
+        kwargs = self._input_kwargs
+        self._set(**kwargs)
+
 
     def _transform(self, dataset):
         scalaFeaturizer = dataset._sc._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
-        scalaFeaturizer.setModelName(self.modelName)
-        scalaFeaturizer.setInputCol(self.inputCol)
-        scalaFeaturizer.setOutputCol(self.outputCol)
-        scalaFeaturizer.setResizeFlag(self.scaleFast)
+        scalaFeaturizer.setModelName(self.getOrDefault(self.modelName))
+        scalaFeaturizer.setInputCol(self.getOrDefault(self.inputCol))
+        scalaFeaturizer.setOutputCol(self.getOrDefault(self.outputCol))
+        if(self.isDefined(self.scaleHint)):
+            scalaFeaturizer.setResizeFlag(self.getOrDefault(self.scaleHint))
         return DataFrame(scalaFeaturizer.transform(dataset._jdf),dataset.sql_ctx)
 
 # TODO: give an option to take off multiple layers so it can be used in tuning
@@ -216,45 +224,3 @@ def _buildTFGraphForName(name, featurize):
     graph = tfx.strip_and_freeze_until([outputTensorName], sess.graph, sess, return_graph=True)
     modelData["graph"] = graph
     return modelData
-
-class PyDeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
-    """
-    Applies the model specified by its popular name, with its prediction layer(s) chopped off,
-    to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
-    can be used in a MLlib Pipeline.
-    The input image column should be 3-channel SpImage.
-    """
-
-    modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
-
-    @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, modelName=None):
-        """
-        __init__(self, inputCol=None, outputCol=None, modelName=None)
-        """
-        super(PyDeepImageFeaturizer, self).__init__()
-        kwargs = self._input_kwargs
-        self.setParams(**kwargs)
-
-    @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, modelName=None):
-        """
-        setParams(self, inputCol=None, outputCol=None, modelName=None)
-        """
-        kwargs = self._input_kwargs
-        self._set(**kwargs)
-        return self
-
-    def setModelName(self, value):
-        return self._set(modelName=value)
-
-    def getModelName(self):
-        return self.getOrDefault(self.modelName)
-
-    def _transform(self, dataset):
-        transformer = _NamedImageTransformer(inputCol=self.getInputCol(),
-                                             outputCol=self.getOutputCol(),
-                                             modelName=self.getModelName(), featurize=True)
-        return transformer.transform(dataset)
-

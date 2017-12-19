@@ -131,42 +131,6 @@ def _getSampleJPEGDir():
     return '/Users/tomas/dev/spark-deep-learning/python/tests/resources/images'
 
 
-def test_scala_vs_py():
-    for name,modelConstructor in sorted(keras_applications.KERAS_APPLICATION_MODELS.items(),key = lambda x: x[0]):
-        print('testing results on already resized images, mode =',name)
-        model = modelConstructor()
-        imgs = imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(),decode_f=imageIO.PIL_decode_and_resize((model.inputShape())))
-        featurizer_sc = DeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features")
-        features_sc = featurizer_sc.transform(imgs).select("features").collect()
-        featurizer_py = PyDeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features")
-        features_py = featurizer_py.transform(imgs).select("features").collect()
-        N = len(features_sc)
-        print 'N',N
-        print 'mean cosine distance',sum([spatial.distance.cosine(features_sc[i]['features'],features_py[i]['features']) for i in range(N)])/float(N)
-        print('testing results on non-resized images with fast flag on, model = ',name)
-        imgs = imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(),decode_f=imageIO.PIL_decode)
-        featurizer_sc = DeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features", scaleFast=True)
-        features_sc = featurizer_sc.transform(imgs).select("features").collect()
-        featurizer_py = PyDeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features")
-        features_py = featurizer_py.transform(imgs).select("features").collect()
-        N = len(features_sc)
-        print 'N',N
-        print 'mean cosine distance',sum([spatial.distance.cosine(features_sc[i]['features'],features_py[i]['features']) for i in range(N)])/float(N)
-        print ''
-        print('testing results on non-resized images with fast flag off, model = ',name)
-        imgs = imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(),decode_f=imageIO.PIL_decode)
-        featurizer_sc = DeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features")
-        features_sc = featurizer_sc.transform(imgs).select("features").collect()
-        featurizer_py = PyDeepImageFeaturizer(modelName=name,inputCol="image",outputCol="features")
-        features_py = featurizer_py.transform(imgs).select("features").collect()
-        N = len(features_sc)
-        print 'N',N
-        print 'mean cosine distance',sum([spatial.distance.cosine(features_sc[i]['features'],features_py[i]['features']) for i in range(N)])/float(N)
-        print ''
-
-
-
-
 def test():
     return """
         package com.databricks.sparkdl

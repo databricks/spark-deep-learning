@@ -20,6 +20,7 @@ import java.nio.file.Paths
 
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.image.ImageSchema
+import org.apache.spark.ml.image.ImageSchema.ocvTypes
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.param.{BooleanParam, Param, ParamMap}
@@ -31,6 +32,8 @@ import org.tensorflow.framework.GraphDef
 import org.tensorframes.impl.DebugRowOps
 import org.tensorframes.{Shape, ShapeDescription}
 
+import scala.collection.JavaConverters._
+
 
 class DeepImageFeaturizer(override val uid: String) extends Transformer with DefaultParamsWritable {
 
@@ -38,8 +41,9 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
 
   final val inputCol: Param[String] = new Param[String](this, "inputCol", "input column name")
   final val outputCol: Param[String] = new Param[String](this, "outputCol", "output column name")
-  final val scaleFast: BooleanParam = new BooleanParam(this,"scaleFast","use fast resizing if set.")
-  setDefault(scaleFast, false)
+  final val scaleHint: Param[String] = new Param(this,"scaleHint","hint which method to use for resizing.",
+    (name: String) => DeepImageFeaturizer.scaleHints.contains(name))
+  setDefault(scaleHint, "SCALE_SMOOTH")
   final val modelName: Param[String] = new Param[String](
     this,
     "modelName",
@@ -83,7 +87,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
 
   def getOutputCol: String = getOrDefault(outputCol)
 
-  def getResizeFlag: Boolean = getOrDefault(scaleFast)
+  def getScaleHint: String = getOrDefault(scaleHint)
 
   def setModelName(value: String): this.type = {
     set(modelName, value)
@@ -100,8 +104,8 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     this
   }
 
-  def setResizeFlag(value: Boolean): this.type = {
-    set(scaleFast, value)
+  def setResizeFlag(value: String): this.type = {
+    set(scaleHint, value)
     this
   }
 
@@ -113,7 +117,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     val height = model.height
     val width = model.width
 
-    val resizeUdf = udf((image: Row) => ImageUtils.resizeImage(height, width, 3, image, getResizeFlag), imSchema)
+    val resizeUdf = udf((image: Row) => ImageUtils.resizeImage(height, width, 3, image, DeepImageFeaturizer.scaleHints(getScaleHint)), imSchema)
 
     val imageDF = dataFrame
       .withColumn(RESIZED_IMAGE_COL, resizeUdf(col(getInputCol)))
@@ -197,6 +201,14 @@ object DeepImageFeaturizer extends DefaultParamsReadable[DeepImageFeaturizer] {
     Models._supportedModels.foldLeft(empty){ case (map, model) => map.updated(model.name, model) }
   }
 
+  val scaleHints: Map[String, Int] = Map(
+    "SCALE_AREA_AVERAGING" -> java.awt.Image.SCALE_AREA_AVERAGING,
+    "SCALE_AREA_DEFAULT" -> java.awt.Image.SCALE_DEFAULT,
+    "SCALE_FAST" -> java.awt.Image.SCALE_FAST,
+    "SCALE_REPLICATE" -> java.awt.Image.SCALE_REPLICATE,
+    "SCALE_SMOOTH" -> java.awt.Image.SCALE_SMOOTH
+  )
+  def scaleHintsJava = scaleHints.asJava
   /**
    * The valid values that can be used to set the "modelName" param.
    */

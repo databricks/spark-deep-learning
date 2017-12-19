@@ -115,6 +115,7 @@ private[sparkdl] object ImageUtils {
    * @param tgtChannels number of channels of output image (must be 3), may be used later to
    *                    support more channels.
    * @param spImage     image to resize.
+   * @param scaleHint   hint which algorhitm to use, see java.awt.Image#SCALE_DEFAULT
    * @return resized image, if the input was BGR or 1 channel, the output will be BGR.
    */
   private[sparkdl] def resizeImage(
@@ -122,7 +123,7 @@ private[sparkdl] object ImageUtils {
     tgtWidth: Int,
     tgtChannels: Int,
     spImage: Row,
-    fastResize: Boolean = false): Row = {
+    scaleHint: Int = Image.SCALE_AREA_AVERAGING): Row = {
     require(tgtChannels == 3, s"`tgtChannels` was set to $tgtChannels, must be 3.")
 
     val height = ImageSchema.getHeight(spImage)
@@ -134,10 +135,8 @@ private[sparkdl] object ImageUtils {
     } else {
       val srcImg = spImageToBufferedImage(spImage)
       val tgtImg = new BufferedImage(tgtWidth, tgtHeight, BufferedImage.TYPE_3BYTE_BGR)
-
       // scaledImg is a java.awt.Image which supports drawing but not pixel lookup by index.
-      val resizeFlag = if (fastResize) Image.SCALE_FAST else Image.SCALE_AREA_AVERAGING
-      val scaledImg = srcImg.getScaledInstance(tgtWidth, tgtHeight, resizeFlag)
+      val scaledImg = srcImg.getScaledInstance(tgtWidth, tgtHeight, scaleHint)
       // Draw scaledImage onto resized (usually smaller) tgtImg so extract individual pixel values.
       val graphic = tgtImg.createGraphics()
       graphic.drawImage(scaledImg, 0, 0, null)
