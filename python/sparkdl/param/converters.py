@@ -172,7 +172,7 @@ class SparkDLTypeConverters(object):
     def toChannelOrder(value):
         if not value in ('L', 'RGB', 'BGR'):
             raise ValueError(
-                "Unsupported channel order. Expected one of ('RGB','BGR') but got '%s'") % value
+                "Unsupported channel order. Expected one of ('L', 'RGB', 'BGR') but got '%s'") % value
         return value
 
 
