@@ -30,6 +30,7 @@ __all__ = ['TFTransformer']
 
 logger = logging.getLogger('sparkdl')
 
+
 class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping, HasOutputMapping):
     """
     Applies the TensorFlow graph to the array column in DataFrame.
@@ -138,7 +139,8 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
             tf.import_graph_def(graph_def=graph_def, name='', return_elements=out_tnsr_op_names)
 
             # Feed dict maps from placeholder name to DF column name
-            feed_dict = {self._getSparkDlOpName(tnsr_name) : col_name for col_name, tnsr_name in input_mapping}
+            feed_dict = {self._getSparkDlOpName(
+                tnsr_name): col_name for col_name, tnsr_name in input_mapping}
             fetches = [tfx.get_tensor(tnsr_name, graph) for tnsr_name in out_tnsr_op_names]
 
             out_df = tfs.map_blocks(fetches, analyzed_df, feed_dict=feed_dict)

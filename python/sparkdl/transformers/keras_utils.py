@@ -26,13 +26,13 @@ class KSessionWrap():
     ... do some things that call Keras
     """
 
-    def __init__(self, graph = None):
+    def __init__(self, graph=None):
         self.requested_graph = graph
 
     def __enter__(self):
         self.old_session = K.get_session()
         self.g = self.requested_graph or tf.Graph()
-        self.current_session = tf.Session(graph = self.g)
+        self.current_session = tf.Session(graph=self.g)
         K.set_session(self.current_session)
         return (self.current_session, self.g)
 

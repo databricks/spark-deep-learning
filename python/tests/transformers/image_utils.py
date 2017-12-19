@@ -39,8 +39,10 @@ def _getSampleJPEGDir():
     cur_dir = os.path.dirname(__file__)
     return os.path.join(cur_dir, "../resources/images")
 
+
 def getSampleImageDF():
-    return imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(),decode_f=imageIO.PIL_decode)
+    return imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(), decode_f=imageIO.PIL_decode)
+
 
 def getSampleImagePaths():
     dirpath = _getSampleJPEGDir()
@@ -48,12 +50,14 @@ def getSampleImagePaths():
              if f.endswith('.jpg')]
     return files
 
+
 def getSampleImagePathsDF(sqlContext, colName):
     files = getSampleImagePaths()
     return sqlContext.createDataFrame(files, StringType()).toDF(colName)
 
 # Methods for making comparisons between outputs of using different frameworks.
 # For ImageNet.
+
 
 class ImageNetOutputComparisonTestCase(unittest.TestCase):
 
@@ -92,7 +96,6 @@ class ImageNetOutputComparisonTestCase(unittest.TestCase):
             self.assertEqual(set([v[1] for v in v1]), set([v[1] for v in preds2[k]]))
 
 
-
 def executeKerasInceptionV3(image_df, uri_col="filePath"):
     """
     Apply Keras InceptionV3 Model on input DataFrame.
@@ -114,12 +117,14 @@ def executeKerasInceptionV3(image_df, uri_col="filePath"):
         topK[raw_uri] = decode_predictions(values[raw_uri], top=5)[0]
     return values, topK
 
+
 def loadAndPreprocessKerasInceptionV3(raw_uri):
     # this is the canonical way to load and prep images in keras
     uri = raw_uri[5:] if raw_uri.startswith("file:/") else raw_uri
     image = img_to_array(load_img(uri, target_size=InceptionV3Constants.INPUT_SHAPE))
     image = np.expand_dims(image, axis=0)
     return preprocess_input(image)
+
 
 def prepInceptionV3KerasModelFile(fileName):
     model_dir_tmp = tempfile.mkdtemp("sparkdl_keras_tests", dir="/tmp")

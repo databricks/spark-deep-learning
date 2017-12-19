@@ -15,10 +15,10 @@
 #
 
 #
-# Models marked below as provided by Keras are provided subject to the 
-# below copyright and licenses (and any additional copyrights and 
+# Models marked below as provided by Keras are provided subject to the
+# below copyright and licenses (and any additional copyrights and
 # licenses specified).
-# 
+#
 # COPYRIGHT
 #
 # All contributions by François Chollet:
@@ -64,7 +64,6 @@
 #
 
 
-
 from abc import ABCMeta, abstractmethod
 
 import keras.backend as K
@@ -76,11 +75,12 @@ from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Consta
 from sparkdl.image.imageIO import _reverseChannels
 
 
-
 """
 Essentially a factory function for getting the correct KerasApplicationModel class
 for the network name.
 """
+
+
 def getKerasApplicationModel(name):
     try:
         return KERAS_APPLICATION_MODELS[name]()
@@ -172,6 +172,7 @@ class InceptionV3Model(KerasApplicationModel):
     def _testKerasModel(self, include_top):
         return inception_v3.InceptionV3(weights="imagenet", include_top=include_top)
 
+
 class XceptionModel(KerasApplicationModel):
     def preprocess(self, inputImage):
         # Keras expects RGB order
@@ -188,6 +189,7 @@ class XceptionModel(KerasApplicationModel):
 
     def _testKerasModel(self, include_top):
         return xception.Xception(weights="imagenet", include_top=include_top)
+
 
 class ResNet50Model(KerasApplicationModel):
     def preprocess(self, inputImage):
@@ -228,6 +230,7 @@ class ResNet50Model(KerasApplicationModel):
     def _testKerasModel(self, include_top):
         return resnet50.ResNet50(weights="imagenet", include_top=include_top)
 
+
 class VGG16Model(KerasApplicationModel):
     def preprocess(self, inputImage):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
@@ -238,7 +241,7 @@ class VGG16Model(KerasApplicationModel):
         # and subject to the below additional copyrights and licenses.
         #
         # Copyright 2014 Oxford University
-        # 
+        #
         # Licensed under the Creative Commons Attribution License CC BY 4.0 ("License").
         # You may obtain a copy of the License at
         #
@@ -253,6 +256,7 @@ class VGG16Model(KerasApplicationModel):
     def _testKerasModel(self, include_top):
         return vgg16.VGG16(weights="imagenet", include_top=include_top)
 
+
 class VGG19Model(KerasApplicationModel):
     def preprocess(self, inputImage):
         return _imagenet_preprocess_input(inputImage, self.inputShape())
@@ -263,7 +267,7 @@ class VGG19Model(KerasApplicationModel):
         # and subject to the below additional copyrights and licenses.
         #
         # Copyright 2014 Oxford University
-        # 
+        #
         # Licensed under the Creative Commons Attribution License CC BY 4.0 ("License").
         # You may obtain a copy of the License at
         #
@@ -295,6 +299,7 @@ def _imagenet_preprocess_input(x, input_shape):
     mean[..., 1] = 116.779
     mean[..., 2] = 123.68
     return x - mean
+
 
 KERAS_APPLICATION_MODELS = {
     "InceptionV3": InceptionV3Model,

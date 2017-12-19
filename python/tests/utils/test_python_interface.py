@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import sys, traceback
+import sys
+import traceback
 
 from pyspark import SparkContext, SQLContext
 from pyspark.sql.column import Column
 from sparkdl.utils import jvmapi as JVMAPI
 from ..tests import SparkDLTestCase
+
 
 class PythonAPITest(SparkDLTestCase):
 

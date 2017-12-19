@@ -36,6 +36,7 @@ __all__ = ['KerasImageFileEstimator']
 
 logger = logging.getLogger('sparkdl')
 
+
 class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
                               HasOutputCol, HasOutputNodeName, HasLabelCol,
                               HasKerasModel, HasKerasOptimizer, HasKerasLoss,

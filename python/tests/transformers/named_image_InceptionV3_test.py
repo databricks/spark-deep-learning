@@ -15,6 +15,7 @@
 
 from .named_image_test import NamedImageTransformerBaseTestCase
 
+
 class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
 
     __test__ = True

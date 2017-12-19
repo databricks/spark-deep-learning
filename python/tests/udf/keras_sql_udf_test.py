@@ -40,11 +40,11 @@ from ..tests import SparkDLTestCase
 from ..transformers.image_utils import getSampleImagePathsDF
 
 
-
 def get_image_paths_df(sqlCtx):
     df = getSampleImagePathsDF(sqlCtx, "fpath")
     df.createOrReplaceTempView("_test_image_paths_df")
     return df
+
 
 class SqlUserDefinedFunctionTest(SparkDLTestCase):
 
@@ -59,7 +59,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         # The leading batch size is taken care of by Keras
         with IsolatedSession(using_keras=True) as issn:
             model = Sequential()
-            model.add(Flatten(input_shape=(640,480,3)))
+            model.add(Flatten(input_shape=(640, 480, 3)))
             model.add(Dense(units=64))
             model.add(Activation('relu'))
             model.add(Dense(units=10))
@@ -110,8 +110,10 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             return imageArrayToStruct(_reverseChannels(keras_load_img(fpath)))
 
         # Load image with Keras and store it in our image schema
-        JVMAPI.registerUDF('keras_load_spimg', keras_load_spimg, ImageSchema.imageSchema['image'].dataType)
-        JVMAPI.registerUDF('pil_load_spimg', pil_load_spimg, ImageSchema.imageSchema['image'].dataType)
+        JVMAPI.registerUDF('keras_load_spimg', keras_load_spimg,
+                           ImageSchema.imageSchema['image'].dataType)
+        JVMAPI.registerUDF('pil_load_spimg', pil_load_spimg,
+                           ImageSchema.imageSchema['image'].dataType)
 
         # Register an InceptionV3 model
         registerKerasImageUDF("iv3_img_pred",
@@ -155,7 +157,6 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         print("df2 = %s" % df2)
         data2 = df2.collect()
         assert data2[0].z == 3.0, data2
-
 
     def test_map_blocks_sql_1(self):
         data = [Row(x=float(x)) for x in range(5)]

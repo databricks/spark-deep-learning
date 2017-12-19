@@ -29,7 +29,7 @@ from sparkdl.graph.input import TFInputGraph
 class TestGraphImport(object):
     def test_graph_novar(self):
         gin = _build_graph_input(lambda session:
-            TFInputGraph.fromGraph(session.graph, session, [_tensor_input_name],
+                                 TFInputGraph.fromGraph(session.graph, session, [_tensor_input_name],
                                                         [_tensor_output_name]))
         _check_input_novar(gin)
 
@@ -80,7 +80,6 @@ class TestGraphImport(object):
                     and _translated_output_mapping == _expected_output_mapping, \
                     err_msg.format(_translated_input_mapping, _translated_output_mapping)
 
-
     def test_saved_graph_novar(self):
         with _make_temp_directory() as tmp_dir:
             saved_model_dir = os.path.join(tmp_dir, 'saved_model')
@@ -123,8 +122,8 @@ class TestGraphImport(object):
 
     def test_graphdef_novar_2(self):
         gin = _build_graph_input_2(lambda session:
-                                 TFInputGraph.fromGraphDef(session.graph.as_graph_def(),
-                                                           [_tensor_input_name], [_tensor_output_name]))
+                                   TFInputGraph.fromGraphDef(session.graph.as_graph_def(),
+                                                             [_tensor_input_name], [_tensor_output_name]))
         _check_output_2(gin, np.array([1, 2, 3]), np.array([2, 2, 2]), 1)
 
     def test_saved_graph_novar_2(self):
@@ -137,6 +136,7 @@ class TestGraphImport(object):
 
             gin = _build_graph_input_2(gin_fun)
             _check_output_2(gin, np.array([1, 2, 3]), np.array([2, 2, 2]), 1)
+
 
 _serving_tag = "serving_tag"
 _serving_sigdef_key = 'prediction_signature'

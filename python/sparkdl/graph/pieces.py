@@ -29,6 +29,7 @@ TODO: We might want to cache some of the big models in their GraphFunction forma
       Deserializing ProtocolBuffer bytes is in general faster than directly loading Keras models.
 """
 
+
 def buildSpImageConverter(channelOrder, img_dtype):
     """
     Convert a imageIO byte encoded image into a image tensor suitable as input to ConvNets
@@ -54,13 +55,15 @@ def buildSpImageConverter(channelOrder, img_dtype):
         elif img_dtype == 'float32':
             image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
         else:
-            raise ValueError('unsupported image data type "%s", currently only know how to handle uint8 and float32' % img_dtype)
+            raise ValueError(
+                'unsupported image data type "%s", currently only know how to handle uint8 and float32' % img_dtype)
         image_reshaped = tf.reshape(image_float, shape, name="reshaped")
         image_reshaped = imageIO.fixColorChannelOrdering(channelOrder, image_reshaped)
         image_input = tf.expand_dims(image_reshaped, 0, name="image_input")
         gfn = issn.asGraphFunction([height, width, image_buffer, num_channels], [image_input])
 
     return gfn
+
 
 def buildFlattener():
     """ 

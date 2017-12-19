@@ -28,6 +28,7 @@ from sparkdl.param import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
 
+
 class HasInputImageNodeName(Params):
     # TODO: docs
     inputImageNodeName = Param(Params._dummy(), "inputImageNodeName",
@@ -39,6 +40,7 @@ class HasInputImageNodeName(Params):
 
     def getInputImageNodeName(self):
         return self.getOrDefault(self.inputImageNodeName)
+
 
 class CanLoadImage(Params):
     """
@@ -91,6 +93,7 @@ class CanLoadImage(Params):
         # plan 2: udf(loader()) ... we don't support np.array as a dataframe column type...
         loader = self.getImageLoader()
         # Load from external resources can fail, so we should allow None to be returned
+
         def load_image_uri_impl(uri):
             try:
                 return imageArrayToStruct(_reverseChannels(loader(uri)))

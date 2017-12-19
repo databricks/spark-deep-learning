@@ -37,6 +37,7 @@ import sparkdl.utils.keras_model as kmutil
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import getSampleImagePaths
 
+
 def _load_image_from_uri(local_uri):
     img = (PIL.Image
            .open(local_uri)
@@ -45,6 +46,7 @@ def _load_image_from_uri(local_uri):
     img_arr = np.array(img).astype(np.float32)
     img_tnsr = preprocess_input(img_arr[np.newaxis, :])
     return img_tnsr
+
 
 class KerasEstimatorsTest(SparkDLTestCase):
 

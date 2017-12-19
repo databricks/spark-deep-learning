@@ -53,6 +53,7 @@ class KerasApplicationModelTestCase(SparkDLTestCase):
         np.testing.assert_array_almost_equal(sparkdl_preprocessed_input, keras_preprocessed_input,
                                              decimal=5)
 
+
 class NamedImageTransformerBaseTestCase(SparkDLTestCase):
     """
     The tests here are written for Keras application -based models but test the
@@ -64,7 +65,6 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
     name = None
     # Allow subclasses to force number of partitions - a hack to avoid OOM issues
     numPartitionsOverride = None
-
 
     @classmethod
     def getSampleImageList(cls):
@@ -80,7 +80,6 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
                 images.append(None)
         return imageFiles, np.array(images)
 
-
     @classmethod
     def setUpClass(cls):
         super(NamedImageTransformerBaseTestCase, cls).setUpClass()
@@ -88,12 +87,13 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         imgFiles, imageArray = getSampleImageList()
         cls.imageArray = imageArray
         cls.imgFiles = imgFiles
-        cls.fileOrder = {imgFiles[i].split('/')[-1]:i for i in range(len(imgFiles))}
+        cls.fileOrder = {imgFiles[i].split('/')[-1]: i for i in range(len(imgFiles))}
         # Predict the class probabilities for the images in our test library using keras API
         # and cache for use by multiple tests.
         preppedImage = cls.appModel._testPreprocess(imageArray.astype('float32'))
         cls.preppedImage = preppedImage
-        cls.kerasPredict = cls.appModel._testKerasModel(include_top=True).predict(preppedImage, batch_size=1)
+        cls.kerasPredict = cls.appModel._testKerasModel(
+            include_top=True).predict(preppedImage, batch_size=1)
         cls.kerasFeatures = cls.appModel._testKerasModel(include_top=False).predict(preppedImage)
 
         cls.imageDF = getSampleImageDF().limit(5)
@@ -133,6 +133,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         """
         imageArray = self.imageArray
         kerasPredict = self.kerasPredict
+
         def rowWithImage(img):
             # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
             row = imageIO.imageArrayToStruct(img.astype('uint8'))

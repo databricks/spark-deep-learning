@@ -65,8 +65,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             image = images[0]
             image.shape = (1, image.shape[0] * image.shape[1] * image.shape[2])
             keras_processed = image[0]
-            self.assertTrue( (processed == keras_processed).all() )
-
+            self.assertTrue((processed == keras_processed).all())
 
     def test_load_image_vs_keras_RGB(self):
         g = tf.Graph()
@@ -76,7 +75,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             preprocessed = preprocess_input(image_arr)
 
         output_col = "transformed_image"
-        transformer = TFImageTransformer(channelOrder='RGB',inputCol="image", outputCol=output_col, graph=g,
+        transformer = TFImageTransformer(channelOrder='RGB', inputCol="image", outputCol=output_col, graph=g,
                                          inputTensor=image_arr, outputTensor=preprocessed.name,
                                          outputMode="vector")
 
@@ -90,8 +89,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             image = images[0]
             image.shape = (1, image.shape[0] * image.shape[1] * image.shape[2])
             keras_processed = image[0]
-            self.assertTrue( (processed == keras_processed).all() )
-
+            self.assertTrue((processed == keras_processed).all())
 
     # Test full pre-processing for InceptionV3 as an example of a simple computation graph
 
@@ -126,7 +124,6 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
 
     # TODO: add tests for non-RGB8 images, at least RGB-float32.
 
-
     # Test InceptionV3 prediction as an example of applying a trained model.
 
     def _executeTensorflow(self, graph, input_tensor_name, output_tensor_name,
@@ -142,7 +139,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                 output = sess.run([output_tensor],
                                   feed_dict={
                                       graph.get_tensor_by_name(input_tensor_name): image
-                                  })
+                })
                 values[uri] = np.array(output[0])
                 topK[uri] = decode_predictions(values[uri], top=5)[0]
         return values, topK
@@ -156,7 +153,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             with g.as_default():
                 K.set_learning_phase(0)    # this is important but it's on the user to call it.
                 # nChannels needed for input_tensor in the InceptionV3 call below
-                image_string = utils.imageInputPlaceholder(nChannels = 3)
+                image_string = utils.imageInputPlaceholder(nChannels=3)
                 resized_images = tf.image.resize_images(image_string,
                                                         InceptionV3Constants.INPUT_SHAPE)
                 # keras expects array in RGB order, we get it from image schema in BGR => need to flip

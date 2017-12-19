@@ -27,6 +27,7 @@ from sparkdl.image.image import ImageSchema
 
 logger = logging.getLogger('sparkdl')
 
+
 def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None):
     """
     Create a Keras image model as a Spark SQL UDF.
@@ -101,7 +102,7 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
             ImageSchema.imageSchema['image'].dataType)
         keras_udf_name = '{}__model_predict'.format(udf_name)
 
-    stages = [('spimg', buildSpImageConverter('RGB',"uint8")),
+    stages = [('spimg', buildSpImageConverter('RGB', "uint8")),
               ('model', GraphFunction.fromKeras(keras_model_or_file_path)),
               ('final', buildFlattener())]
     gfn = GraphFunction.fromList(stages)
@@ -118,6 +119,7 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
         JVMAPI.registerPipeline(udf_name, ordered_udf_names)
 
     return gfn
+
 
 def _serialize_and_reload_with(preprocessor):
     """
@@ -146,7 +148,8 @@ def _serialize_and_reload_with(preprocessor):
             "expect preprocessor to return a numpy array"
         img_arr_reloaded = img_arr_reloaded.astype(np.uint8)
         # Keras works in RGB order, need to fix the order
-        img_arr_reloaded = imageIO.fixColorChannelOrdering(currentOrder='RGB', imgAry=img_arr_reloaded)
+        img_arr_reloaded = imageIO.fixColorChannelOrdering(
+            currentOrder='RGB', imgAry=img_arr_reloaded)
         return imageArrayToStruct(img_arr_reloaded)
 
     return udf_impl

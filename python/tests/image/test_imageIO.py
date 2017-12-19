@@ -28,6 +28,8 @@ from sparkdl.image.image import ImageSchema
 from ..tests import SparkDLTestCase
 
 # Create some fake image data to work with
+
+
 def create_image_data():
     # Random image-like data
     array = np.random.randint(0, 256, (10, 11, 3), 'uint8')
@@ -41,6 +43,7 @@ def create_image_data():
     pngData = imgFile.read()
     # PIL is RGB but image schema is BGR => flip the channels
     return imageIO._reverseChannels(array), pngData
+
 
 array, pngData = create_image_data()
 
@@ -105,18 +108,18 @@ class TestReadImages(SparkDLTestCase):
             self.assertEqual(imgAsStruct.width, width)
             self.assertEqual(imgAsStruct.data, array.tobytes())
             imgReconstructed = imageIO.imageStructToArray(imgAsStruct)
-            np.testing.assert_array_equal(array,imgReconstructed)
-        for nChannels in (1,3,4):
+            np.testing.assert_array_equal(array, imgReconstructed)
+        for nChannels in (1, 3, 4):
             # unsigned bytes
             _test(np.random.randint(0, 256, (10, 11, nChannels), 'uint8'))
-            _test(np.random.random_sample((10,11,nChannels)).astype('float32'))
+            _test(np.random.random_sample((10, 11, nChannels)).astype('float32'))
 
     # read images now part of spark, no need to test it here
     def test_readImages(self):
         # Test that reading
-        imageDF = imageIO._readImagesWithCustomFn("file/path", decode_f = imageIO.PIL_decode, numPartition=2, sc = self.binaryFilesMock)
+        imageDF = imageIO._readImagesWithCustomFn(
+            "file/path", decode_f=imageIO.PIL_decode, numPartition=2, sc=self.binaryFilesMock)
         self.assertTrue("image" in imageDF.schema.names)
-
 
         # The DF should have 2 images and 1 null.
         self.assertEqual(imageDF.count(), 3)
@@ -138,7 +141,8 @@ class TestReadImages(SparkDLTestCase):
             return imageIO.imageArrayToStruct(array)
         do_nothing_udf = udf(do_nothing, ImageSchema.imageSchema['image'].dataType)
 
-        df = imageIO._readImagesWithCustomFn("file/path", decode_f = imageIO.PIL_decode,numPartition=2, sc = self.binaryFilesMock)
+        df = imageIO._readImagesWithCustomFn(
+            "file/path", decode_f=imageIO.PIL_decode, numPartition=2, sc=self.binaryFilesMock)
         df = df.filter(col('image').isNotNull()).withColumn("test", do_nothing_udf('image'))
         self.assertEqual(df.first().test.data, array.tobytes())
         df.printSchema()

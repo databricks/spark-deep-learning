@@ -35,6 +35,7 @@ import sparkdl.utils.keras_model as kmutil
 
 __all__ = ['SparkDLTypeConverters']
 
+
 class SparkDLTypeConverters(object):
     """
     .. note:: DeveloperApi
@@ -169,8 +170,9 @@ class SparkDLTypeConverters(object):
 
     @staticmethod
     def toChannelOrder(value):
-        if not value in ('L','RGB','BGR'):
-            raise ValueError("Unsupported channel order. Expected one of ('RGB','BGR') but got '%s'") % value
+        if not value in ('L', 'RGB', 'BGR'):
+            raise ValueError(
+                "Unsupported channel order. Expected one of ('RGB','BGR') but got '%s'") % value
         return value
 
 

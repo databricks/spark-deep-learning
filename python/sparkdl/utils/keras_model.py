@@ -25,6 +25,7 @@ from keras.models import load_model as _load_keras_hdf5_model
 __all__ = ['model_to_bytes', 'bytes_to_model', 'bytes_to_h5file',
            'is_valid_loss_function', 'is_valid_optimizer']
 
+
 def model_to_bytes(model):
     """
     Serialize the Keras model to HDF5 and load the file as bytes.
@@ -41,6 +42,7 @@ def model_to_bytes(model):
         shutil.rmtree(temp_dir, ignore_errors=True)
     return file_bytes
 
+
 def bytes_to_h5file(modelBytes):
     """
     Dump HDF5 file content bytes to a local file
@@ -51,6 +53,7 @@ def bytes_to_h5file(modelBytes):
     with open(temp_path, mode='wb') as fout:
         fout.write(modelBytes)
     return temp_path
+
 
 def bytes_to_model(modelBytes, remove_temp_path=True):
     """
@@ -66,6 +69,7 @@ def bytes_to_model(modelBytes, remove_temp_path=True):
             shutil.rmtree(temp_dir, ignore_errors=True)
     return model
 
+
 def _get_loss_function(identifier):
     """
     Retrieves a Keras loss function instance.
@@ -73,6 +77,7 @@ def _get_loss_function(identifier):
     :return: A Keras loss function instance if the identifier is valid
     """
     return keras.losses.get(identifier)
+
 
 def is_valid_loss_function(identifier):
     """ Check if a named loss function is supported in Keras """
@@ -82,6 +87,7 @@ def is_valid_loss_function(identifier):
     except ValueError:
         return False
 
+
 def _get_optimizer(identifier):
     """
     Retrieves a Keras Optimizer instance.
@@ -89,6 +95,7 @@ def _get_optimizer(identifier):
     :return: A Keras optimizer instance if the identifier is valid
     """
     return keras.optimizers.get(identifier)
+
 
 def is_valid_optimizer(identifier):
     """ Check if a named optimizer is supported in Keras """

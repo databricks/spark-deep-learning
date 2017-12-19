@@ -38,6 +38,7 @@ IMAGE_INPUT_TENSOR_NAME = tfx.tensor_name(utils.IMAGE_INPUT_PLACEHOLDER_NAME)
 USER_GRAPH_NAMESPACE = 'given'
 NEW_OUTPUT_PREFIX = 'sdl_flattened'
 
+
 class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     """
     Applies the Tensorflow graph to the image column in DataFrame.
@@ -65,7 +66,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     outputTensor = Param(Params._dummy(), "outputTensor",
                          "A TensorFlow tensor object or name representing the output",
                          typeConverter=SparkDLTypeConverters.toTFTensorName)
-    channelOrder = Param(Params._dummy(),"channelOrder",
+    channelOrder = Param(Params._dummy(), "channelOrder",
                          "Strign specifying the expected color channel order, can be one of L,RGB,BGR",
                          typeConverter=SparkDLTypeConverters.toChannelOrder)
 
@@ -126,11 +127,11 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         with final_graph.as_default():
             image = dataset[self.getInputCol()]
             image_df_exploded = (dataset
-              .withColumn("__sdl_image_height", image.height)
-              .withColumn("__sdl_image_width", image.width)
-              .withColumn("__sdl_image_nchannels", image.nChannels)
-              .withColumn("__sdl_image_data", image.data)
-            )
+                                 .withColumn("__sdl_image_height", image.height)
+                                 .withColumn("__sdl_image_width", image.width)
+                                 .withColumn("__sdl_image_nchannels", image.nChannels)
+                                 .withColumn("__sdl_image_data", image.data)
+                                 )
 
             final_output_name = self._getFinalOutputTensorName()
             output_tensor = final_graph.get_tensor_by_name(final_output_name)
@@ -225,6 +226,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         assert len(output_shape) == 4, str(output_shape) + " does not have 4 dimensions"
         height = int(output_shape[1])
         width = int(output_shape[2])
+
         def to_image(orig_image, numeric_data):
             # Assume the returned image has float pixels but same #channels as input
             mode = imageIO.imageTypeByName('CV_32FC%d' % orig_image.nChannels)
@@ -232,7 +234,8 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
             nChannels = orig_image.nChannels
             return Row(origin="", mode=mode.ord, height=height, width=width, nChannels=nChannels, data=data)
         to_image_udf = udf(to_image, ImageSchema.imageSchema['image'].dataType)
-        resDf =  df.withColumn(self.getOutputCol(), to_image_udf(df[self.getInputCol()], df[tfs_output_col]))
+        resDf = df.withColumn(self.getOutputCol(), to_image_udf(
+            df[self.getInputCol()], df[tfs_output_col]))
         return resDf.drop(tfs_output_col)
 
     def _convertOutputToVector(self, df, tfs_output_col):

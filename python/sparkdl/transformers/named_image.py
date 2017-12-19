@@ -29,7 +29,7 @@ from sparkdl.param import (
 from sparkdl.transformers.tf_image import TFImageTransformer
 
 
-SUPPORTED_MODELS = ["InceptionV3", "Xception", "ResNet50","VGG16","VGG19"]
+SUPPORTED_MODELS = ["InceptionV3", "Xception", "ResNet50", "VGG16", "VGG19"]
 
 
 class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
@@ -94,6 +94,7 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
         # Also, we could put the computation directly in the main computation
         # graph or use a scala UDF for potentially better performance.
         topK = self.getOrDefault(self.topK)
+
         def decode(predictions):
             pred_arr = np.expand_dims(np.array(predictions), axis=0)
             decoded = decode_predictions(pred_arr, top=topK)[0]
@@ -212,7 +213,7 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
         inputCol = self.getInputCol()
         resizedCol = "__sdl_imagesResized"
         tfTransformer = TFImageTransformer(
-            channelOrder = 'BGR',
+            channelOrder='BGR',
             inputCol=resizedCol,
             outputCol=self.getOutputCol(),
             graph=modelGraphSpec["graph"],

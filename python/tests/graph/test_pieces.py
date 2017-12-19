@@ -58,14 +58,16 @@ class GraphPiecesTest(SparkDLTestCase):
             gfn = gfac.buildSpImageConverter('BGR', img_dtype)
             with IsolatedSession() as issn:
                 feeds, fetches = issn.importGraphFunction(gfn, prefix="")
-                feed_dict = dict((tnsr, spimg_dict[tfx.op_name(tnsr, issn.graph)]) for tnsr in feeds)
+                feed_dict = dict(
+                    (tnsr, spimg_dict[tfx.op_name(tnsr, issn.graph)]) for tnsr in feeds)
                 img_out = issn.run(fetches[0], feed_dict=feed_dict)
             return img_out
 
         def check_image_round_trip(img_arr):
             spimg_dict = imageArrayToStruct(img_arr).asDict()
             spimg_dict['data'] = bytes(spimg_dict['data'])
-            img_arr_out = exec_gfn_spimg_decode(spimg_dict, imageTypeByOrdinal(spimg_dict['mode']).dtype)
+            img_arr_out = exec_gfn_spimg_decode(
+                spimg_dict, imageTypeByOrdinal(spimg_dict['mode']).dtype)
             self.assertTrue(np.all(img_arr_out == img_arr))
 
         for fp in img_fpaths:
@@ -162,7 +164,8 @@ class GraphPiecesTest(SparkDLTestCase):
             with IsolatedSession() as issn:
                 # Need blank import scope name so that spimg fields match the input names
                 feeds, fetches = issn.importGraphFunction(piped_model, prefix="")
-                feed_dict = dict((tnsr, spimg_input_dict[tfx.op_name(tnsr, issn.graph)]) for tnsr in feeds)
+                feed_dict = dict(
+                    (tnsr, spimg_input_dict[tfx.op_name(tnsr, issn.graph)]) for tnsr in feeds)
                 preds_tgt = issn.run(fetches[0], feed_dict=feed_dict)
                 # Uncomment the line below to see the graph
                 # tfx.write_visualization_html(issn.graph,

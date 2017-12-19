@@ -22,7 +22,6 @@ from sparkdl.transformers.tf_image import TFImageTransformer
 from sparkdl.transformers.keras_utils import KSessionWrap
 
 
-
 class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
                                 CanLoadImage, HasKerasModel, HasOutputMode):
     """
@@ -62,7 +61,7 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
             graph, inputTensorName, outputTensorName = self._loadTFGraph(sess=sess,
                                                                          graph=keras_graph)
             image_df = self.loadImagesInternal(dataset, self.getInputCol())
-            transformer = TFImageTransformer(channelOrder='RGB',inputCol=self._loadedImageCol(),
+            transformer = TFImageTransformer(channelOrder='RGB', inputCol=self._loadedImageCol(),
                                              outputCol=self.getOutputCol(), graph=graph,
                                              inputTensor=inputTensorName,
                                              outputTensor=outputTensorName,

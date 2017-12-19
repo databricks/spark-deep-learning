@@ -24,16 +24,20 @@ MODEL_FACTORY_CLASSNAME = "com.databricks.sparkdl.python.GraphModelFactory"
 
 logger = logging.getLogger('sparkdl')
 
+
 def _curr_sql_ctx(sqlCtx=None):
     _sql_ctx = sqlCtx if sqlCtx is not None else SQLContext._instantiatedContext
     logger.info("Spark SQL Context = " + str(_sql_ctx))
     return _sql_ctx
 
+
 def _curr_sc():
     return SparkContext._active_spark_context
 
+
 def _curr_jvm():
     return _curr_sc()._jvm
+
 
 def forClass(javaClassName, sqlCtx=None):
     """
@@ -48,6 +52,7 @@ def forClass(javaClassName, sqlCtx=None):
     jvm_class = jvm_thread.getContextClassLoader().loadClass(javaClassName)
     return jvm_class.newInstance().sqlContext(_curr_sql_ctx(sqlCtx)._ssql_ctx)
 
+
 def pyUtils():
     """
     Exposing Spark PythonUtils
@@ -55,17 +60,21 @@ def pyUtils():
     """
     return _curr_jvm().PythonUtils
 
+
 def default():
     """ Default JVM Python Interface class """
     return forClass(javaClassName=PYTHON_INTERFACE_CLASSNAME)
+
 
 def createTensorFramesModelBuilder():
     """ Create TensorFrames model builder using the Scala API """
     return forClass(javaClassName=MODEL_FACTORY_CLASSNAME)
 
+
 def listToMLlibVectorUDF(col):
     """ Map struct column from list to MLlib vector """
     return Column(default().listToMLlibVectorUDF(col._jc))  # pylint: disable=W0212
+
 
 def registerPipeline(name, ordered_udf_names):
     """ 
@@ -75,6 +84,7 @@ def registerPipeline(name, ordered_udf_names):
     assert len(ordered_udf_names) > 1, \
         "must provide more than one ordered udf names"
     return default().registerPipeline(name, ordered_udf_names)
+
 
 def registerUDF(name, function_body, schema):
     """ Register a single UDF """
