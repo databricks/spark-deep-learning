@@ -112,9 +112,9 @@ class KerasApplicationModel:
     @abstractmethod
     def model(self, preprocessed, featurize):
         """
-        Models marked as *provided by Keras* are provided subject to the MIT 
+        Models marked as *provided by Keras* are provided subject to the MIT
         license located at https://github.com/fchollet/keras/blob/master/LICENSE
-        and subject to any additional copyrights and licenses specified in the 
+        and subject to any additional copyrights and licenses specified in the
         code or documentation.
         """
         pass

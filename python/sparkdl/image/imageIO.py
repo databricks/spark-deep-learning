@@ -41,11 +41,11 @@ _OcvType = namedtuple("OcvType", ["name", "ord", "nChannels", "dtype"])
 
 
 _supportedOcvTypes = (
-    _OcvType(name="CV_8UC1",  ord=0,  nChannels=1, dtype="uint8"),
-    _OcvType(name="CV_32FC1", ord=5,  nChannels=1, dtype="float32"),
-    _OcvType(name="CV_8UC3",  ord=16, nChannels=3, dtype="uint8"),
+    _OcvType(name="CV_8UC1", ord=0, nChannels=1, dtype="uint8"),
+    _OcvType(name="CV_32FC1", ord=5, nChannels=1, dtype="float32"),
+    _OcvType(name="CV_8UC3", ord=16, nChannels=3, dtype="uint8"),
     _OcvType(name="CV_32FC3", ord=21, nChannels=3, dtype="float32"),
-    _OcvType(name="CV_8UC4",  ord=24, nChannels=4, dtype="uint8"),
+    _OcvType(name="CV_8UC4", ord=24, nChannels=4, dtype="uint8"),
     _OcvType(name="CV_32FC4", ord=29, nChannels=4, dtype="float32"),
 )
 
@@ -84,7 +84,8 @@ def imageArrayToStruct(imgArray, origin=""):
     imageType = _arrayToOcvMode(imgArray)
     height, width, nChannels = imgArray.shape
     data = bytearray(imgArray.tobytes())
-    return Row(origin=origin, mode=imageType.ord, height=height, width=width, nChannels=nChannels, data=data)
+    return Row(origin=origin, mode=imageType.ord, height=height,
+               width=width, nChannels=nChannels, data=data)
 
 
 def imageStructToArray(imageRow):
@@ -242,7 +243,7 @@ def _readImagesWithCustomFn(path, decode_f, numPartition, sc):
     def _decode(path, raw_bytes):
         try:
             return imageArrayToStruct(decode_f(raw_bytes), origin=path)
-        except:
+        except BaseException:
             return None
     decodeImage = udf(_decode, ImageSchema.imageSchema['image'].dataType)
     imageData = filesToDF(sc, path, numPartitions=numPartition)

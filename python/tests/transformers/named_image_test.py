@@ -14,6 +14,11 @@
 #
 
 import numpy as np
+import os
+
+from glob import glob
+from PIL import Image
+
 from keras.applications import resnet50
 import tensorflow as tf
 
@@ -31,6 +36,8 @@ from sparkdl.image.image import ImageSchema
 
 from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF
+from.image_utils import getImageFiles
+
 
 
 class KerasApplicationModelTestCase(SparkDLTestCase):
@@ -68,23 +75,16 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
 
     @classmethod
     def getSampleImageList(cls):
-        imageFiles = glob(os.path.join(_getSampleJPEGDir(), "*"))
-        images = []
-        for f in imageFiles:
-            try:
-                img = PIL.Image.open(f)
-                shape = cls.appModel.inputShape()
-                images.append(imageIO._reverseChannels(np.array(img.resize(shape))))
-            except IOError:
-                warn("Could not read file in image directory.")
-                images.append(None)
+        shape = cls.appModel.inputShape()
+        imageFiles = getImageFiles()
+        images = [imageIO.PIL_to_imageStruct(Image.open(f).resize(shape)) for f in imageFiles]
         return imageFiles, np.array(images)
 
     @classmethod
     def setUpClass(cls):
         super(NamedImageTransformerBaseTestCase, cls).setUpClass()
         cls.appModel = keras_apps.getKerasApplicationModel(cls.name)
-        imgFiles, imageArray = getSampleImageList()
+        imgFiles, imageArray = cls.getSampleImageList()
         cls.imageArray = imageArray
         cls.imgFiles = imgFiles
         cls.fileOrder = {imgFiles[i].split('/')[-1]: i for i in range(len(imgFiles))}

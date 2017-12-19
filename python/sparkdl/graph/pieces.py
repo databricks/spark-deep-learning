@@ -66,8 +66,8 @@ def buildSpImageConverter(channelOrder, img_dtype):
 
 
 def buildFlattener():
-    """ 
-    Build a flattening layer to remove the extra leading tensor dimension. 
+    """
+    Build a flattening layer to remove the extra leading tensor dimension.
     e.g. a tensor of shape [1, W, H, C] will have a shape [W, H, C] after applying this.
     """
     with IsolatedSession() as issn:

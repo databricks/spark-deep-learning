@@ -232,7 +232,8 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
             mode = imageIO.imageTypeByName('CV_32FC%d' % orig_image.nChannels)
             data = bytearray(np.array(numeric_data).astype(np.float32).tobytes())
             nChannels = orig_image.nChannels
-            return Row(origin="", mode=mode.ord, height=height, width=width, nChannels=nChannels, data=data)
+            return Row(origin="", mode=mode.ord, height=height,
+                       width=width, nChannels=nChannels, data=data)
         to_image_udf = udf(to_image, ImageSchema.imageSchema['image'].dataType)
         resDf = df.withColumn(self.getOutputCol(), to_image_udf(
             df[self.getInputCol()], df[tfs_output_col]))

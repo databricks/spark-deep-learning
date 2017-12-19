@@ -14,10 +14,11 @@
 #
 
 import os
-from glob import glob
 import tempfile
 import unittest
+from glob import glob
 from warnings import warn
+
 
 from keras.applications import InceptionV3
 from keras.applications.inception_v3 import preprocess_input, decode_predictions
@@ -39,6 +40,8 @@ def _getSampleJPEGDir():
     cur_dir = os.path.dirname(__file__)
     return os.path.join(cur_dir, "../resources/images")
 
+def getImageFiles():
+    return glob(os.path.join(_getSampleJPEGDir(), "*"))
 
 def getSampleImageDF():
     return imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(), decode_f=imageIO.PIL_decode)

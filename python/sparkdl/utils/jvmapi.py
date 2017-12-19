@@ -77,7 +77,7 @@ def listToMLlibVectorUDF(col):
 
 
 def registerPipeline(name, ordered_udf_names):
-    """ 
+    """
     Given a sequence of @ordered_udf_names f1, f2, ..., fn
     Create a pipelined UDF as fn(...f2(f1()))
     """
