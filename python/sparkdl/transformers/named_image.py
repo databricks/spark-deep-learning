@@ -16,6 +16,9 @@
 from keras.applications.imagenet_utils import decode_predictions
 import numpy as np
 
+
+import py4j
+
 from pyspark import SparkContext
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
@@ -117,6 +120,14 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
         return "__tmp_" + self.getOutputCol()
 
 
+def _getScaleHintList():
+    featurizer = SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer
+    if type(featurizer) == py4j.java_gateway.JavaPackage:
+        # do not see DeepImageFeaturizer, possibly running without spark
+        # instead of failing return empty list
+        return []
+    return dict(featurizer.scaleHintsJava()).keys()
+
 class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
 
     inputCol = Param(
@@ -127,8 +138,8 @@ class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
 
-    scaleHint = Param(Params._dummy(), "scaleHint", "Hint which algorthitm to use for image resizing",
-                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(dict(SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer.scaleHintsJava()).keys()))
+    scaleHint = Param(Params._dummy(), "scaleHint", "Hint which algorhitm to use for image resizing",
+                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(_getScaleHintList()))
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint=None):
