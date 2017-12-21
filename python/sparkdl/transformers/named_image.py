@@ -22,7 +22,7 @@ import py4j
 from pyspark import SparkContext
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
-from pyspark.sql import DataFrame
+from pyspark.ml.wrapper import JavaTransformer
 from pyspark.sql.functions import udf
 from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
 
@@ -122,19 +122,21 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
 
 def _getScaleHintList():
     featurizer = SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer
-    if type(featurizer) == py4j.java_gateway.JavaPackage:
+    if isinstance(featurizer, py4j.java_gateway.JavaPackage):
         # do not see DeepImageFeaturizer, possibly running without spark
         # instead of failing return empty list
         return []
     return dict(featurizer.scaleHintsJava()).keys()
 
-class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
 
-    inputCol = Param(
-        Params._dummy(),
-        "inputCol",
-        "Input column for the featurizer, expected to be ImageSchema.")
-    outputCol = Param(Params._dummy(), "outputCol", "Column to store the result (features) in.")
+class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
+    """
+    Applies the model specified by its popular name, with its prediction layer(s) chopped off,
+    to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
+    can be used in a MLlib Pipeline.
+    The input image column should be ImageSchema.
+    """
+
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
 
@@ -149,15 +151,7 @@ class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
         super(DeepImageFeaturizer, self).__init__()
         kwargs = self._input_kwargs
         self._set(**kwargs)
-
-    def _transform(self, dataset):
-        scalaFeaturizer = dataset._sc._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
-        scalaFeaturizer.setModelName(self.getOrDefault(self.modelName))
-        scalaFeaturizer.setInputCol(self.getOrDefault(self.inputCol))
-        scalaFeaturizer.setOutputCol(self.getOrDefault(self.outputCol))
-        if(self.isDefined(self.scaleHint)):
-            scalaFeaturizer.setResizeFlag(self.getOrDefault(self.scaleHint))
-        return DataFrame(scalaFeaturizer.transform(dataset._jdf), dataset.sql_ctx)
+        self._java_obj = SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
 
 # TODO: give an option to take off multiple layers so it can be used in tuning
 #       (could be the name of the layer or int for how many to take off).

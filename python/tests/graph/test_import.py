@@ -86,7 +86,8 @@ class TestGraphImport(object):
 
             def gin_fun(session):
                 _build_saved_model(session, saved_model_dir)
-                return TFInputGraph.fromGraph(session.graph, session, [_tensor_input_name], [_tensor_output_name])
+                return TFInputGraph.fromGraph(session.graph, session, [
+                                              _tensor_input_name], [_tensor_output_name])
 
             gin = _build_graph_input(gin_fun)
             _check_input_novar(gin)
@@ -132,7 +133,8 @@ class TestGraphImport(object):
 
             def gin_fun(session):
                 _build_saved_model(session, saved_model_dir)
-                return TFInputGraph.fromGraph(session.graph, session, [_tensor_input_name], [_tensor_output_name])
+                return TFInputGraph.fromGraph(session.graph, session, [
+                                              _tensor_input_name], [_tensor_output_name])
 
             gin = _build_graph_input_2(gin_fun)
             _check_output_2(gin, np.array([1, 2, 3]), np.array([2, 2, 2]), 1)

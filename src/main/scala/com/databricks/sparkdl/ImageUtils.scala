@@ -115,7 +115,7 @@ private[sparkdl] object ImageUtils {
    * @param tgtChannels number of channels of output image (must be 3), may be used later to
    *                    support more channels.
    * @param spImage     image to resize.
-   * @param scaleHint   hint which algorhitm to use, see java.awt.Image#SCALE_DEFAULT
+   * @param scaleHint   hint which algorhitm to use, see java.awt.Image#SCALE_SCALE_AREA_AVERAGING
    * @return resized image, if the input was BGR or 1 channel, the output will be BGR.
    */
   private[sparkdl] def resizeImage(

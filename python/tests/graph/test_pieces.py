@@ -169,6 +169,6 @@ class GraphPiecesTest(SparkDLTestCase):
                 preds_tgt = issn.run(fetches[0], feed_dict=feed_dict)
                 # Uncomment the line below to see the graph
                 # tfx.write_visualization_html(issn.graph,
-                #                              NamedTemporaryFile(prefix="gdef", suffix=".html").name)
+                # NamedTemporaryFile(prefix="gdef", suffix=".html").name)
 
             self.assertTrue(np.all(preds_tgt == preds_ref))

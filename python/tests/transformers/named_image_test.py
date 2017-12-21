@@ -41,7 +41,6 @@ from .image_utils import getSampleImageDF
 from.image_utils import getImageFiles
 
 
-
 class KerasApplicationModelTestCase(SparkDLTestCase):
     def test_getKerasApplicationModelError(self):
         self.assertRaises(ValueError, keras_apps.getKerasApplicationModel, "NotAModelABC")
@@ -140,7 +139,8 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
             row = imageIO.imageArrayToStruct(img.astype('uint8'))
             # re-order row to avoid pyspark bug
-            return [[getattr(row, field.name) for field in ImageSchema.imageSchema['image'].dataType]]
+            return [[getattr(row, field.name)
+                     for field in ImageSchema.imageSchema['image'].dataType]]
 
         # test: predictor vs keras on resized images
         rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
@@ -186,7 +186,6 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             # TODO: actually check the value of the output to see if they are reasonable
             # e.g. -- compare to just running with keras.
 
-
     def test_featurization_no_reshape(self):
         """
         Run sparkDL predictor on manually-resized images and compare result to the
@@ -199,7 +198,8 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
             row = imageIO.imageArrayToStruct(img.astype('uint8'))
             # re-order row to avoid pyspark bug
-            return [[getattr(row, field.name) for field in ImageSchema.imageSchema['image'].dataType]]
+            return [[getattr(row, field.name)
+                     for field in ImageSchema.imageSchema['image'].dataType]]
 
         # test: predictor vs keras on resized images
         rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
@@ -208,8 +208,10 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         if self.numPartitionsOverride:
             imageDf = imageDf.coalesce(self.numPartitionsOverride)
 
-        transformer = DeepImageFeaturizer(inputCol='image', modelName=self.name,
-                                         outputCol="features")
+        transformer = DeepImageFeaturizer(
+            inputCol='image',
+            modelName=self.name,
+            outputCol="features")
         dfFeatures = transformer.transform(imageDf).collect()
         dfFeatures = np.array([i.features for i in dfFeatures])
         kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
@@ -222,11 +224,20 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         # Since we use different libraries for image resizing (PIL in python vs. java.awt.Image in scala),
         # the result will not match keras exactly. In fact the best we can do is a "somewhat similar" result.
         # At least compare cosine distance is < 1e-2
-        featurizer_sc = DeepImageFeaturizer(modelName=self.name, inputCol="image", outputCol="features", scaleHint = "SCALE_FAST")
-        features_sc = np.array([i.features for i in featurizer_sc.transform(self.imageDF).select("features").collect()])
+        featurizer_sc = DeepImageFeaturizer(
+            modelName=self.name,
+            inputCol="image",
+            outputCol="features",
+            scaleHint="SCALE_FAST")
+        features_sc = np.array([i.features for i in featurizer_sc.transform(
+            self.imageDF).select("features").collect()])
         kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
-        diffs = [spatial.distance.cosine(kerasReshaped[i],features_sc[i]) for i in range(len(features_sc))]
-        np.testing.assert_array_almost_equal([0 for i in range(len(features_sc))],diffs,decimal=2)
+        diffs = [
+            spatial.distance.cosine(
+                kerasReshaped[i],
+                features_sc[i]) for i in range(
+                len(features_sc))]
+        np.testing.assert_array_almost_equal([0 for i in range(len(features_sc))], diffs, decimal=2)
 
     def test_featurizer_in_pipeline(self):
         """

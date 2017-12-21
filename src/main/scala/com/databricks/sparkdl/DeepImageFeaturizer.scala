@@ -43,7 +43,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
   final val outputCol: Param[String] = new Param[String](this, "outputCol", "output column name")
   final val scaleHint: Param[String] = new Param(this,"scaleHint","hint which method to use for resizing.",
     (name: String) => DeepImageFeaturizer.scaleHints.contains(name))
-  setDefault(scaleHint, "SCALE_SMOOTH")
+  setDefault(scaleHint, "SCALE_AREA_AVERAGING")
   final val modelName: Param[String] = new Param[String](
     this,
     "modelName",
@@ -104,7 +104,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     this
   }
 
-  def setResizeFlag(value: String): this.type = {
+  def getScaleHint(value: String): this.type = {
     set(scaleHint, value)
     this
   }
@@ -162,35 +162,13 @@ object DeepImageFeaturizer extends DefaultParamsReadable[DeepImageFeaturizer] {
 
   // TODO: support batched graphs with mapBlocks
 
-  protected[sparkdl] trait NamedImageModel {
+  private[sparkdl] trait NamedImageModel {
     def name: String
     def height: Int
     def width: Int
     def graph: GraphDef
     def graphInputNode: String
     def graphOutputNode: String
-  }
-
-  private[sparkdl] object TestNet extends NamedImageModel {
-    /**
-     * A simple test graph used for testing DeepImageFeaturizer
-     */
-    override val name = "_test"
-    override val height = 60
-    override val width = 40
-    override val graphInputNode = "input"
-    override val graphOutputNode = "sparkdl_output__"
-
-    override def graph: GraphDef = {
-      val file = getClass.getResource("/sparkdl/test_net.pb").getFile
-      ModelFetcher.importGraph(Paths.get(file), "jVCEKp1bV53eib8d8OKreTH4fHu/Ji5NHMOsgdVwbMg=")
-        .getOrElse { throw new Exception(
-          s"""There was an internal error, the hash of our internal test file, $file, did not match
-             |the expected value. Either the file has been corrupted, or it has been changed and
-             |the hash has not been updated.
-           """.stripMargin)
-        }
-    }
   }
 
   /**
@@ -203,7 +181,7 @@ object DeepImageFeaturizer extends DefaultParamsReadable[DeepImageFeaturizer] {
 
   val scaleHints: Map[String, Int] = Map(
     "SCALE_AREA_AVERAGING" -> java.awt.Image.SCALE_AREA_AVERAGING,
-    "SCALE_AREA_DEFAULT" -> java.awt.Image.SCALE_DEFAULT,
+    "SCALE_DEFAULT" -> java.awt.Image.SCALE_DEFAULT,
     "SCALE_FAST" -> java.awt.Image.SCALE_FAST,
     "SCALE_REPLICATE" -> java.awt.Image.SCALE_REPLICATE,
     "SCALE_SMOOTH" -> java.awt.Image.SCALE_SMOOTH
