@@ -129,6 +129,19 @@ def _getScaleHintList():
     return dict(featurizer.scaleHintsJava()).keys()
 
 
+class _LazyCaleHintConverter:
+    _sizeHintConverter = None
+
+    def __call__(self, value):
+        if not self._sizeHintConverter:
+            self._sizeHintConverter = SparkDLTypeConverters.buildSupportedItemConverter(
+                _getScaleHintList())
+        return self._sizeHintConverter(value)
+
+
+_scaleHintConverter = _LazyCaleHintConverter()
+
+
 class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
     """
     Applies the model specified by its popular name, with its prediction layer(s) chopped off,
@@ -141,7 +154,7 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
 
     scaleHint = Param(Params._dummy(), "scaleHint", "Hint which algorhitm to use for image resizing",
-                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(_getScaleHintList()))
+                      typeConverter=_scaleHintConverter)
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint=None):
@@ -149,9 +162,20 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
         __init__(self, inputCol=None, outputCol=None, modelName=None)
         """
         super(DeepImageFeaturizer, self).__init__()
+        self._java_obj = SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
+        kwargs = self._input_kwargs
+        self.setParams(**kwargs)
+
+    @keyword_only
+    def setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint=None):
+        """
+        setParams(self, inputCol=None, outputCol=None, modelName=None, decodePredictions=False,
+                  topK=5)
+        """
         kwargs = self._input_kwargs
         self._set(**kwargs)
-        self._java_obj = SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
+        self._transfer_params_to_java()
+        return self
 
 # TODO: give an option to take off multiple layers so it can be used in tuning
 #       (could be the name of the layer or int for how many to take off).

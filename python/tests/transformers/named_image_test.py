@@ -127,6 +127,12 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         self.assertEqual(kerasPredict.shape, tfPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, tfPredict)
 
+    def _rowWithImage(self, img):
+        row = imageIO.imageArrayToStruct(img.astype('uint8'))
+        # re-order row to avoid pyspark bug
+        return [[getattr(row, field.name)
+                 for field in ImageSchema.imageSchema['image'].dataType]]
+
     def test_DeepImagePredictorNoReshape(self):
         """
         Run sparkDL predictor on manually-resized images and compare result to the
@@ -135,15 +141,8 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         imageArray = self.imageArray
         kerasPredict = self.kerasPredict
 
-        def rowWithImage(img):
-            # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
-            row = imageIO.imageArrayToStruct(img.astype('uint8'))
-            # re-order row to avoid pyspark bug
-            return [[getattr(row, field.name)
-                     for field in ImageSchema.imageSchema['image'].dataType]]
-
         # test: predictor vs keras on resized images
-        rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
+        rdd = self.sc.parallelize([self._rowWithImage(img) for img in imageArray])
         dfType = ImageSchema.imageSchema
         imageDf = rdd.toDF(dfType)
         if self.numPartitionsOverride:
@@ -192,22 +191,12 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         keras result.
         """
         imageArray = self.imageArray
-        kerasPredict = self.kerasPredict
-
-        def rowWithImage(img):
-            # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
-            row = imageIO.imageArrayToStruct(img.astype('uint8'))
-            # re-order row to avoid pyspark bug
-            return [[getattr(row, field.name)
-                     for field in ImageSchema.imageSchema['image'].dataType]]
-
         # test: predictor vs keras on resized images
-        rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
+        rdd = self.sc.parallelize([self._rowWithImage(img) for img in imageArray])
         dfType = ImageSchema.imageSchema
         imageDf = rdd.toDF(dfType)
         if self.numPartitionsOverride:
             imageDf = imageDf.coalesce(self.numPartitionsOverride)
-
         transformer = DeepImageFeaturizer(
             inputCol='image',
             modelName=self.name,

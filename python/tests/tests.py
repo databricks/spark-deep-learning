@@ -42,7 +42,7 @@ class PythonUnitTestCase(unittest.TestCase):
 class TestSparkContext(object):
     @classmethod
     def setup_env(cls):
-        cls.sc = SparkContext.getOrCreate()
+        cls.sc = SparkContext('local[*]', cls.__name__)
         cls.sql = SQLContext(cls.sc)
         cls.session = SparkSession.builder.getOrCreate()
 
