@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-from sparkdl.image.imageIO import imageStructToArray
+from sparkdl.image.image import ImageSchema
 from sparkdl.transformers.keras_image import KerasImageFileTransformer
 from sparkdl.transformers.utils import InceptionV3Constants
 from ..tests import SparkDLTestCase
@@ -39,7 +39,7 @@ class KerasImageFileTransformerTest(SparkDLTestCase):
         img_col = transformer._loadedImageCol()
         expected_shape = InceptionV3Constants.INPUT_SHAPE + (3,)
         for row in image_df.collect():
-            arr = imageStructToArray(row[img_col])
+            arr = ImageSchema.toNDArray(row[img_col])
             self.assertEqual(arr.shape, expected_shape)
 
 

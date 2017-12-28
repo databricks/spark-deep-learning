@@ -126,6 +126,12 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         self.assertEqual(kerasPredict.shape, tfPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, tfPredict)
 
+    def _rowWithImage(self, img):
+        row = ImageSchema.toImage(img.astype('uint8'))
+        # re-order row to avoid pyspark bug
+        return [[getattr(row, field.name)
+                 for field in ImageSchema.imageSchema['image'].dataType]]
+
     def test_DeepImagePredictorNoReshape(self):
         """
         Run sparkDL predictor on manually-resized images and compare result to the
@@ -135,8 +141,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         kerasPredict = self.kerasPredict
 
         def rowWithImage(img):
-            # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
-            row = imageIO.imageArrayToStruct(img.astype('uint8'))
+            row = ImageSchema.toImage(img.astype('uint8'))
             # re-order row to avoid pyspark bug
             return [[getattr(row, field.name) for field in ImageSchema.imageSchema['image'].dataType]]
 

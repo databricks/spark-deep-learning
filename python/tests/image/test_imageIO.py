@@ -81,7 +81,7 @@ class TestReadImages(SparkDLTestCase):
         self.assertRaises(ValueError, imageIO.createResizeImageUDF, [1, 2, 3])
 
         make_smaller = imageIO.createResizeImageUDF([4, 5]).func
-        imgAsRow = imageIO.imageArrayToStruct(array)
+        imgAsRow = ImageSchema.toImage(array)
         smallerImg = make_smaller(imgAsRow)
         self.assertEqual(smallerImg.height, 4)
         self.assertEqual(smallerImg.width, 5)
@@ -89,7 +89,7 @@ class TestReadImages(SparkDLTestCase):
         # Compare to PIL resizing
         imgAsPIL = PIL.Image.fromarray(obj=imageIO._reverseChannels(array)).resize((5, 4))
         smallerAry = imageIO._reverseChannels(np.asarray(imgAsPIL))
-        np.testing.assert_array_equal(smallerAry, imageIO.imageStructToArray(smallerImg))
+        np.testing.assert_array_equal(smallerAry, ImageSchema.toNDArray(smallerImg))
         # Test that resize with the same size is a no-op
         sameImage = imageIO.createResizeImageUDF((imgAsRow.height, imgAsRow.width)).func(imgAsRow)
         self.assertEqual(imgAsRow, sameImage)
@@ -103,11 +103,11 @@ class TestReadImages(SparkDLTestCase):
         """
         def _test(array):
             height, width, chan = array.shape
-            imgAsStruct = imageIO.imageArrayToStruct(array)
+            imgAsStruct = ImageSchema.toImage(array)
             self.assertEqual(imgAsStruct.height, height)
             self.assertEqual(imgAsStruct.width, width)
             self.assertEqual(imgAsStruct.data, array.tobytes())
-            imgReconstructed = imageIO.imageStructToArray(imgAsStruct)
+            imgReconstructed = ImageSchema.toNDArray(imgAsStruct)
             np.testing.assert_array_equal(array, imgReconstructed)
         for nChannels in (1, 3, 4):
             # unsigned bytes
@@ -129,7 +129,7 @@ class TestReadImages(SparkDLTestCase):
         img = validImages.first().image
         self.assertEqual(img.height, array.shape[0])
         self.assertEqual(img.width, array.shape[1])
-        self.assertEqual(imageIO.imageTypeByOrdinal(img.mode).nChannels, array.shape[2])
+        self.assertEqual(ImageSchema.ocvTypeByMode(img.mode).nChannels, array.shape[2])
         # array comes out of PIL and is in RGB order
         self.assertEqual(img.data, array.tobytes())
 
@@ -137,8 +137,8 @@ class TestReadImages(SparkDLTestCase):
         # Test that utility functions can be used to create a udf that accepts and return
         # imageSchema
         def do_nothing(imgRow):
-            array = imageIO.imageStructToArray(imgRow)
-            return imageIO.imageArrayToStruct(array)
+            array = ImageSchema.toNDArray(imgRow)
+            return ImageSchema.toImage(array)
         do_nothing_udf = udf(do_nothing, ImageSchema.imageSchema['image'].dataType)
 
         df = imageIO._readImagesWithCustomFn(

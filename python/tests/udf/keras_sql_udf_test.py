@@ -34,7 +34,6 @@ from sparkdl.graph.tensorframes_udf import makeGraphUDF
 import sparkdl.graph.utils as tfx
 from sparkdl.udf.keras_image_model import registerKerasImageUDF
 from sparkdl.utils import jvmapi as JVMAPI
-from sparkdl.image.imageIO import imageArrayToStruct
 from sparkdl.image.imageIO import _reverseChannels
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import getSampleImagePathsDF
@@ -103,11 +102,11 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             import numpy as np
             img_arr = np.array(Image.open(fpath), dtype=np.uint8)
             # PIL is RGB, image schema is BGR => need to flip the channels
-            return imageArrayToStruct(_reverseChannels(img_arr))
+            return ImageSchema.toImage(_reverseChannels(img_arr))
 
         def keras_load_spimg(fpath):
             # Keras loads image in RGB order, ImageSchema expects BGR => need to flip
-            return imageArrayToStruct(_reverseChannels(keras_load_img(fpath)))
+            return ImageSchema.toImage(_reverseChannels(keras_load_img(fpath)))
 
         # Load image with Keras and store it in our image schema
         JVMAPI.registerUDF('keras_load_spimg', keras_load_spimg,

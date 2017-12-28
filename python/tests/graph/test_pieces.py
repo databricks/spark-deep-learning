@@ -40,8 +40,8 @@ from pyspark.sql.functions import udf
 from sparkdl.graph.builder import IsolatedSession, GraphFunction
 import sparkdl.graph.pieces as gfac
 import sparkdl.graph.utils as tfx
-from sparkdl.image.imageIO import imageArrayToStruct
-from sparkdl.image.imageIO import imageTypeByOrdinal
+from sparkdl.image.image import ImageSchema
+from sparkdl.image import imageIO
 
 
 from ..tests import SparkDLTestCase
@@ -64,10 +64,10 @@ class GraphPiecesTest(SparkDLTestCase):
             return img_out
 
         def check_image_round_trip(img_arr):
-            spimg_dict = imageArrayToStruct(img_arr).asDict()
+            spimg_dict = ImageSchema.toImage(img_arr).asDict()
             spimg_dict['data'] = bytes(spimg_dict['data'])
             img_arr_out = exec_gfn_spimg_decode(
-                spimg_dict, imageTypeByOrdinal(spimg_dict['mode']).dtype)
+                spimg_dict, ImageSchema.ocvTypeByMode(spimg_dict['mode']).nptype)
             self.assertTrue(np.all(img_arr_out == img_arr))
 
         for fp in img_fpaths:
@@ -159,7 +159,7 @@ class GraphPiecesTest(SparkDLTestCase):
             img_input = xcpt.preprocess_input(img_arr)
             preds_ref = xcpt_model.predict(img_input)
 
-            spimg_input_dict = imageArrayToStruct(img_input).asDict()
+            spimg_input_dict = ImageSchema.toImage(imageIO._stripBatchSize(img_input)).asDict()
             spimg_input_dict['data'] = bytes(spimg_input_dict['data'])
             with IsolatedSession() as issn:
                 # Need blank import scope name so that spimg fields match the input names

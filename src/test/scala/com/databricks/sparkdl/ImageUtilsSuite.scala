@@ -66,7 +66,7 @@ class ImageUtilsSuite extends FunSuite {
     val rand = new Random(971)
     val imageData = Array.ofDim[Byte](height * width * channels)
     rand.nextBytes(imageData)
-    val spImage = Row(null, height, width, channels, ImageSchema.ocvTypes("CV_8UC3"), imageData)
+    val spImage = Row(null, height, width, channels, ImageSchema.OpenCvType.get("CV_8UC3").mode, imageData)
     val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
     val testImage = ImageUtils.spImageFromBufferedImage(bufferedImage)
     assert(spImage === testImage, "Image changed during conversion.")
@@ -84,7 +84,7 @@ class ImageUtilsSuite extends FunSuite {
       (0 until width).flatMap { j => Seq(x + j + 1, x + j + 4, x + j + 7) }
     }.map(_.toByte).toArray
 
-    val spImage = Row(null, height, width, 3, ImageSchema.ocvTypes("CV_8UC3"), rawData)
+    val spImage = Row(null, height, width, 3, ImageSchema.OpenCvType.get("CV_8UC3").mode, rawData)
     val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
 
     for (h <- 0 until height) {

@@ -22,8 +22,7 @@ private APIs.
 from sparkdl.image.image import ImageSchema
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.sql.functions import udf
-from sparkdl.image.imageIO import imageArrayToStruct
-from sparkdl.image.imageIO import _reverseChannels
+from sparkdl.image.imageIO import _reverseChannels, _stripBatchSize
 from sparkdl.param import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
@@ -95,10 +94,10 @@ class CanLoadImage(Params):
         # Load from external resources can fail, so we should allow None to be returned
 
         def load_image_uri_impl(uri):
-            try:
-                return imageArrayToStruct(_reverseChannels(loader(uri)))
-            except BaseException:  # pylint: disable=bare-except
-                return None
+            # try:
+                return ImageSchema.toImage(_reverseChannels(_stripBatchSize(loader(uri))))
+            # except BaseException:  # pylint: disable=bare-except
+            #     return None
         load_udf = udf(load_image_uri_impl, ImageSchema.imageSchema['image'].dataType)
         return dataframe.withColumn(self._loadedImageCol(), load_udf(dataframe[inputCol]))
 

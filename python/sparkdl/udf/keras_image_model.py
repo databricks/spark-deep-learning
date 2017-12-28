@@ -137,8 +137,6 @@ def _serialize_and_reload_with(preprocessor):
     def udf_impl(spimg):
         import numpy as np
         from tempfile import NamedTemporaryFile
-        from sparkdl.image.imageIO import imageArrayToStruct
-
         img = imageIO.imageStructToPIL(spimg)
         # Warning: must use lossless format to guarantee consistency
         temp_fp = NamedTemporaryFile(suffix='.png')
@@ -150,6 +148,6 @@ def _serialize_and_reload_with(preprocessor):
         # Keras works in RGB order, need to fix the order
         img_arr_reloaded = imageIO.fixColorChannelOrdering(
             currentOrder='RGB', imgAry=img_arr_reloaded)
-        return imageArrayToStruct(img_arr_reloaded)
+        return ImageSchema.toImage(img_arr_reloaded)
 
     return udf_impl
