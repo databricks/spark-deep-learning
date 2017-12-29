@@ -40,11 +40,8 @@ import org.apache.spark.sql.types._
 @Since("2.3.0")
 object ImageSchema {
 
-  val undefinedImageType = "Undefined"
-
-
   case class OpenCvType(mode: Int, dataType: String, nChannels: Int) {
-    def name: String = "CV_" + dataType + "C" + nChannels
+    def name: String = if (mode == -1) "Undefined" else "CV_" + dataType + "C" + nChannels
     override def toString: String = "OpenCvType(mode = " + mode + ", name = " + name + ")"
   }
 
@@ -76,7 +73,7 @@ object ImageSchema {
            dt <- Array("8U", "8S", "16U", "16S", "32S", "32F", "64F"))
         yield (dt, nc)
     val ordinals = for (i <- 0 to 3; j <- 0 to 6) yield ( i * 8 + j)
-    (ordinals zip types).map(x => OpenCvType(x._1, x._2._1, x._2._2))
+    OpenCvType.undefinedType +: (ordinals zip types).map(x => OpenCvType(x._1, x._2._1, x._2._2))
   }
 
   val javaOcvTypes = ocvTypes.asJava

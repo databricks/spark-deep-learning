@@ -52,6 +52,7 @@ class _ImageSchema(object):
     _OcvType = namedtuple("OcvType", ["name", "mode", "nChannels", "dataType", "nptype"])
 
     _ocvToNumpyMap = {
+        "N/A": "N/A",
         "8U": np.dtype("uint8"),
         "8S": np.dtype("int8"),
         "16U": np.dtype('uint16'),
