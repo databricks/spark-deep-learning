@@ -24,7 +24,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
 
-private[sparkdl] object ImageUtils {
+object ImageUtils {
 
   /**
    * Takes a Row image (spImage) and returns a Java BufferedImage. Currently supports 1 & 3
@@ -100,7 +100,7 @@ private[sparkdl] object ImageUtils {
       }
       h += 1
     }
-    Row(origin, height, width, channels, ImageSchema.ocvTypes("CV_8UC3"), decoded)
+    Row(origin, height, width, channels, ImageSchema.OpenCvType.get("CV_8UC3").mode, decoded)
   }
 
   /**
@@ -115,7 +115,7 @@ private[sparkdl] object ImageUtils {
    * @param spImage     image to resize.
    * @return resized image, if the input was BGR or 1 channel, the output will be BGR.
    */
-  private[sparkdl] def resizeImage(
+  def resizeImage(
     tgtHeight: Int,
     tgtWidth: Int,
     tgtChannels: Int,

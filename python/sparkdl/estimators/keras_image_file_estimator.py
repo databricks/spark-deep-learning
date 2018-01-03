@@ -24,11 +24,11 @@ from pyspark.ml import Estimator
 import pyspark.ml.linalg as spla
 from pyspark.ml.param import Param, Params, TypeConverters
 
-from sparkdl.image.imageIO import imageStructToArray
 from sparkdl.param import (
     keyword_only, CanLoadImage, HasKerasModel, HasKerasOptimizer, HasKerasLoss, HasOutputMode,
     HasInputCol, HasInputImageNodeName, HasLabelCol, HasOutputNodeName, HasOutputCol)
 from sparkdl.transformers.keras_image import KerasImageFileTransformer
+from sparkdl.image.image import ImageSchema
 import sparkdl.utils.jvmapi as JVMAPI
 import sparkdl.utils.keras_model as kmutil
 
@@ -202,7 +202,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         rows = image_df.collect()
         for row in rows:
             spimg = row[tmp_image_col]
-            features = imageStructToArray(spimg)
+            features = ImageSchema.toNDArray(spimg)
             localFeatures.append(features)
 
         if not localFeatures:  # NOTE(phi-dbq): pep-8 recommended against testing 0 == len(array)

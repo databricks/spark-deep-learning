@@ -162,8 +162,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         # Assumes that the dtype for all images is the same in the given dataframe.
         pdf = dataset.select(self.getInputCol()).take(1)
         img = pdf[0][self.getInputCol()]
-        img_type = imageIO.imageTypeByOrdinal(img.mode)
-        return img_type.dtype
+        return ImageSchema.ocvTypeByMode(img.mode).nptype
 
     # TODO: duplicate code, same functionality as sparkdl.graph.pieces.py::builSpImageConverter
     # TODO: It should be extracted as a util function and shared
@@ -229,10 +228,10 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
 
         def to_image(orig_image, numeric_data):
             # Assume the returned image has float pixels but same #channels as input
-            mode = imageIO.imageTypeByName('CV_32FC%d' % orig_image.nChannels)
+            ocvType = ImageSchema.ocvTypeByName('CV_32FC%d' % orig_image.nChannels)
             data = bytearray(np.array(numeric_data).astype(np.float32).tobytes())
             nChannels = orig_image.nChannels
-            return Row(origin="", mode=mode.ord, height=height,
+            return Row(origin="", mode=ocvType.mode, height=height,
                        width=width, nChannels=nChannels, data=data)
         to_image_udf = udf(to_image, ImageSchema.imageSchema['image'].dataType)
         resDf = df.withColumn(self.getOutputCol(), to_image_udf(

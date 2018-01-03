@@ -17,10 +17,9 @@
 package com.databricks.sparkdl
 
 import org.scalatest.FunSuite
-
 import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.ml.linalg.{Vector, Vectors}
-import org.apache.spark.sql.functions.{col, lit}
+import org.apache.spark.sql.functions.{col, lit, udf}
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types.{StructField, StructType}
 
@@ -48,8 +47,9 @@ class DeepImageFeaturizerSuite extends FunSuite with TestSparkContext with Defau
     assert(featurizer.transformSchema(myData.schema) === transformed.schema)
 
     // check that we can materialize a row, and the type is Vector.
-    val result = transformed.select(col(outputColName)).collect()
-    assert(result.forall { r: Row => r.getAs[Vector](0).size == 24 })
+    val result = transformed.select(col(outputColName)).collect().map((r: Row) => r.getAs[Vector](0))
+    assert(result.forall { v:Vector => v.size == 24 })
+    result.forall { v:Vector => {println(v.toArray.mkString("[",",","]"));true} }
   }
 
   test ("Test schema validation.") {
