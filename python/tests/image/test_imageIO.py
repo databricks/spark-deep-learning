@@ -18,6 +18,7 @@ from io import BytesIO
 # 3rd party
 import numpy as np
 import PIL.Image
+import random
 
 # pyspark
 from pyspark.sql.functions import col, udf
@@ -156,5 +157,25 @@ class TestReadImages(SparkDLTestCase):
         self.assertTrue(hasattr(first, "filePath"))
         self.assertEqual(type(first.fileData), bytearray)
 
+    def test_ocv_types(self):
+        ocvList = ImageSchema.ocvTypes
+        self.assertEqual("Undefined", ocvList[0].name)
+        self.assertEqual(-1, ocvList[0].mode)
+        self.assertEqual("N/A", ocvList[0].dataType)
+        for x in ocvList:
+            self.assertEqual(x, ImageSchema.ocvTypeByName(x.name))
+            self.assertEqual(x, ImageSchema.ocvTypeByMode(x.mode))
+
+    def test_conversions(self):
+        ary_src = [[[1e7*random.random() for z in range(4)] for y in range(10)] for x in range(20)]
+        for ocvType in ImageSchema.ocvTypes:
+            if ocvType.name == 'Undefined':
+                continue
+            x = [[ary_src[i][j][0:ocvType.nChannels] for j in range(len(ary_src[0]))] for i in range(len(ary_src))]
+            npary0 = np.array(x).astype(ocvType.nptype)
+            img = ImageSchema.toImage(npary0)
+            self.assertEqual(ocvType,ImageSchema.ocvTypeByMode(img.mode))
+            npary1 = ImageSchema.toNDArray(img)
+            np.testing.assert_array_equal(npary0, npary1)
 
 # TODO: make unit tests for arrayToImageRow on arrays of varying shapes, channels, dtypes.
