@@ -226,7 +226,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
                 kerasReshaped[i],
                 features_sc[i]) for i in range(
                 len(features_sc))]
-        np.testing.assert_array_almost_equal([0 for i in range(len(features_sc))], diffs, decimal=2)
+        np.testing.assert_array_almost_equal(0, diffs, decimal=2)
 
     def test_featurizer_in_pipeline(self):
         """

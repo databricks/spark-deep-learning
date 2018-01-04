@@ -177,8 +177,19 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
         self._transfer_params_to_java()
         return self
 
-# TODO: give an option to take off multiple layers so it can be used in tuning
-#       (could be the name of the layer or int for how many to take off).
+    def setModelName(self, value):
+        return self._set(modelName=value)
+
+    def getModelName(self):
+        return self.getOrDefault(self.modelName)
+
+    def setScaleHint(self, value):
+            return self._set(scaleHint=value)
+
+    def getScaleHint(self):
+        return self.getOrDefault(self.scaleHint)
+
+
 
 
 class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):

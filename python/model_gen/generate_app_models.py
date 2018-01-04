@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/env python
 
 # Copyright 2017 Databricks, Inc.
 #

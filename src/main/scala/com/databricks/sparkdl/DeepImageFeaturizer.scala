@@ -16,14 +16,11 @@
 
 package com.databricks.sparkdl
 
-import java.nio.file.Paths
-
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.image.ImageSchema
-import org.apache.spark.ml.image.ImageSchema.ocvTypes
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vectors
-import org.apache.spark.ml.param.{BooleanParam, Param, ParamMap}
+import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.types.StructType
@@ -117,7 +114,8 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     val height = model.height
     val width = model.width
 
-    val resizeUdf = udf((image: Row) => ImageUtils.resizeImage(height, width, 3, image, DeepImageFeaturizer.scaleHints(getScaleHint)), imSchema)
+    val resizeUdf = udf((image: Row) => ImageUtils.resizeImage(height, width, 3, image,
+      DeepImageFeaturizer.scaleHints(getScaleHint)), imSchema)
 
     val imageDF = dataFrame
       .withColumn(RESIZED_IMAGE_COL, resizeUdf(col(getInputCol)))

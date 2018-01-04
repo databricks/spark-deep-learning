@@ -16,15 +16,11 @@
 
 package com.databricks.sparkdl
 
-import java.awt
 import java.awt.image.BufferedImage
 import java.awt.{Color, Image}
 
-import com.sun.javafx.iio.ImageStorage.ImageType
 import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.udf
 
 private[sparkdl] object ImageUtils {
 
