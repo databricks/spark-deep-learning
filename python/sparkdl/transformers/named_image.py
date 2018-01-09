@@ -162,7 +162,7 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
         __init__(self, inputCol=None, outputCol=None, modelName=None)
         """
         super(DeepImageFeaturizer, self).__init__()
-        self._java_obj = SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
+        self._java_obj = self._new_java_obj("com.databricks.sparkdl.DeepImageFeaturizer", self.uid)
         self._setDefault(scaleHint="SCALE_AREA_AVERAGING")
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
