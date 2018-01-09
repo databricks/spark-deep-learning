@@ -157,14 +157,16 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
                       typeConverter=_scaleHintConverter)
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint=None):
+    def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING"):
         """
         __init__(self, inputCol=None, outputCol=None, modelName=None)
         """
         super(DeepImageFeaturizer, self).__init__()
         self._java_obj = SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer()
+        self._setDefault(scaleHint="SCALE_AREA_AVERAGING")
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
+
 
     @keyword_only
     def setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint=None):
