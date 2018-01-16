@@ -15,8 +15,6 @@
 
 from keras.applications.imagenet_utils import decode_predictions
 import numpy as np
-
-
 import py4j
 
 from pyspark import SparkContext
@@ -129,7 +127,7 @@ def _getScaleHintList():
     return dict(featurizer.scaleHintsJava()).keys()
 
 
-class _LazyCaleHintConverter:
+class _LazyScaleHintConverter:
     _sizeHintConverter = None
 
     def __call__(self, value):
@@ -139,7 +137,7 @@ class _LazyCaleHintConverter:
         return self._sizeHintConverter(value)
 
 
-_scaleHintConverter = _LazyCaleHintConverter()
+_scaleHintConverter = _LazyScaleHintConverter()
 
 
 class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
@@ -159,7 +157,7 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING"):
         """
-        __init__(self, inputCol=None, outputCol=None, modelName=None)
+        __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING")
         """
         super(DeepImageFeaturizer, self).__init__()
         self._java_obj = self._new_java_obj("com.databricks.sparkdl.DeepImageFeaturizer", self.uid)
@@ -167,12 +165,10 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
 
-
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint=None):
+    def setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING"):
         """
-        setParams(self, inputCol=None, outputCol=None, modelName=None, decodePredictions=False,
-                  topK=5)
+        setParams(self, inputCol=None, outputCol=None, modelName=None)
         """
         kwargs = self._input_kwargs
         self._set(**kwargs)
@@ -190,7 +186,6 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
 
     def getScaleHint(self):
         return self.getOrDefault(self.scaleHint)
-
 
 
 

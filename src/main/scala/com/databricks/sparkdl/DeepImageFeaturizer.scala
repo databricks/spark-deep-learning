@@ -16,6 +16,8 @@
 
 package com.databricks.sparkdl
 
+import scala.collection.JavaConverters._
+
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
@@ -29,7 +31,6 @@ import org.tensorflow.framework.GraphDef
 import org.tensorframes.impl.DebugRowOps
 import org.tensorframes.{Shape, ShapeDescription}
 
-import scala.collection.JavaConverters._
 
 
 class DeepImageFeaturizer(override val uid: String) extends Transformer with DefaultParamsWritable {
@@ -38,7 +39,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
 
   final val inputCol: Param[String] = new Param[String](this, "inputCol", "input column name")
   final val outputCol: Param[String] = new Param[String](this, "outputCol", "output column name")
-  final val scaleHint: Param[String] = new Param(this,"scaleHint", "hint which method to use for resizing.",
+  final val scaleHint: Param[String] = new Param(this, "scaleHint", "hint which method to use for resizing.",
     (name: String) => DeepImageFeaturizer.scaleHints.contains(name))
   setDefault(scaleHint, "SCALE_AREA_AVERAGING")
   final val modelName: Param[String] = new Param[String](

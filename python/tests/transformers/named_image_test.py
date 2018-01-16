@@ -13,15 +13,10 @@
 # limitations under the License.
 #
 
-import numpy as np
-import os
-
-from scipy import spatial
-
-from glob import glob
-from PIL import Image
-
 from keras.applications import resnet50
+import numpy as np
+from PIL import Image
+from scipy import spatial
 import tensorflow as tf
 
 from pyspark.ml import Pipeline
@@ -197,14 +192,13 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         imageDf = rdd.toDF(dfType)
         if self.numPartitionsOverride:
             imageDf = imageDf.coalesce(self.numPartitionsOverride)
-        transformer = DeepImageFeaturizer(
-            inputCol='image',
-            modelName=self.name,
-            outputCol="features")
+        transformer = DeepImageFeaturizer(inputCol='image', modelName=self.name,
+                                          outputCol="features")
         dfFeatures = transformer.transform(imageDf).collect()
         dfFeatures = np.array([i.features for i in dfFeatures])
         kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
         np.testing.assert_array_almost_equal(kerasReshaped, dfFeatures)
+
 
     def test_featurization(self):
         """
@@ -213,11 +207,8 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         # Since we use different libraries for image resizing (PIL in python vs. java.awt.Image in scala),
         # the result will not match keras exactly. In fact the best we can do is a "somewhat similar" result.
         # At least compare cosine distance is < 1e-2
-        featurizer_sc = DeepImageFeaturizer(
-            modelName=self.name,
-            inputCol="image",
-            outputCol="features",
-            scaleHint="SCALE_FAST")
+        featurizer_sc = DeepImageFeaturizer(modelName=self.name, inputCol="image",
+                                            outputCol="features", scaleHint="SCALE_FAST")
         features_sc = np.array([i.features for i in featurizer_sc.transform(
             self.imageDF).select("features").collect()])
         kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
