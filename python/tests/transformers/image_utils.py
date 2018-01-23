@@ -46,13 +46,11 @@ def getImageFiles():
 def getSampleImageDF():
     return imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(), decode_f=imageIO.PIL_decode)
 
-
 def getSampleImagePaths():
     dirpath = _getSampleJPEGDir()
     files = [os.path.abspath(os.path.join(dirpath, f)) for f in os.listdir(dirpath)
              if f.endswith('.jpg')]
     return files
-
 
 def getSampleImagePathsDF(sqlContext, colName):
     files = getSampleImagePaths()

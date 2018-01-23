@@ -13,13 +13,10 @@
 # limitations under the License.
 #
 
-import numpy as np
-import os
-
-from glob import glob
-from PIL import Image
-
 from keras.applications import resnet50
+import numpy as np
+from PIL import Image
+from scipy import spatial
 import tensorflow as tf
 
 from pyspark.ml import Pipeline
@@ -37,7 +34,6 @@ from sparkdl.image.image import ImageSchema
 from ..tests import SparkDLTestCase
 from .image_utils import getSampleImageDF
 from.image_utils import getImageFiles
-
 
 
 class KerasApplicationModelTestCase(SparkDLTestCase):
@@ -126,6 +122,12 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         self.assertEqual(kerasPredict.shape, tfPredict.shape)
         np.testing.assert_array_almost_equal(kerasPredict, tfPredict)
 
+    def _rowWithImage(self, img):
+        row = imageIO.imageArrayToStruct(img.astype('uint8'))
+        # re-order row to avoid pyspark bug
+        return [[getattr(row, field.name)
+                 for field in ImageSchema.imageSchema['image'].dataType]]
+
     def test_DeepImagePredictorNoReshape(self):
         """
         Run sparkDL predictor on manually-resized images and compare result to the
@@ -134,14 +136,8 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         imageArray = self.imageArray
         kerasPredict = self.kerasPredict
 
-        def rowWithImage(img):
-            # return [imageIO.imageArrayToStruct(img.astype('uint8'), imageType.sparkMode)]
-            row = imageIO.imageArrayToStruct(img.astype('uint8'))
-            # re-order row to avoid pyspark bug
-            return [[getattr(row, field.name) for field in ImageSchema.imageSchema['image'].dataType]]
-
         # test: predictor vs keras on resized images
-        rdd = self.sc.parallelize([rowWithImage(img) for img in imageArray])
+        rdd = self.sc.parallelize([self._rowWithImage(img) for img in imageArray])
         dfType = ImageSchema.imageSchema
         imageDf = rdd.toDF(dfType)
         if self.numPartitionsOverride:
@@ -184,22 +180,44 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             # TODO: actually check the value of the output to see if they are reasonable
             # e.g. -- compare to just running with keras.
 
+    def test_featurization_no_reshape(self):
+        """
+        Run sparkDL predictor on manually-resized images and compare result to the
+        keras result.
+        """
+        imageArray = self.imageArray
+        # test: predictor vs keras on resized images
+        rdd = self.sc.parallelize([self._rowWithImage(img) for img in imageArray])
+        dfType = ImageSchema.imageSchema
+        imageDf = rdd.toDF(dfType)
+        if self.numPartitionsOverride:
+            imageDf = imageDf.coalesce(self.numPartitionsOverride)
+        transformer = DeepImageFeaturizer(inputCol='image', modelName=self.name,
+                                          outputCol="features")
+        dfFeatures = transformer.transform(imageDf).collect()
+        dfFeatures = np.array([i.features for i in dfFeatures])
+        kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
+        np.testing.assert_array_almost_equal(kerasReshaped, dfFeatures)
+
+
     def test_featurization(self):
         """
         Tests that featurizer returns (almost) the same values as Keras.
         """
-        output_col = "prediction"
-        transformer = DeepImageFeaturizer(inputCol="image", outputCol=output_col,
-                                          modelName=self.name)
-        transformed_df = transformer.transform(self.imageDF)
-        collected = self._sortByFileOrder(transformed_df.collect())
-        features = np.array([i.prediction for i in collected])
-
-        # Note: keras features may be multi-dimensional np arrays, but transformer features
-        # will be 1-d vectors. Regardless, the dimensions should add up to the same.
-        self.assertEqual(np.prod(self.kerasFeatures.shape), np.prod(features.shape))
+        # Since we use different libraries for image resizing (PIL in python vs. java.awt.Image in scala),
+        # the result will not match keras exactly. In fact the best we can do is a "somewhat similar" result.
+        # At least compare cosine distance is < 1e-2
+        featurizer_sc = DeepImageFeaturizer(modelName=self.name, inputCol="image",
+                                            outputCol="features", scaleHint="SCALE_FAST")
+        features_sc = np.array([i.features for i in featurizer_sc.transform(
+            self.imageDF).select("features").collect()])
         kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
-        np.testing.assert_array_almost_equal(kerasReshaped, features, decimal=6)
+        diffs = [
+            spatial.distance.cosine(
+                kerasReshaped[i],
+                features_sc[i]) for i in range(
+                len(features_sc))]
+        np.testing.assert_array_almost_equal(0, diffs, decimal=2)
 
     def test_featurizer_in_pipeline(self):
         """

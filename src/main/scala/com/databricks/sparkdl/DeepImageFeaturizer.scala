@@ -16,20 +16,21 @@
 
 package com.databricks.sparkdl
 
-import java.nio.file.Paths
+import scala.collection.JavaConverters._
 
-import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.ml.Transformer
+import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.tensorflow.framework.GraphDef
-import org.tensorframes.{Shape, ShapeDescription}
 import org.tensorframes.impl.DebugRowOps
+import org.tensorframes.{Shape, ShapeDescription}
+
 
 
 class DeepImageFeaturizer(override val uid: String) extends Transformer with DefaultParamsWritable {
@@ -38,6 +39,9 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
 
   final val inputCol: Param[String] = new Param[String](this, "inputCol", "input column name")
   final val outputCol: Param[String] = new Param[String](this, "outputCol", "output column name")
+  final val scaleHint: Param[String] = new Param(this, "scaleHint", "hint which method to use for resizing.",
+    (name: String) => DeepImageFeaturizer.scaleHints.contains(name))
+  setDefault(scaleHint, "SCALE_AREA_AVERAGING")
   final val modelName: Param[String] = new Param[String](
     this,
     "modelName",
@@ -47,6 +51,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
 
   private val RESIZED_IMAGE_COL = "__sparkdl_imageResized"
   private val INPUT_BUFFER_COL = "__sparkdl_imageBuffer"
+
 
   private def validateSchema(schema: StructType): Unit = {
     val inputColumnName = getInputCol
@@ -80,6 +85,8 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
 
   def getOutputCol: String = getOrDefault(outputCol)
 
+  def getScaleHint: String = getOrDefault(scaleHint)
+
   def setModelName(value: String): this.type = {
     set(modelName, value)
     this
@@ -95,6 +102,11 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     this
   }
 
+  def setScaleHint(value: String): this.type = {
+    set(scaleHint, value)
+    this
+  }
+
   def transform(dataFrame: Dataset[_]): DataFrame = {
     validateSchema(dataFrame.schema)
     val model = DeepImageFeaturizer.supportedModelMap(getModelName)
@@ -102,7 +114,9 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     val imSchema = ImageSchema.columnSchema
     val height = model.height
     val width = model.width
-    val resizeUdf = udf((image: Row) => ImageUtils.resizeImage(height, width, 3, image), imSchema)
+
+    val resizeUdf = udf((image: Row) => ImageUtils.resizeImage(height, width, 3, image,
+      DeepImageFeaturizer.scaleHints(getScaleHint)), imSchema)
 
     val imageDF = dataFrame
       .withColumn(RESIZED_IMAGE_COL, resizeUdf(col(getInputCol)))
@@ -156,77 +170,22 @@ object DeepImageFeaturizer extends DefaultParamsReadable[DeepImageFeaturizer] {
     def graphOutputNode: String
   }
 
-  private[sparkdl] object TestNet extends NamedImageModel {
-    /**
-     * A simple test graph used for testing DeepImageFeaturizer
-     */
-    override val name = "_test"
-    override val height = 60
-    override val width = 40
-    override val graphInputNode = "input"
-    override val graphOutputNode = "sparkdl_output__"
-
-    override def graph: GraphDef = {
-      val file = getClass.getResource("/sparkdl/test_net.pb").getFile
-      ModelFetcher.importGraph(Paths.get(file), "jVCEKp1bV53eib8d8OKreTH4fHu/Ji5NHMOsgdVwbMg=")
-        .getOrElse { throw new Exception(
-          s"""There was an internal error, the hash of our internal test file, $file, did not match
-             |the expected value. Either the file has been corrupted, or it has been changed and
-             |the hash has not been updated.
-           """.stripMargin)
-        }
-    }
-  }
-
-  private[sparkdl] object InceptionV3 extends NamedImageModel {
-    /**
-     * InceptionV3 model, with final layer removed, adapted from Keras.
-     * The model and weights are modified from the one provided by Keras.
-     * All cotributions by Keras are provided subject to the MIT license 
-     * located at https://github.com/fchollet/keras/blob/master/LICENSE
-     * and subject to the below additional copyrights and licenses.
-     *
-     * Copyright 2016 The TensorFlow Authors.  All rights reserved.
-     *
-     * Licensed under the Apache License, Version 2.0 (the "License");
-     * you may not use this file except in compliance with the License.
-     * You may obtain a copy of the License at
-     * 
-     * http://www.apache.org/licenses/LICENSE-2.0
-     * 
-     * Unless required by applicable law or agreed to in writing, software
-     * distributed under the License is distributed on an "AS IS" BASIS,
-     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-     * See the License for the specific language governing permissions and
-     * limitations under the License.
-     */
-    override val name = "InceptionV3"
-    override val height = 299
-    override val width = 299
-    override val graphInputNode = "input"
-    override val graphOutputNode = "sparkdl_output__"
-
-    override def graph: GraphDef = ModelFetcher.getFromWeb(
-      "https://s3-us-west-2.amazonaws.com/spark-deep-learning-models/sparkdl-inceptionV3.pb",
-      fileName = "sparkdl-inceptionV3.pb",
-      base64Hash = "Jt0twJP6yCA/9q0ACINy3dtDjCOIX5wuF7VQ2VT0ExU="
-    )
-  }
-
-  /**
-   * The set of NamedImageModel supported by DeepImage Featurizer. To support new models, add
-   * them to this Set.
-   */
-  private val _supportedModels = Set[NamedImageModel](TestNet, InceptionV3)
-
   /**
    * A map to help us get the model object based on it's name.
    */
   private val supportedModelMap: Map[String, NamedImageModel] = {
     val empty = Map.empty[String, NamedImageModel]
-    _supportedModels.foldLeft(empty){ case (map, model) => map.updated(model.name, model) }
+    Models._supportedModels.foldLeft(empty){ case (map, model) => map.updated(model.name, model) }
   }
 
+  val scaleHints: Map[String, Int] = Map(
+    "SCALE_AREA_AVERAGING" -> java.awt.Image.SCALE_AREA_AVERAGING,
+    "SCALE_DEFAULT" -> java.awt.Image.SCALE_DEFAULT,
+    "SCALE_FAST" -> java.awt.Image.SCALE_FAST,
+    "SCALE_REPLICATE" -> java.awt.Image.SCALE_REPLICATE,
+    "SCALE_SMOOTH" -> java.awt.Image.SCALE_SMOOTH
+  )
+  def scaleHintsJava = scaleHints.asJava
   /**
    * The valid values that can be used to set the "modelName" param.
    */

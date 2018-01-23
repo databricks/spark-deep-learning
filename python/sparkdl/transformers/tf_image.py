@@ -123,7 +123,6 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         graph = self.getGraph()
         composed_graph = self._addReshapeLayers(graph, self._getImageDtype(dataset))
         final_graph = self._stripGraph(composed_graph)
-
         with final_graph.as_default():
             image = dataset[self.getInputCol()]
             image_df_exploded = (dataset

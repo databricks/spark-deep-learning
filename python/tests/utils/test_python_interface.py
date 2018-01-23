@@ -27,7 +27,7 @@ class PythonAPITest(SparkDLTestCase):
         """ Must be able to load the API """
         try:
             print(JVMAPI.default())
-        except:
+        except BaseException:
             traceback.print_exc(file=sys.stdout)
             self.fail("failed to load certain classes")
 

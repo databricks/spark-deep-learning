@@ -15,9 +15,12 @@
 
 from keras.applications.imagenet_utils import decode_predictions
 import numpy as np
+import py4j
 
+from pyspark import SparkContext
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
+from pyspark.ml.wrapper import JavaTransformer
 from pyspark.sql.functions import udf
 from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
 
@@ -115,35 +118,61 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
         return "__tmp_" + self.getOutputCol()
 
 
-# TODO: give an option to take off multiple layers so it can be used in tuning
-#       (could be the name of the layer or int for how many to take off).
-class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
+def _getScaleHintList():
+    featurizer = SparkContext.getOrCreate()._jvm.com.databricks.sparkdl.DeepImageFeaturizer
+    if isinstance(featurizer, py4j.java_gateway.JavaPackage):
+        # do not see DeepImageFeaturizer, possibly running without spark
+        # instead of failing return empty list
+        return []
+    return dict(featurizer.scaleHintsJava()).keys()
+
+
+class _LazyScaleHintConverter:
+    _sizeHintConverter = None
+
+    def __call__(self, value):
+        if not self._sizeHintConverter:
+            self._sizeHintConverter = SparkDLTypeConverters.buildSupportedItemConverter(
+                _getScaleHintList())
+        return self._sizeHintConverter(value)
+
+
+_scaleHintConverter = _LazyScaleHintConverter()
+
+
+class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
     """
     Applies the model specified by its popular name, with its prediction layer(s) chopped off,
     to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
     can be used in a MLlib Pipeline.
-    The input image column should be 3-channel SpImage.
+    The input image column should be ImageSchema.
     """
 
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
 
+    scaleHint = Param(Params._dummy(), "scaleHint", "Hint which algorhitm to use for image resizing",
+                      typeConverter=_scaleHintConverter)
+
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, modelName=None):
+    def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING"):
         """
-        __init__(self, inputCol=None, outputCol=None, modelName=None)
+        __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING")
         """
         super(DeepImageFeaturizer, self).__init__()
+        self._java_obj = self._new_java_obj("com.databricks.sparkdl.DeepImageFeaturizer", self.uid)
+        self._setDefault(scaleHint="SCALE_AREA_AVERAGING")
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, modelName=None):
+    def setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING"):
         """
-        setParams(self, inputCol=None, outputCol=None, modelName=None)
+        setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING")
         """
         kwargs = self._input_kwargs
         self._set(**kwargs)
+        self._transfer_params_to_java()
         return self
 
     def setModelName(self, value):
@@ -152,11 +181,11 @@ class DeepImageFeaturizer(Transformer, HasInputCol, HasOutputCol):
     def getModelName(self):
         return self.getOrDefault(self.modelName)
 
-    def _transform(self, dataset):
-        transformer = _NamedImageTransformer(inputCol=self.getInputCol(),
-                                             outputCol=self.getOutputCol(),
-                                             modelName=self.getModelName(), featurize=True)
-        return transformer.transform(dataset)
+    def setScaleHint(self, value):
+            return self._set(scaleHint=value)
+
+    def getScaleHint(self):
+        return self.getOrDefault(self.scaleHint)
 
 
 class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
@@ -234,5 +263,4 @@ def _buildTFGraphForName(name, featurize):
     outputTensorName = modelData["outputTensorName"]
     graph = tfx.strip_and_freeze_until([outputTensorName], sess.graph, sess, return_graph=True)
     modelData["graph"] = graph
-
     return modelData

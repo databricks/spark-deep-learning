@@ -43,7 +43,7 @@ class ModelFetcherSuite extends FunSuite {
       "file:" + testGraphDefFile,
       cacheFile,
       testGraphHash)
-    assert(gdef1 === DeepImageFeaturizer.TestNet.graph)
+    assert(gdef1 === Models.TestNet.graph)
     assert(Files.exists(Paths.get(cacheDir, cacheFile)))
 
     // If we modify the file, the hash should no longer match.
@@ -57,7 +57,7 @@ class ModelFetcherSuite extends FunSuite {
       "file:" + testGraphDefFile,
       cacheFile,
       testGraphHash)
-    assert(gdef2 === DeepImageFeaturizer.TestNet.graph)
+    assert(gdef2 === Models.TestNet.graph)
     assert(Files.exists(Paths.get(cacheDir, cacheFile)))
 
     // This should try and replace the cache file, but fail when the replacement has the wrong hash.

@@ -127,7 +127,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
     # Test InceptionV3 prediction as an example of applying a trained model.
 
     def _executeTensorflow(self, graph, input_tensor_name, output_tensor_name,
-                           df,  input_col="image"):
+                           df, input_col="image"):
         with tf.Session(graph=graph) as sess:
             output_tensor = graph.get_tensor_by_name(output_tensor_name)
             image_collected = df.collect()
@@ -156,7 +156,8 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                 image_string = utils.imageInputPlaceholder(nChannels=3)
                 resized_images = tf.image.resize_images(image_string,
                                                         InceptionV3Constants.INPUT_SHAPE)
-                # keras expects array in RGB order, we get it from image schema in BGR => need to flip
+                # keras expects array in RGB order, we get it from image schema in BGR =>
+                # need to flip
                 preprocessed = preprocess_input(imageIO._reverseChannels(resized_images))
                 model = InceptionV3(input_tensor=preprocessed, weights="imagenet")
                 graph = tfx.strip_and_freeze_until([model.output], g, sess, return_graph=True)
