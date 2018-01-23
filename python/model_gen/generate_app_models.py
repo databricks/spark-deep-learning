@@ -55,7 +55,6 @@ private[sparkdl] object %(name)s extends NamedImageModel {
 }
 """
 
-
 def indent(s, lvl):
     return '\n'.join([' '*lvl + x for x in s.split('\n')])
 

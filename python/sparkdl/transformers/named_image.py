@@ -168,7 +168,7 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
     @keyword_only
     def setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING"):
         """
-        setParams(self, inputCol=None, outputCol=None, modelName=None)
+        setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING")
         """
         kwargs = self._input_kwargs
         self._set(**kwargs)
@@ -186,7 +186,6 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
 
     def getScaleHint(self):
         return self.getOrDefault(self.scaleHint)
-
 
 
 class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
