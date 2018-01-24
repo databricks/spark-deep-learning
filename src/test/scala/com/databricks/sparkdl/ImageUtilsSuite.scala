@@ -22,32 +22,31 @@ import javax.imageio.ImageIO
 
 import scala.util.Random
 
+import org.scalatest.FunSuite
+
 import org.apache.spark.ml.image.ImageSchema
 import org.apache.spark.sql.Row
 
-import org.scalatest.FunSuite
-
 object ImageUtilsSuite {
 
-  /** Read image data from a resource file --> BufferedImage --> Row */
+  /** Read image data into a BufferedImage, then use our utility method to convert to a row image */
   def getImageRow(resourcePath: String): Row = {
-    val resourceUrl = getClass.getResource("/sparkdl/test-image-collection/00081101.jpg").getFile
+    val resourceUrl = getClass.getResource(resourcePath).getFile
     val imageBuffer = ImageIO.read(new File(resourceUrl))
     ImageUtils.spImageFromBufferedImage(imageBuffer)
   }
 
-
+  def smallerImage: Row = getImageRow("/sparkdl/00081101-small-version.png")
+  def biggerImage: Row = getImageRow("/sparkdl/test-image-collection/00081101.jpg")
 }
 
 class ImageUtilsSuite extends FunSuite {
   // We want to make sure to test ImageUtils in headless mode to ensure it'll work on all systems.
   assert(System.getProperty("java.awt.headless") === "true")
   test("Test spImage resize.") {
-
-    def getImagePath(size: String, numChannels: Int): String = {
-      s"/sparkdl/test-image-collection/${size}-${numChannels}-channels.png"
+    def getImagePath(imageSize: String, numChannels: Int): String = {
+      s"/sparkdl/test-image-collection/${numChannels}_channels/$imageSize.png"
     }
-
     for (channels <- Seq(1, 3, 4)) {
       val smallerImage = ImageUtilsSuite.getImageRow(getImagePath("small", channels))
       val biggerImage = ImageUtilsSuite.getImageRow(getImagePath("big", channels))
@@ -64,9 +63,7 @@ class ImageUtilsSuite extends FunSuite {
   test ("Test Row image -> BufferedImage -> Row image") {
     val height = 200
     val width = 100
-    val channels = 3
-
-    for (channels <- Seq(1, 3, 4)) {
+    for (channels <- Seq(3, 4)) {
       val rand = new Random(971)
       val imageData = Array.ofDim[Byte](height * width * channels)
       rand.nextBytes(imageData)
@@ -74,7 +71,7 @@ class ImageUtilsSuite extends FunSuite {
       val spImage = Row(null, height, width, channels, ImageSchema.ocvTypes(ocvType), imageData)
       val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
       val testImage = ImageUtils.spImageFromBufferedImage(bufferedImage)
-      assert(spImage === testImage, "Image changed during conversion.")
+      assert(spImage === testImage, s"Image changed during conversion")
     }
   }
 

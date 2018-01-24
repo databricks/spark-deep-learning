@@ -26,7 +26,7 @@ import org.apache.spark.sql.Row
 private[sparkdl] object ImageUtils {
 
   /**
-   * Takes a Row image (spImage) and returns a Java BufferedImage. Currently supports 1 & 3
+   * Takes a Row image (spImage) and returns a Java BufferedImage. Currently supports 1, 3, & 4
    * channel images. If the image has 3 channels, we assume the channels are in BGR order.
    *
    * @param rowImage Image in spark.ml.image format.
@@ -44,10 +44,10 @@ private[sparkdl] object ImageUtils {
        """.stripMargin
     )
 
-    val image = if (channels < 4) {
-      new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR)
-    } else {
-      new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR)
+    val image = channels match {
+      case 1 => new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY)
+      case 3 => new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR)
+      case 4 => new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR)
     }
 
     var offset, h = 0
@@ -66,9 +66,12 @@ private[sparkdl] object ImageUtils {
             r = imageData(offset + 2)
           case 4 =>
             b = imageData(offset)
-            g = imageData(offset)
+            g = imageData(offset + 1)
             r = imageData(offset + 2)
             a = imageData(offset + 3)
+            val testColor = new Color(r & 0xff, g & 0xff, b & 0xff, a & 0xff)
+            val alpha = testColor.getAlpha.toByte
+            assert(a == alpha)
           case _ =>
             require(false, s"`Channels` must be 1, 3, or 4, got $channels.")
         }
@@ -78,7 +81,6 @@ private[sparkdl] object ImageUtils {
         } else {
           new Color(r & 0xff, g & 0xff, b & 0xff, a & 0xff)
         }
-        // TODO(sid): I think getRGB returns an ARGB integer? despite the RGB-only-sounding name
         image.setRGB(w, h, color.getRGB)
         offset += channels
         w += 1
@@ -118,7 +120,7 @@ private[sparkdl] object ImageUtils {
    * Takes a Java BufferedImage and returns a Row Image (spImage).
    *
    * @param image Java BufferedImage.
-   * @return Row image in spark.ml.image format with 3 channels in BGR order.
+   * @return Row image in spark.ml.image format with channels in BGR(A) order.
    */
   private[sparkdl] def spImageFromBufferedImage(image: BufferedImage, origin: String = null): Row = {
     val channels = getNumChannels(image)
@@ -130,20 +132,25 @@ private[sparkdl] object ImageUtils {
     while (h < height) {
       var w = 0
       while (w < width) {
-        val color = new Color(image.getRGB(w, h))
-        if (channels == 4) {
-          decoded(offset) = color.getAlpha.toByte
-          offset += 1
+        val color = new Color(image.getRGB(w, h), image.getColorModel.hasAlpha)
+        channels match {
+          case 1 =>
+            decoded(offset) = color.getBlue.toByte
+          case 3 =>
+            decoded(offset) = color.getBlue.toByte
+            decoded(offset + 1) = color.getGreen.toByte
+            decoded(offset + 2) = color.getRed.toByte
+          case 4 =>
+            decoded(offset) = color.getBlue.toByte
+            decoded(offset + 1) = color.getGreen.toByte
+            decoded(offset + 2) = color.getRed.toByte
+            decoded(offset + 3) = color.getAlpha.toByte
         }
-        decoded(offset) = color.getBlue.toByte
-        decoded(offset + 1) = color.getGreen.toByte
-        decoded(offset + 2) = color.getRed.toByte
         offset += channels
         w += 1
       }
       h += 1
     }
-
     Row(origin, height, width, channels, getOCVType(image), decoded)
 
   }
