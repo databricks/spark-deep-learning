@@ -27,7 +27,7 @@ private[sparkdl] object ImageUtils {
 
   /**
    * Takes a Row image (spImage) and returns a Java BufferedImage. Currently supports 1, 3, & 4
-   * channel images. If the image has 3 channels, we assume the channels are in BGR order.
+   * channel images. If the image has 3 or 4 channels, we assume the channels are in BGR(A) order.
    *
    * @param rowImage Image in spark.ml.image format.
    * @return Java BGR BufferedImage.
@@ -69,9 +69,6 @@ private[sparkdl] object ImageUtils {
             g = imageData(offset + 1)
             r = imageData(offset + 2)
             a = imageData(offset + 3)
-            val testColor = new Color(r & 0xff, g & 0xff, b & 0xff, a & 0xff)
-            val alpha = testColor.getAlpha.toByte
-            assert(a == alpha)
           case _ =>
             require(false, s"`Channels` must be 1, 3, or 4, got $channels.")
         }
@@ -175,9 +172,9 @@ private[sparkdl] object ImageUtils {
     scaleHint: Int = Image.SCALE_AREA_AVERAGING): Row = {
     val height = ImageSchema.getHeight(spImage)
     val width = ImageSchema.getWidth(spImage)
-    val channels = ImageSchema.getNChannels(spImage)
+    val nChannels = ImageSchema.getNChannels(spImage)
 
-    if ((channels == tgtChannels) && (height == tgtHeight) && (width == tgtWidth)) {
+    if ((nChannels == tgtChannels) && (height == tgtHeight) && (width == tgtWidth)) {
       spImage
     } else {
       val srcImg = spImageToBufferedImage(spImage)
