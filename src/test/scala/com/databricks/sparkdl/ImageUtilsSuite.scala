@@ -28,15 +28,11 @@ import org.apache.spark.sql.Row
 import org.scalatest.FunSuite
 
 object ImageUtilsSuite {
-  val biggerImage: Row = {
-    val biggerFile = getClass.getResource("/sparkdl/test-image-collection/00081101.jpg").getFile
-    val imageBuffer = ImageIO.read(new File(biggerFile))
-    ImageUtils.spImageFromBufferedImage(imageBuffer)
-  }
 
-  val smallerImage: Row = {
-    val smallerFile = getClass.getResource("/sparkdl/00081101-small-version.png").getFile
-    val imageBuffer = ImageIO.read(new File(smallerFile))
+  /** Read image data from a resource file --> BufferedImage --> Row */
+  def getImageRow(resourcePath: String): Row = {
+    val resourceUrl = getClass.getResource("/sparkdl/test-image-collection/00081101.jpg").getFile
+    val imageBuffer = ImageIO.read(new File(resourceUrl))
     ImageUtils.spImageFromBufferedImage(imageBuffer)
   }
 
@@ -46,16 +42,23 @@ object ImageUtilsSuite {
 class ImageUtilsSuite extends FunSuite {
   // We want to make sure to test ImageUtils in headless mode to ensure it'll work on all systems.
   assert(System.getProperty("java.awt.headless") === "true")
-
-  import ImageUtilsSuite._
-
   test("Test spImage resize.") {
-    val tgtHeight: Int = ImageSchema.getHeight(smallerImage)
-    val tgtWidth: Int = ImageSchema.getWidth(smallerImage)
-    val tgtChannels: Int = ImageSchema.getNChannels(smallerImage)
 
-    val testImage = ImageUtils.resizeImage(tgtHeight, tgtWidth, tgtChannels, biggerImage)
-    assert(testImage === smallerImage, "Resizing image did not produce expected smaller image.")
+    def getImagePath(size: String, numChannels: Int): String = {
+      s"/sparkdl/test-image-collection/${size}-${numChannels}-channels.png"
+    }
+
+    for (channels <- Seq(1, 3, 4)) {
+      val smallerImage = ImageUtilsSuite.getImageRow(getImagePath("small", channels))
+      val biggerImage = ImageUtilsSuite.getImageRow(getImagePath("big", channels))
+
+      val tgtHeight: Int = ImageSchema.getHeight(smallerImage)
+      val tgtWidth: Int = ImageSchema.getWidth(smallerImage)
+      val tgtChannels: Int = ImageSchema.getNChannels(smallerImage)
+
+      val testImage = ImageUtils.resizeImage(tgtHeight, tgtWidth, tgtChannels, biggerImage)
+      assert(testImage === smallerImage, "Resizing image did not produce expected smaller image.")
+    }
   }
 
   test ("Test Row image -> BufferedImage -> Row image") {
@@ -63,13 +66,16 @@ class ImageUtilsSuite extends FunSuite {
     val width = 100
     val channels = 3
 
-    val rand = new Random(971)
-    val imageData = Array.ofDim[Byte](height * width * channels)
-    rand.nextBytes(imageData)
-    val spImage = Row(null, height, width, channels, ImageSchema.ocvTypes("CV_8UC3"), imageData)
-    val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
-    val testImage = ImageUtils.spImageFromBufferedImage(bufferedImage)
-    assert(spImage === testImage, "Image changed during conversion.")
+    for (channels <- Seq(1, 3, 4)) {
+      val rand = new Random(971)
+      val imageData = Array.ofDim[Byte](height * width * channels)
+      rand.nextBytes(imageData)
+      val ocvType = s"CV_8UC$channels"
+      val spImage = Row(null, height, width, channels, ImageSchema.ocvTypes(ocvType), imageData)
+      val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
+      val testImage = ImageUtils.spImageFromBufferedImage(bufferedImage)
+      assert(spImage === testImage, "Image changed during conversion.")
+    }
   }
 
   test("Simple BufferedImage from Row Image") {

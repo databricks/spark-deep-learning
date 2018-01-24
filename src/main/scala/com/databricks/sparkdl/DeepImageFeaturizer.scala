@@ -115,8 +115,12 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     val height = model.height
     val width = model.width
 
-    val resizeUdf = udf((image: Row) => ImageUtils.resizeImage(height, width, 3, image,
-      DeepImageFeaturizer.scaleHints(getScaleHint)), imSchema)
+    val resizeUdf = udf((image: Row) => {
+        require(true, "")
+        ImageUtils.resizeImage(height, width, 3, image,
+          DeepImageFeaturizer.scaleHints(getScaleHint))
+      },
+      imSchema)
 
     val imageDF = dataFrame
       .withColumn(RESIZED_IMAGE_COL, resizeUdf(col(getInputCol)))

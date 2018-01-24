@@ -16,6 +16,7 @@
 
 package com.databricks.sparkdl
 
+import java.awt.color.ColorSpace
 import java.awt.image.BufferedImage
 import java.awt.{Color, Image}
 
@@ -42,10 +43,15 @@ private[sparkdl] object ImageUtils {
           | image of size ($height, $width, $channels).
        """.stripMargin
     )
-    val image = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR)
+
+    val image = if (channels < 4) {
+      new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR)
+    } else {
+      new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR)
+    }
 
     var offset, h = 0
-    var r, g, b: Byte = 0
+    var r, g, b, a: Byte = 0
     while (h < height) {
       var w = 0
       while (w < width) {
@@ -58,11 +64,21 @@ private[sparkdl] object ImageUtils {
             b = imageData(offset)
             g = imageData(offset + 1)
             r = imageData(offset + 2)
+          case 4 =>
+            b = imageData(offset)
+            g = imageData(offset)
+            r = imageData(offset + 2)
+            a = imageData(offset + 3)
           case _ =>
-            require(false, s"`Channels` must be 1 or 3, got $channels.")
+            require(false, s"`Channels` must be 1, 3, or 4, got $channels.")
         }
 
-        val color = new Color(r & 0xff, g & 0xff, b & 0xff)
+        val color = if (channels < 4) {
+          new Color(r & 0xff, g & 0xff, b & 0xff)
+        } else {
+          new Color(r & 0xff, g & 0xff, b & 0xff, a & 0xff)
+        }
+        // TODO(sid): I think getRGB returns an ARGB integer? despite the RGB-only-sounding name
         image.setRGB(w, h, color.getRGB)
         offset += channels
         w += 1
@@ -72,6 +88,31 @@ private[sparkdl] object ImageUtils {
     image
   }
 
+  /** Returns the number of channels in the passed-in buffered image. */
+  private def getNumChannels(img: BufferedImage): Int = {
+    val isGray = img.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
+    val hasAlpha = img.getColorModel.hasAlpha
+    if (isGray) {
+      1
+    } else if (hasAlpha) {
+      4
+    } else {
+      3
+    }
+  }
+
+  /** Returns the OCV type (int) of the passed-in image */
+  private def getOCVType(img: BufferedImage): Int = {
+    val isGray = img.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
+    val hasAlpha = img.getColorModel.hasAlpha
+    if (isGray) {
+      ImageSchema.ocvTypes("CV_8UC1")
+    } else if (hasAlpha) {
+      ImageSchema.ocvTypes("CV_8UC4")
+    } else {
+      ImageSchema.ocvTypes("CV_8UC3")
+    }
+  }
 
   /**
    * Takes a Java BufferedImage and returns a Row Image (spImage).
@@ -80,7 +121,7 @@ private[sparkdl] object ImageUtils {
    * @return Row image in spark.ml.image format with 3 channels in BGR order.
    */
   private[sparkdl] def spImageFromBufferedImage(image: BufferedImage, origin: String = null): Row = {
-    val channels = 3
+    val channels = getNumChannels(image)
     val height = image.getHeight
     val width = image.getWidth
 
@@ -93,12 +134,17 @@ private[sparkdl] object ImageUtils {
         decoded(offset) = color.getBlue.toByte
         decoded(offset + 1) = color.getGreen.toByte
         decoded(offset + 2) = color.getRed.toByte
+        if (channels == 4) {
+          decoded(offset + 3) = color.getAlpha.toByte
+        }
         offset += channels
         w += 1
       }
       h += 1
     }
-    Row(origin, height, width, channels, ImageSchema.ocvTypes("CV_8UC3"), decoded)
+
+    Row(origin, height, width, channels, getOCVType(image), decoded)
+
   }
 
   /**
@@ -108,8 +154,9 @@ private[sparkdl] object ImageUtils {
    *
    * @param tgtHeight   desired height of output image.
    * @param tgtWidth    desired width of output image.
-   * @param tgtChannels number of channels of output image (must be 3), may be used later to
-   *                    support more channels.
+   * @param tgtChannels number of channels in output image, currently ignored but may be used later.
+   *                    Currently, output image contains the same number of channels as the input
+   *                    image.
    * @param spImage     image to resize.
    * @param scaleHint   hint which algorhitm to use, see java.awt.Image#SCALE_SCALE_AREA_AVERAGING
    * @return resized image, if the input was BGR or 1 channel, the output will be BGR.
@@ -120,24 +167,21 @@ private[sparkdl] object ImageUtils {
     tgtChannels: Int,
     spImage: Row,
     scaleHint: Int = Image.SCALE_AREA_AVERAGING): Row = {
-    require(tgtChannels == 3, s"`tgtChannels` was set to $tgtChannels, must be 3.")
-
     val height = ImageSchema.getHeight(spImage)
     val width = ImageSchema.getWidth(spImage)
-    val nChannels = ImageSchema.getNChannels(spImage)
 
-    if ((nChannels == tgtChannels) && (height == tgtHeight) && (width == tgtWidth)) {
+    if ((height == tgtHeight) && (width == tgtWidth)) {
       spImage
     } else {
       val srcImg = spImageToBufferedImage(spImage)
-      val tgtImg = new BufferedImage(tgtWidth, tgtHeight, BufferedImage.TYPE_3BYTE_BGR)
+      val tgtImg = new BufferedImage(tgtWidth, tgtHeight, srcImg.getType)
       // scaledImg is a java.awt.Image which supports drawing but not pixel lookup by index.
       val scaledImg = srcImg.getScaledInstance(tgtWidth, tgtHeight, scaleHint)
       // Draw scaledImage onto resized (usually smaller) tgtImg so extract individual pixel values.
       val graphic = tgtImg.createGraphics()
       graphic.drawImage(scaledImg, 0, 0, null)
       graphic.dispose()
-      spImageFromBufferedImage(tgtImg, origin=ImageSchema.getOrigin(spImage))
+      spImageFromBufferedImage(tgtImg, origin = ImageSchema.getOrigin(spImage))
     }
   }
 }
