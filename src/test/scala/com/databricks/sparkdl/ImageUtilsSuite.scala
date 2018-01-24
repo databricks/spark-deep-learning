@@ -31,8 +31,8 @@ object ImageUtilsSuite {
 
   /** Read image data into a BufferedImage, then use our utility method to convert to a row image */
   def getImageRow(resourcePath: String): Row = {
-    val resourceUrl = getClass.getResource(resourcePath).getFile
-    val imageBuffer = ImageIO.read(new File(resourceUrl))
+    val resourceFilename = getClass.getResource(resourcePath).getFile
+    val imageBuffer = ImageIO.read(new File(resourceFilename))
     ImageUtils.spImageFromBufferedImage(imageBuffer)
   }
 
@@ -44,17 +44,18 @@ class ImageUtilsSuite extends FunSuite {
   // We want to make sure to test ImageUtils in headless mode to ensure it'll work on all systems.
   assert(System.getProperty("java.awt.headless") === "true")
   test("Test spImage resize.") {
+    // Helper for getting filenames of pre-resized, resized images with different numbers of color
+    // channels
     def getImagePath(imageSize: String, numChannels: Int): String = {
       s"/sparkdl/test-image-collection/${numChannels}_channels/$imageSize.png"
     }
+
     for (channels <- Seq(1, 3, 4)) {
       val smallerImage = ImageUtilsSuite.getImageRow(getImagePath("small", channels))
       val biggerImage = ImageUtilsSuite.getImageRow(getImagePath("big", channels))
-
       val tgtHeight: Int = ImageSchema.getHeight(smallerImage)
       val tgtWidth: Int = ImageSchema.getWidth(smallerImage)
       val tgtChannels: Int = ImageSchema.getNChannels(smallerImage)
-
       val testImage = ImageUtils.resizeImage(tgtHeight, tgtWidth, tgtChannels, biggerImage)
       assert(testImage === smallerImage, "Resizing image did not produce expected smaller image.")
     }
@@ -71,7 +72,7 @@ class ImageUtilsSuite extends FunSuite {
       val spImage = Row(null, height, width, channels, ImageSchema.ocvTypes(ocvType), imageData)
       val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
       val testImage = ImageUtils.spImageFromBufferedImage(bufferedImage)
-      assert(spImage === testImage, s"Image changed during conversion")
+      assert(spImage === testImage, "Image changed during conversion")
     }
   }
 
