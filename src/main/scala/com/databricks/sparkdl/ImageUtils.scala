@@ -190,7 +190,7 @@ private[sparkdl] object ImageUtils {
       val graphic = tgtImg.createGraphics()
       graphic.drawImage(scaledImg, 0, 0, null)
       graphic.dispose()
-      spImageFromBufferedImage(tgtImg, origin = ImageSchema.getOrigin(spImage))
+      spImageFromBufferedImage(tgtImg, origin=ImageSchema.getOrigin(spImage))
     }
   }
 }
