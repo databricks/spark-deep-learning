@@ -131,12 +131,13 @@ private[sparkdl] object ImageUtils {
       var w = 0
       while (w < width) {
         val color = new Color(image.getRGB(w, h))
+        if (channels == 4) {
+          decoded(offset) = color.getAlpha.toByte
+          offset += 1
+        }
         decoded(offset) = color.getBlue.toByte
         decoded(offset + 1) = color.getGreen.toByte
         decoded(offset + 2) = color.getRed.toByte
-        if (channels == 4) {
-          decoded(offset + 3) = color.getAlpha.toByte
-        }
         offset += channels
         w += 1
       }
@@ -148,15 +149,13 @@ private[sparkdl] object ImageUtils {
   }
 
   /**
-   * Resizes an image and returns it as an Array[Byte]. Only 1 and 3 channel inputs, where each
+   * Resizes an image and returns it as an Array[Byte]. Only 1, 3, and 4 channel inputs, where each
    * channel is a single Byte, are currently supported. Only BGR channel order is supported but
    * this might work for other channel orders.
    *
    * @param tgtHeight   desired height of output image.
    * @param tgtWidth    desired width of output image.
-   * @param tgtChannels number of channels in output image, currently ignored but may be used later.
-   *                    Currently, output image contains the same number of channels as the input
-   *                    image.
+   * @param tgtChannels number of channels in output image.
    * @param spImage     image to resize.
    * @param scaleHint   hint which algorhitm to use, see java.awt.Image#SCALE_SCALE_AREA_AVERAGING
    * @return resized image, if the input was BGR or 1 channel, the output will be BGR.
@@ -169,12 +168,18 @@ private[sparkdl] object ImageUtils {
     scaleHint: Int = Image.SCALE_AREA_AVERAGING): Row = {
     val height = ImageSchema.getHeight(spImage)
     val width = ImageSchema.getWidth(spImage)
+    val channels = ImageSchema.getNChannels(spImage)
 
-    if ((height == tgtHeight) && (width == tgtWidth)) {
+    if ((channels == tgtChannels) && (height == tgtHeight) && (width == tgtWidth)) {
       spImage
     } else {
       val srcImg = spImageToBufferedImage(spImage)
-      val tgtImg = new BufferedImage(tgtWidth, tgtHeight, srcImg.getType)
+      val tgtImgType = tgtChannels match {
+        case 1 => BufferedImage.TYPE_BYTE_GRAY
+        case 3 => BufferedImage.TYPE_3BYTE_BGR
+        case 4 => BufferedImage.TYPE_4BYTE_ABGR
+      }
+      val tgtImg = new BufferedImage(tgtWidth, tgtHeight, tgtImgType)
       // scaledImg is a java.awt.Image which supports drawing but not pixel lookup by index.
       val scaledImg = srcImg.getScaledInstance(tgtWidth, tgtHeight, scaleHint)
       // Draw scaledImage onto resized (usually smaller) tgtImg so extract individual pixel values.
