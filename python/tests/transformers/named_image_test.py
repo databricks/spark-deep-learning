@@ -15,10 +15,9 @@
 
 from keras.applications import resnet50
 import numpy as np
+import os
 from PIL import Image
 from scipy import spatial
-from shutil import rmtree
-import tempfile
 import tensorflow as tf
 
 from pyspark.ml import Pipeline
@@ -33,7 +32,7 @@ from sparkdl.transformers.named_image import (DeepImagePredictor, DeepImageFeatu
 
 from sparkdl.image.image import ImageSchema
 
-from ..tests import SparkDLTestCase
+from ..tests import SparkDLTestCase, SparkDLTempDirTestCase
 from .image_utils import getSampleImageDF
 from.image_utils import getImageFiles
 
@@ -244,29 +243,24 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             self.assertEqual(int(row.prediction), row.label)
 
 
-class DeepImageFeaturizerPersistenceTest(SparkDLTestCase):
+class DeepImageFeaturizerPersistenceTest(SparkDLTempDirTestCase):
     def test_inception(self):
         transformer0 = DeepImageFeaturizer(inputCol='image', modelName="InceptionV3",
-                                          outputCol="features0", scaleHint="SCALE_FAST")
-        path = tempfile.mkdtemp()
-        dst_path = path + "/featurizer"
+                                           outputCol="features0", scaleHint="SCALE_FAST")
+        dst_path = os.path.join(self.tempdir, "featurizer")
         transformer0.save(dst_path)
         transformer1 = DeepImageFeaturizer.load(dst_path)
         self.assertEqual(transformer0.uid, transformer1.uid)
         self.assertEqual(type(transformer0.uid), type(transformer1.uid))
-        self.assertEqual(transformer1.uid, transformer1.scaleHint.parent,
-                         "Loaded DeepImageFeaturizer instance uid (%s) did not match Param's uid (%s)"
-                         % (transformer1.uid, transformer1.scaleHint.parent))
+        for x in transformer0._paramMap.keys():
+            self.assertEqual(transformer1.uid, x.parent,
+                             "Loaded DeepImageFeaturizer instance uid (%s) did not match Param's uid (%s)"
+                             % (transformer1.uid, transformer1.scaleHint.parent))
         self.assertEqual(transformer0._paramMap, transformer1._paramMap,
                          "Loaded DeepImageFeaturizer instance params (%s) did not match "
-                         % str(transformer1._defaultParamMap) +
-                         "original defaults (%s)" % str(transformer0._defaultParamMap))
+                         % str(transformer1._paramMap) +
+                         "original defaults (%s)" % str(transformer0._paramMap))
         self.assertEqual(transformer0._defaultParamMap, transformer1._defaultParamMap,
                          "Loaded DeepImageFeaturizer instance default params (%s) did not match "
                          % str(transformer1._defaultParamMap) +
                          "original defaults (%s)" % str(transformer0._defaultParamMap))
-        try:
-            rmtree(path)
-        except OSError:
-            pass
-
