@@ -64,7 +64,7 @@ class ImageUtilsSuite extends FunSuite {
   test ("Test Row image -> BufferedImage -> Row image") {
     val height = 200
     val width = 100
-    for (channels <- Seq(3, 4)) {
+    for (channels <- Seq(1, 3, 4)) {
       val rand = new Random(971)
       val imageData = Array.ofDim[Byte](height * width * channels)
       rand.nextBytes(imageData)

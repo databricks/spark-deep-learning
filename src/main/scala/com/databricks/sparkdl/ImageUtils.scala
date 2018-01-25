@@ -27,7 +27,8 @@ private[sparkdl] object ImageUtils {
 
   /**
    * Takes a Row image (spImage) and returns a Java BufferedImage. Currently supports 1, 3, & 4
-   * channel images. If the image has 3 or 4 channels, we assume the channels are in BGR(A) order.
+   * channel images. If the Row image has 3 or 4 channels, we assume the channels are in BGR(A)
+   * order.
    *
    * @param rowImage Image in spark.ml.image format.
    * @return Java BGR BufferedImage.
@@ -50,40 +51,36 @@ private[sparkdl] object ImageUtils {
       case 4 => new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR)
     }
 
-    var offset, h = 0
-    var r, g, b, a: Byte = 0
-    while (h < height) {
-      var w = 0
-      while (w < width) {
-        channels match {
-          case 1 =>
-            b = imageData(offset)
-            g = b
-            r = b
-          case 3 =>
-            b = imageData(offset)
-            g = imageData(offset + 1)
-            r = imageData(offset + 2)
-          case 4 =>
-            b = imageData(offset)
-            g = imageData(offset + 1)
-            r = imageData(offset + 2)
-            a = imageData(offset + 3)
-          case _ =>
-            require(false, s"`Channels` must be 1, 3, or 4, got $channels.")
+    val isGray = image.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
+    val hasAlpha = image.getColorModel.hasAlpha
+    var offset = 0
+    // Grayscale images in Java require special handling to get the correct intensity
+    if (isGray) {
+      val raster = image.getRaster
+      for (h <- 0 until height) {
+        for (w <- 0 until width) {
+          raster.setSample(w, h, 0, imageData(offset))
+          offset += 1
         }
-
-        val color = if (channels < 4) {
-          new Color(r & 0xff, g & 0xff, b & 0xff)
-        } else {
-          new Color(r & 0xff, g & 0xff, b & 0xff, a & 0xff)
-        }
-        image.setRGB(w, h, color.getRGB)
-        offset += channels
-        w += 1
       }
-      h += 1
+    } else {
+      for (h <- 0 until height) {
+        for (w <- 0 until width) {
+          val b = imageData(offset)
+          val g = imageData(offset + 1)
+          val r = imageData(offset + 2)
+          val color = if (hasAlpha) {
+            val a = imageData(offset + 3)
+            new Color(r & 0xff, g & 0xff, b & 0xff, a & 0xff)
+          } else {
+            new Color(r & 0xff, g & 0xff, b & 0xff)
+          }
+          image.setRGB(w, h, color.getRGB)
+          offset += channels
+        }
+      }
     }
+
     image
   }
 
@@ -123,31 +120,39 @@ private[sparkdl] object ImageUtils {
     val channels = getNumChannels(image)
     val height = image.getHeight
     val width = image.getWidth
+    val nChannels = getNumChannels(image)
+    val isGray = image.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
+    val hasAlpha = image.getColorModel.hasAlpha
 
     val decoded = new Array[Byte](height * width * channels)
     var offset, h = 0
-    while (h < height) {
-      var w = 0
-      while (w < width) {
-        val color = new Color(image.getRGB(w, h), image.getColorModel.hasAlpha)
-        channels match {
-          case 1 =>
-            decoded(offset) = color.getBlue.toByte
-          case 3 =>
-            decoded(offset) = color.getBlue.toByte
-            decoded(offset + 1) = color.getGreen.toByte
-            decoded(offset + 2) = color.getRed.toByte
-          case 4 =>
-            decoded(offset) = color.getBlue.toByte
-            decoded(offset + 1) = color.getGreen.toByte
-            decoded(offset + 2) = color.getRed.toByte
-            decoded(offset + 3) = color.getAlpha.toByte
+
+    // Grayscale images in Java require special handling to get the correct intensity
+    if (isGray) {
+      var offset = 0
+      val raster = image.getRaster
+      for (h <- 0 until height) {
+        for (w <- 0 until width) {
+          decoded(offset) = raster.getSample(w, h, 0).toByte
+          offset += 1
         }
-        offset += channels
-        w += 1
       }
-      h += 1
+    } else {
+      var offset = 0
+      for (h <- 0 until height) {
+        for (w <- 0 until width) {
+          val color = new Color(image.getRGB(w, h), hasAlpha)
+          decoded(offset) = color.getBlue.toByte
+          decoded(offset + 1) = color.getGreen.toByte
+          decoded(offset + 2) = color.getRed.toByte
+          if (hasAlpha) {
+            decoded(offset + 3) = color.getAlpha.toByte
+          }
+          offset += nChannels
+        }
+      }
     }
+
     Row(origin, height, width, channels, getOCVType(image), decoded)
 
   }
