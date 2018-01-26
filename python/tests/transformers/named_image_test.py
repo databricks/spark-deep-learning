@@ -259,7 +259,7 @@ class DeepImageFeaturizerPersistenceTest(SparkDLTempDirTestCase):
         self.assertEqual(transformer0._paramMap, transformer1._paramMap,
                          "Loaded DeepImageFeaturizer instance params (%s) did not match "
                          % str(transformer1._paramMap) +
-                         "original defaults (%s)" % str(transformer0._paramMap))
+                         "original values (%s)" % str(transformer0._paramMap))
         self.assertEqual(transformer0._defaultParamMap, transformer1._defaultParamMap,
                          "Loaded DeepImageFeaturizer instance default params (%s) did not match "
                          % str(transformer1._defaultParamMap) +

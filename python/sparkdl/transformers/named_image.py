@@ -150,7 +150,7 @@ class _DeepImageFeaturizerReader(JavaMLReader):
         return "com.databricks.sparkdl.DeepImageFeaturizer"
 
 
-class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable, HasInputCol, HasOutputCol):
+class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
     """
     Applies the model specified by its popular name, with its prediction layer(s) chopped off,
     to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
@@ -158,9 +158,10 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable, HasIn
     The input image column should be ImageSchema.
     """
 
+    inputCol = Param(Params._dummy(), "inputCol", "input column name.", typeConverter=TypeConverters.toString)
+    outputCol = Param(Params._dummy(), "outputCol", "output column name.", typeConverter=TypeConverters.toString)
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
-
     scaleHint = Param(Params._dummy(), "scaleHint", "Hint which algorhitm to use for image resizing",
                       typeConverter=_scaleHintConverter)
 
@@ -171,7 +172,6 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable, HasIn
         """
         super(DeepImageFeaturizer, self).__init__()
         self._java_obj = self._new_java_obj("com.databricks.sparkdl.DeepImageFeaturizer", self.uid)
-        self._defaultParamMap = {} # discard unwanted defaults from parents
         self._setDefault(scaleHint="SCALE_AREA_AVERAGING")
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
@@ -185,6 +185,18 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable, HasIn
         self._set(**kwargs)
         self._transfer_params_to_java()
         return self
+
+    def setInputCol(selfs, value):
+        return self._set(inputCol=value)
+
+    def getInputCol(self):
+        return self.getOrDefault(self.inputCol)
+
+    def setOutputCol(selfs, value):
+        return self._set(outputCol=value)
+
+    def getOutputCol(self):
+        return self.getOrDefault(self.outputCol)
 
     def setModelName(self, value):
         return self._set(modelName=value)
