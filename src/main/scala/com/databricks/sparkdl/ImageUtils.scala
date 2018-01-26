@@ -25,6 +25,16 @@ import org.apache.spark.sql.Row
 
 private[sparkdl] object ImageUtils {
 
+  // Set of OpenCV modes supported by our image utilities
+  private val supportedModes: Set[String] = Set("CV_8UC1", "CV_8UC3", "CV_8UC4")
+
+  // Map from OpenCV mode to Java BufferedImage type
+  private val openCVModeToImageType: Map[Int, Int] = Map(
+    ImageSchema.ocvTypes("CV_8UC1") -> BufferedImage.TYPE_BYTE_GRAY,
+    ImageSchema.ocvTypes("CV_8UC3") -> BufferedImage.TYPE_3BYTE_BGR,
+    ImageSchema.ocvTypes("CV_8UC4") -> BufferedImage.TYPE_4BYTE_ABGR
+  )
+
   /**
    * Takes a Row image (spImage) and returns a Java BufferedImage. Currently supports 1, 3, & 4
    * channel images. If the Row image has 3 or 4 channels, we assume the channels are in BGR(A)
@@ -37,6 +47,7 @@ private[sparkdl] object ImageUtils {
     val height = ImageSchema.getHeight(rowImage)
     val width = ImageSchema.getWidth(rowImage)
     val channels = ImageSchema.getNChannels(rowImage)
+    val mode = ImageSchema.getMode(rowImage)
     val imageData = ImageSchema.getData(rowImage)
     require(
       imageData.length == height * width * channels,
@@ -45,56 +56,26 @@ private[sparkdl] object ImageUtils {
        """.stripMargin
     )
 
-    val image = channels match {
-      case 1 => new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY)
-      case 3 => new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR)
-      case 4 => new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR)
-    }
+    val imageType = openCVModeToImageType.getOrElse(mode,
+      throw new UnsupportedOperationException("Cannot convert row image with  " +
+        s"unsupported OpenCV mode = ${mode} to BufferedImage. Supported OpenCV modes: " +
+        s"${supportedModes.map(ImageSchema.ocvTypes(_)).mkString(", ")}"))
 
-    val isGray = image.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
-    val hasAlpha = image.getColorModel.hasAlpha
+    val image = new BufferedImage(width, height, imageType)
     var offset = 0
-    // Grayscale images in Java require special handling to get the correct intensity
-    if (isGray) {
-      val raster = image.getRaster
-      for (h <- 0 until height) {
-        for (w <- 0 until width) {
-          raster.setSample(w, h, 0, imageData(offset))
+    val raster = image.getRaster
+    // NOTE: This code assumes the raw image data in rowImage directly corresponds to the
+    // raster of our output Java BufferedImage.
+    for (h <- 0 until height) {
+      for (w <- 0 until width) {
+        for (c <- 1 to channels) {
+          val cIdx = channels - c
+          raster.setSample(w, h, cIdx, imageData(offset) & 0xff)
           offset += 1
         }
       }
-    } else {
-      for (h <- 0 until height) {
-        for (w <- 0 until width) {
-          val b = imageData(offset)
-          val g = imageData(offset + 1)
-          val r = imageData(offset + 2)
-          val color = if (hasAlpha) {
-            val a = imageData(offset + 3)
-            new Color(r & 0xff, g & 0xff, b & 0xff, a & 0xff)
-          } else {
-            new Color(r & 0xff, g & 0xff, b & 0xff)
-          }
-          image.setRGB(w, h, color.getRGB)
-          offset += channels
-        }
-      }
     }
-
     image
-  }
-
-  /** Returns the number of channels in the passed-in buffered image. */
-  private def getNumChannels(img: BufferedImage): Int = {
-    val isGray = img.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
-    val hasAlpha = img.getColorModel.hasAlpha
-    if (isGray) {
-      1
-    } else if (hasAlpha) {
-      4
-    } else {
-      3
-    }
   }
 
   /** Returns the OCV type (int) of the passed-in image */
@@ -117,42 +98,25 @@ private[sparkdl] object ImageUtils {
    * @return Row image in spark.ml.image format with channels in BGR(A) order.
    */
   private[sparkdl] def spImageFromBufferedImage(image: BufferedImage, origin: String = null): Row = {
-    val channels = getNumChannels(image)
+    val channels = image.getColorModel.getNumComponents
     val height = image.getHeight
     val width = image.getWidth
-    val nChannels = getNumChannels(image)
     val isGray = image.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
     val hasAlpha = image.getColorModel.hasAlpha
-
     val decoded = new Array[Byte](height * width * channels)
-    var offset, h = 0
-
-    // Grayscale images in Java require special handling to get the correct intensity
-    if (isGray) {
-      var offset = 0
-      val raster = image.getRaster
-      for (h <- 0 until height) {
-        for (w <- 0 until width) {
-          decoded(offset) = raster.getSample(w, h, 0).toByte
+    // NOTE: This code assumes the raster of our Java BufferedImage directly corresponds to
+    // raw image data
+    val raster = image.getRaster
+    var offset = 0
+    for (h <- 0 until height) {
+      for (w <- 0 until width) {
+        for (c <- 1 to channels) {
+          val cIdx = channels - c
+          decoded(offset) = raster.getSample(w, h, cIdx).toByte
           offset += 1
         }
       }
-    } else {
-      var offset = 0
-      for (h <- 0 until height) {
-        for (w <- 0 until width) {
-          val color = new Color(image.getRGB(w, h), hasAlpha)
-          decoded(offset) = color.getBlue.toByte
-          decoded(offset + 1) = color.getGreen.toByte
-          decoded(offset + 2) = color.getRed.toByte
-          if (hasAlpha) {
-            decoded(offset + 3) = color.getAlpha.toByte
-          }
-          offset += nChannels
-        }
-      }
     }
-
     Row(origin, height, width, channels, getOCVType(image), decoded)
 
   }
@@ -164,7 +128,7 @@ private[sparkdl] object ImageUtils {
    *
    * @param tgtHeight   desired height of output image.
    * @param tgtWidth    desired width of output image.
-   * @param tgtChannels number of channels in output image.
+   * @param tgtChannels number of channels (must be 1, 3, or 4) in output image.
    * @param spImage     image to resize.
    * @param scaleHint   hint which algorhitm to use, see java.awt.Image#SCALE_SCALE_AREA_AVERAGING
    * @return resized image, if the input was BGR or 1 channel, the output will be BGR.
@@ -187,6 +151,8 @@ private[sparkdl] object ImageUtils {
         case 1 => BufferedImage.TYPE_BYTE_GRAY
         case 3 => BufferedImage.TYPE_3BYTE_BGR
         case 4 => BufferedImage.TYPE_4BYTE_ABGR
+        case _ => throw new UnsupportedOperationException("Image resize: number of output  " +
+          s"channels must be 1, 3, or 4, got ${tgtChannels}.")
       }
       val tgtImg = new BufferedImage(tgtWidth, tgtHeight, tgtImgType)
       // scaledImg is a java.awt.Image which supports drawing but not pixel lookup by index.

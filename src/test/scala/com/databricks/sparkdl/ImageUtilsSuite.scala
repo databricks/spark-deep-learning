@@ -46,8 +46,8 @@ class ImageUtilsSuite extends FunSuite {
   test("Test spImage resize.") {
     // Helper for getting filenames of pre-resized, resized images with different numbers of color
     // channels
-    def getImagePath(imageSize: String, numChannels: Int): String = {
-      s"/sparkdl/test-image-collection/${numChannels}_channels/$imageSize.png"
+    def getImagePath(size: String, numChannels: Int): String = {
+      s"/sparkdl/test-image-collection/${numChannels}_channels/$size.png"
     }
 
     for (channels <- Seq(1, 3, 4)) {
