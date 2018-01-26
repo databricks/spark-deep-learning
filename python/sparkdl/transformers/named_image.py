@@ -157,7 +157,11 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
     can be used in a MLlib Pipeline.
     The input image column should be ImageSchema.
     """
-
+    # NOTE: We are not inheriting from HasInput/HasOutput to mirror the scala side. It also helps
+    # us to avoid issue with serialization/deserialization - default values based on uid do not
+    # always get set to correct value on the python side after deserialization. Default values do
+    # not get reset to the jvm side value unless they param value is not set.
+    # See pyspark.ml.wrapper.JavaParams._transfer_params_from_java
     inputCol = Param(Params._dummy(), "inputCol", "input column name.", typeConverter=TypeConverters.toString)
     outputCol = Param(Params._dummy(), "outputCol", "output column name.", typeConverter=TypeConverters.toString)
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
@@ -205,7 +209,7 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
         return self.getOrDefault(self.modelName)
 
     def setScaleHint(self, value):
-            return self._set(scaleHint=value)
+        return self._set(scaleHint=value)
 
     def getScaleHint(self):
         return self.getOrDefault(self.scaleHint)
