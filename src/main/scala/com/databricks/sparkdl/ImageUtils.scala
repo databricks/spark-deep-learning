@@ -121,6 +121,7 @@ private[sparkdl] object ImageUtils {
 
   }
 
+
   /**
    * Resizes an image and returns it as an Array[Byte]. Only 1, 3, and 4 channel inputs, where each
    * channel is a single Byte, are currently supported. Only BGR channel order is supported but
