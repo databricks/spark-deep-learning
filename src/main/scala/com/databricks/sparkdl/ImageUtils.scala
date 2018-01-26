@@ -118,7 +118,6 @@ private[sparkdl] object ImageUtils {
       }
     }
     Row(origin, height, width, channels, getOCVType(image), decoded)
-
   }
 
 
