@@ -16,7 +16,8 @@
 
 package com.databricks.sparkdl
 
-import java.awt.Color
+import java.awt.{Color, Image}
+import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 
@@ -43,21 +44,35 @@ object ImageUtilsSuite {
 class ImageUtilsSuite extends FunSuite {
   // We want to make sure to test ImageUtils in headless mode to ensure it'll work on all systems.
   assert(System.getProperty("java.awt.headless") === "true")
+
+  import ImageUtilsSuite._
+
   test("Test spImage resize.") {
-    // Helper for getting filenames of pre-resized, resized images with different numbers of color
-    // channels
-    def getImagePath(size: String, numChannels: Int): String = {
-      s"/sparkdl/test-image-collection/${numChannels}_channels/$size.png"
+    def javaResize(imagePath: String, tgtWidth: Int, tgtHeight: Int): Row = {
+      // Read BufferedImage directly from file
+      val resourceFilename = getClass.getResource(imagePath).getFile
+      val srcImg = ImageIO.read(new File(resourceFilename))
+      val tgtImg = new BufferedImage(tgtWidth, tgtHeight, srcImg.getType)
+      // scaledImg is a java.awt.Image which supports drawing but not pixel lookup by index.
+      val scaledImg = srcImg.getScaledInstance(tgtWidth, tgtHeight, Image.SCALE_AREA_AVERAGING)
+      // Draw scaledImage onto resized (usually smaller) tgtImg so extract individual pixel values.
+      val graphic = tgtImg.createGraphics()
+      graphic.drawImage(scaledImg, 0, 0, null)
+      graphic.dispose()
+      ImageUtils.spImageFromBufferedImage(tgtImg)
     }
 
     for (channels <- Seq(1, 3, 4)) {
-      val smallerImage = ImageUtilsSuite.getImageRow(getImagePath("small", channels))
-      val biggerImage = ImageUtilsSuite.getImageRow(getImagePath("big", channels))
-      val tgtHeight: Int = ImageSchema.getHeight(smallerImage)
-      val tgtWidth: Int = ImageSchema.getWidth(smallerImage)
-      val tgtChannels: Int = ImageSchema.getNChannels(smallerImage)
-      val testImage = ImageUtils.resizeImage(tgtHeight, tgtWidth, tgtChannels, biggerImage)
-      assert(testImage === smallerImage, "Resizing image did not produce expected smaller image.")
+      val path = s"/sparkdl/test-image-collection/${channels}_channels/00074201.png"
+      val biggerImage = getImageRow(path)
+      val tgtHeight: Int = ImageSchema.getHeight(biggerImage) / 2
+      val tgtWidth: Int = ImageSchema.getWidth(biggerImage) / 2
+      val tgtChannels: Int = ImageSchema.getNChannels(biggerImage)
+
+      val expectedImage = javaResize(path, tgtWidth, tgtHeight)
+      val resizedImage = ImageUtils.resizeImage(tgtHeight, tgtWidth, tgtChannels, biggerImage)
+      assert(resizedImage === expectedImage, "Resizing image did not produce expected smaller " +
+        "image.")
     }
   }
 
