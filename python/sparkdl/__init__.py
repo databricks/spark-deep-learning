@@ -17,6 +17,7 @@ from .graph.input import TFInputGraph
 from .image.imageIO import imageSchema, imageType, readImages
 from .transformers.keras_image import KerasImageFileTransformer
 from .transformers.named_image import DeepImagePredictor, DeepImageFeaturizer
+from .transformers.keras_tensor import KerasTransformer
 from .transformers.tf_image import TFImageTransformer
 from .transformers.tf_tensor import TFTransformer
 from .transformers.utils import imageInputPlaceholder
