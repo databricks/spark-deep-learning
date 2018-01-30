@@ -41,7 +41,8 @@ def _getSampleJPEGDir():
     return os.path.join(cur_dir, "../resources/images")
 
 def getImageFiles():
-    return glob(os.path.join(_getSampleJPEGDir(), "*"))
+    return [path for path in glob(os.path.join(_getSampleJPEGDir(), "*"))
+            if not os.path.isdir(path)]
 
 def getSampleImageDF():
     return imageIO.readImagesWithCustomFn(path=_getSampleJPEGDir(), decode_f=imageIO.PIL_decode)
