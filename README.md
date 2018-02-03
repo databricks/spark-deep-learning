@@ -13,12 +13,12 @@ Deep Learning Pipelines provides high-level APIs for scalable deep learning in P
 - [Building and running unit tests](#building-and-running-unit-tests)
 - [Spark version compatibility](#spark-version-compatibility)
 - [Support](#support)
+- [Releases](#releases)
 - [Quick user guide](#quick-user-guide)
   - [Working with images in Spark](#working-with-images-in-spark)
   - [Transfer learning](#transfer-learning)
   - [Applying deep learning models at scale](#applying-deep-learning-models-at-scale)
   - [Deploying models as SQL functions](#deploying-models-as-sql-functions)
-- [Releases](#releases)
 - [License](#license)
 
 
@@ -53,10 +53,11 @@ To run the Python unit tests, run the `run-tests.sh` script from the `python/` d
 sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.1.1-bin-hadoop2.7 PYSPARK_PYTHON=python2 SCALA_VERSION=2.11.8 SPARK_VERSION=2.1.1 ./python/run-tests.sh
 ```
 
-
 ## Spark version compatibility
 
-Spark 2.1.1 and Python 2.7 are recommended.
+Spark 2.2.0 and Python 3.6 are recommended for working with the latest code. See the [travis config](https://github.com/databricks/spark-deep-learning/blob/master/.travis.yml) for the regularly-tested combinations.
+
+Compatibility requirements for each release are listed in the [Releases](#releases) section.
 
 
 ## Support
@@ -65,6 +66,23 @@ You can ask questions and join the development discussion on the [DL Pipelines G
 
 You can also post bug reports and feature requests in Github issues.
 
+
+## Releases
+<!--
+- 1.0.0 release: Spark 2.3 required. Python 3.6 & Scala 2.11 recommended.
+    1. Using the definition of images from Spark 2.3. The new definition uses the BGR channel ordering 
+       for 3-channel images instead of the RGB ordering used in this project before the change. 
+    2. Persistence for DeepImageFeaturizer (both Python and Scala).
+-->
+- [0.3.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.3.0) release: Spark 2.2.0, Python 3.6 & Scala 2.11 recommended.
+    1. KerasTransformer & TFTransformer for large-scale batch inference on non-image (tensor) data.
+    2. Scala API for transfer learning (`DeepImageFeaturizer`). InceptionV3 is supported.
+    3. Added VGG16, VGG19 models to DeepImageFeaturizer & DeepImagePredictor (Python).
+- [0.2.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.2.0) release: Spark 2.1.1 & Python 2.7 recommended.
+    1. KerasImageFileEstimator API (train a Keras model on image files)
+    2. SQL UDF support for Keras models
+    3. Added Xception, Resnet50 models to DeepImageFeaturizer & DeepImagePredictor.
+- 0.1.0 Alpha release: Spark 2.1.1 & Python 2.7 recommended.
 
 ## Quick user guide
 
@@ -76,7 +94,7 @@ The current version of Deep Learning Pipelines provides a suite of tools around 
 -   [Deploying models as SQL functions](#deploying-models-as-sql-functions) : empower everyone by making deep learning available in SQL.
 -   Distributed hyper-parameter tuning : via Spark MLlib Pipelines (coming soon)
 
-To try running the examples below, check out the Databricks notebook [DeepLearning Pipelines on Databricks](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html).
+To try running the examples below, check out the Databricks notebook in the [Databricks docs for Deep Learning Pipelines](https://docs.databricks.com/applications/deep-learning/deep-learning-pipelines.html).
 
 ### Working with images in Spark
 
@@ -297,14 +315,6 @@ def keras_load_img(fpath):
 registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"), keras_load_img)
 
 ```
-
-## Releases
-- 0.1.0 Alpha release
-- 0.2.0 release:
-    1. KerasImageFileEstimator API (train a Keras model on image files)
-    2. SQL UDF support for Keras models
-    3. Added Xception, Resnet50 models to DeepImageFeaturizer/DeepImagePredictor.
-
 
 ## License
 * The Deep Learning Pipelines source code is released under the Apache License 2.0 (see the LICENSE file).
