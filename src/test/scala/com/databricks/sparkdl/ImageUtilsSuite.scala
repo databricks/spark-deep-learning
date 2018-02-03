@@ -97,8 +97,8 @@ class ImageUtilsSuite extends FunSuite {
     for (channels <- Seq(3, 4)) {
       val rawData: Array[Byte] = (0 until height).flatMap { i =>
         (0 until width).flatMap { j =>
-          // For pixel (i, j), we set the value of channel c to (i * 100 + j * 10 + c)
-          // Each pixel is a Seq of ints
+          // Generate data for the pixel at (i, j).
+          // We set the value of channel c to (i * 100 + j * 10 + c)
           Range(0, channels).map { c =>
             i * 100 + j * 10 + c
           }.toSeq
