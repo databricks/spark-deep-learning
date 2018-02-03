@@ -94,7 +94,7 @@ The current version of Deep Learning Pipelines provides a suite of tools around 
 -   [Deploying models as SQL functions](#deploying-models-as-sql-functions) : empower everyone by making deep learning available in SQL.
 -   Distributed hyper-parameter tuning : via Spark MLlib Pipelines (coming soon)
 
-To try running the examples below, check out the Databricks notebook [DeepLearning Pipelines on Databricks](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html). *****FIX THIS: link to the databricks doc page *****
+To try running the examples below, check out the Databricks notebook in the [Databricks docs for Deep Learning Pipelines](https://docs.databricks.com/applications/deep-learning/deep-learning-pipelines.html).
 
 ### Working with images in Spark
 
