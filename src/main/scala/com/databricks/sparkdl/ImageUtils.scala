@@ -62,16 +62,36 @@ private[sparkdl] object ImageUtils {
         s"${supportedModes.map(ImageSchema.ocvTypes(_)).mkString(", ")}"))
 
     val image = new BufferedImage(width, height, imageType)
+    val isGray = image.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
+    val hasAlpha = image.getColorModel.hasAlpha
     var offset = 0
     val raster = image.getRaster
-    // NOTE: This code assumes the raw image data in rowImage directly corresponds to the
-    // raster of our output Java BufferedImage.
-    for (h <- 0 until height) {
-      for (w <- 0 until width) {
-        for (c <- 1 to channels) {
-          val cIdx = channels - c
-          raster.setSample(w, h, cIdx, imageData(offset) & 0xff)
+    // The logic below mirrors ImageSchema's decode function, but writes byte data to a
+    // BufferedImage instead of reading byte data from a BufferedImage
+    if (isGray) {
+      var offset = 0
+      val raster = image.getRaster
+      for (h <- 0 until height) {
+        for (w <- 0 until width) {
+          raster.setSample(w, h, 0, imageData(offset) & 0xff)
           offset += 1
+        }
+      }
+    } else {
+      var offset = 0
+      for (h <- 0 until height) {
+        for (w <- 0 until width) {
+          val b = imageData(offset)
+          val g = imageData(offset + 1)
+          val r = imageData(offset + 2)
+          val color = if (hasAlpha) {
+            val a = imageData(offset + 3)
+            new Color(r & 0xff, g & 0xff, b & 0xff, a & 0xff)
+          } else {
+            new Color(r & 0xff, g & 0xff, b & 0xff)
+          }
+          image.setRGB(w, h, color.getRGB)
+          offset += channels
         }
       }
     }
@@ -98,26 +118,39 @@ private[sparkdl] object ImageUtils {
    * @return Row image in spark.ml.image format with channels in BGR(A) order.
    */
   private[sparkdl] def spImageFromBufferedImage(image: BufferedImage, origin: String = null): Row = {
-    val channels = image.getColorModel.getNumComponents
+    val nChannels = image.getColorModel.getNumComponents
     val height = image.getHeight
     val width = image.getWidth
     val isGray = image.getColorModel.getColorSpace.getType == ColorSpace.TYPE_GRAY
     val hasAlpha = image.getColorModel.hasAlpha
-    val decoded = new Array[Byte](height * width * channels)
-    // NOTE: This code assumes the raster of our Java BufferedImage directly corresponds to
-    // raw image data
-    val raster = image.getRaster
-    var offset = 0
-    for (h <- 0 until height) {
-      for (w <- 0 until width) {
-        for (c <- 1 to channels) {
-          val cIdx = channels - c
-          decoded(offset) = raster.getSample(w, h, cIdx).toByte
+    val decoded = new Array[Byte](height * width * nChannels)
+    // The logic below is copied from ImageSchema's decode method, see
+    // https://github.com/apache/spark/blob/7bd46d987156/mllib/src/main/scala/org/apache/spark/ml/image/ImageSchema.scala#L134
+    if (isGray) {
+      var offset = 0
+      val raster = image.getRaster
+      for (h <- 0 until height) {
+        for (w <- 0 until width) {
+          decoded(offset) = raster.getSample(w, h, 0).toByte
           offset += 1
         }
       }
+    } else {
+      var offset = 0
+      for (h <- 0 until height) {
+        for (w <- 0 until width) {
+          val color = new Color(image.getRGB(w, h), hasAlpha)
+          decoded(offset) = color.getBlue.toByte
+          decoded(offset + 1) = color.getGreen.toByte
+          decoded(offset + 2) = color.getRed.toByte
+          if (hasAlpha) {
+            decoded(offset + 3) = color.getAlpha.toByte
+          }
+          offset += nChannels
+        }
+      }
     }
-    Row(origin, height, width, channels, getOCVType(image), decoded)
+    Row(origin, height, width, nChannels, getOCVType(image), decoded)
   }
 
 

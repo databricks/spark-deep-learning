@@ -92,27 +92,48 @@ class ImageUtilsSuite extends FunSuite {
   }
 
   test("Simple BufferedImage from Row Image") {
+    val height = 2
+    val width = 5
+    for (channels <- Seq(3, 4)) {
+      val rawData: Array[Byte] = (0 until height).flatMap { i =>
+        (0 until width).flatMap { j =>
+          // Generate data for the pixel at (i, j).
+          // We set the value of channel c to (i * 100 + j * 10 + c)
+          Range(0, channels).map { c =>
+            i * 100 + j * 10 + c
+          }.toSeq
+        }
+      }.map(_.toByte).toArray
+
+      val spImage = Row(null, height, width, channels, ImageSchema.ocvTypes(s"CV_8UC$channels"),
+        rawData)
+      val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
+      val hasAlpha = bufferedImage.getColorModel.hasAlpha
+      for (h <- 0 until height) {
+        for (w <- 0 until width) {
+          val rgb = bufferedImage.getRGB(w, h)
+          val color = new Color(rgb, hasAlpha)
+          assert(color.getBlue.toByte === (h * 100 + w * 10 ).toByte)
+          assert(color.getGreen.toByte === (h * 100 + w * 10 + 1).toByte)
+          assert(color.getRed.toByte === (h * 100 + w * 10 + 2).toByte)
+          if (channels == 4) {
+            assert(color.getAlpha.toByte === (h * 100 + w * 10 + 3).toByte)
+          }
+        }
+      }
+    }
+  }
+
+  test("Simple BufferedImage from Row Image: grayscale") {
     val height = 20
-    val width = 3
-    val rawData: Array[Byte] = (0 until height).flatMap { i =>
-      val x = i * 10
-      // B = 10 * i + w + 1
-      // G = 10 * i + w + 4
-      // R = 10 * i + w + 7
-      // (  B      G      R,     B      G      R,     B      G      R  )
-      (0 until width).flatMap { j => Seq(x + j + 1, x + j + 4, x + j + 7) }
-    }.map(_.toByte).toArray
-
-    val spImage = Row(null, height, width, 3, ImageSchema.ocvTypes("CV_8UC3"), rawData)
+    val width = 10
+    val rawData: Array[Byte] = Range(0, height * width).map(_.toByte).toArray
+    val spImage = Row(null, height, width, 1, ImageSchema.ocvTypes("CV_8UC1"), rawData)
     val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
-
+    val raster = bufferedImage.getRaster
     for (h <- 0 until height) {
       for (w <- 0 until width) {
-        val rgb = bufferedImage.getRGB(w, h)
-        val color = new Color(rgb)
-        assert(color.getBlue.toByte === (h * 10 + w + 1).toByte)
-        assert(color.getGreen.toByte === (h * 10 + w + 4).toByte)
-        assert(color.getRed.toByte === (h * 10 + w + 7).toByte)
+        assert(raster.getSample(w, h, 0) == h * width + w)
       }
     }
   }
