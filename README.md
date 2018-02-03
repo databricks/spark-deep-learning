@@ -68,21 +68,21 @@ You can also post bug reports and feature requests in Github issues.
 
 
 ## Releases
-- 0.1.0 Alpha release: Spark 2.1.1 & Python 2.7 recommended.
-- [0.2.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.2.0) release: Spark 2.1.1 & Python 2.7 recommended.
-    1. KerasImageFileEstimator API (train a Keras model on image files)
-    2. SQL UDF support for Keras models
-    3. Added Xception, Resnet50 models to DeepImageFeaturizer & DeepImagePredictor.
-- [0.3.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.3.0) release: Spark 2.2.1, Python 3.6 & Scala 2.11 recommended.
-    1. KerasTransformer & TFTransformer for large-scale batch inference on non-image (tensor) data.
-    2. Scala API for transfer learning (`DeepImageFeaturizer`). InceptionV3 is supported.
-    3. Added VGG16, VGG19 models to DeepImageFeaturizer & DeepImagePredictor (Python).
 <!--
 - 1.0.0 release: Spark 2.3 required. Python 3.6 & Scala 2.11 recommended.
     1. Using the definition of images from Spark 2.3. The new definition uses the BGR channel ordering 
        for 3-channel images instead of the RGB ordering used in this project before the change. 
     2. Persistence for DeepImageFeaturizer (both Python and Scala).
 -->
+- [0.3.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.3.0) release: Spark 2.2.1, Python 3.6 & Scala 2.11 recommended.
+    1. KerasTransformer & TFTransformer for large-scale batch inference on non-image (tensor) data.
+    2. Scala API for transfer learning (`DeepImageFeaturizer`). InceptionV3 is supported.
+    3. Added VGG16, VGG19 models to DeepImageFeaturizer & DeepImagePredictor (Python).
+- [0.2.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.2.0) release: Spark 2.1.1 & Python 2.7 recommended.
+    1. KerasImageFileEstimator API (train a Keras model on image files)
+    2. SQL UDF support for Keras models
+    3. Added Xception, Resnet50 models to DeepImageFeaturizer & DeepImagePredictor.
+- 0.1.0 Alpha release: Spark 2.1.1 & Python 2.7 recommended.
 
 ## Quick user guide
 
