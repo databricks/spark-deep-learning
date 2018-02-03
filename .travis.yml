@@ -16,7 +16,7 @@ cache:
 
 env:
   matrix:
-    - SCALA_VERSION=2.11.8 SPARK_VERSION=2.2.1 SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7" SPARK_BUILD_URL="http://d3kbcqa49mib13.cloudfront.net/spark-${SPARK_VERSION}-bin-hadoop2.7.tgz"
+    - SCALA_VERSION=2.11.8 SPARK_VERSION=2.2.0 SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7" SPARK_BUILD_URL="http://d3kbcqa49mib13.cloudfront.net/spark-${SPARK_VERSION}-bin-hadoop2.7.tgz"
 
 before_install:
  - ./bin/download_travis_dependencies.sh
