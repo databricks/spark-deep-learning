@@ -123,4 +123,18 @@ class ImageUtilsSuite extends FunSuite {
       }
     }
   }
+
+  test("Simple BufferedImage from Row Image: grayscale") {
+    val height = 20
+    val width = 10
+    val rawData: Array[Byte] = Range(0, height * width).map(_.toByte).toArray
+    val spImage = Row(null, height, width, 1, ImageSchema.ocvTypes("CV_8UC1"), rawData)
+    val bufferedImage = ImageUtils.spImageToBufferedImage(spImage)
+    val raster = bufferedImage.getRaster
+    for (h <- 0 until height) {
+      for (w <- 0 until width) {
+        assert(raster.getSample(w, h, 0) == h * width + w)
+      }
+    }
+  }
 }
