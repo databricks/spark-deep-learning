@@ -32,8 +32,8 @@ object ImageUtilsSuite {
 
   /** Read image data into a BufferedImage, then use our utility method to convert to a row image */
   def getImageRow(resourcePath: String): Row = {
-    val resourceFilename = getClass.getResource(resourcePath).getFile
-    val imageBuffer = ImageIO.read(new File(resourceFilename))
+    val resourceStream = getClass.getResourceAsStream(resourcePath)
+    val imageBuffer = ImageIO.read(resourceStream)
     ImageUtils.spImageFromBufferedImage(imageBuffer)
   }
 
@@ -50,8 +50,8 @@ class ImageUtilsSuite extends FunSuite {
   test("Test spImage resize.") {
     def javaResize(imagePath: String, tgtWidth: Int, tgtHeight: Int): Row = {
       // Read BufferedImage directly from file
-      val resourceFilename = getClass.getResource(imagePath).getFile
-      val srcImg = ImageIO.read(new File(resourceFilename))
+      val resourceStream = getClass.getResourceAsStream(imagePath)
+      val srcImg = ImageIO.read(resourceStream)
       val tgtImg = new BufferedImage(tgtWidth, tgtHeight, srcImg.getType)
       // scaledImg is a java.awt.Image which supports drawing but not pixel lookup by index.
       val scaledImg = srcImg.getScaledInstance(tgtWidth, tgtHeight, Image.SCALE_AREA_AVERAGING)
