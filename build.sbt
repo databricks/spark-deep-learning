@@ -1,12 +1,13 @@
 // Your sbt build file. Guides on how to write one can be found at
 // http://www.scala-sbt.org/0.13/docs/index.html
 
-val sparkVer = sys.props.getOrElse("spark.version", "2.1.1")
+val sparkVer = sys.props.getOrElse("spark.version", "2.3.0")
 val sparkBranch = sparkVer.substring(0, 3)
 val defaultScalaVer = sparkBranch match {
   case "2.0" => "2.11.8"
   case "2.1" => "2.11.8"
   case "2.2" => "2.11.8"
+  case "2.3" => "2.11.8"
   case _ => throw new IllegalArgumentException(s"Unsupported Spark version: $sparkVer.")
 }
 val scalaVer = sys.props.getOrElse("scala.version", defaultScalaVer)
