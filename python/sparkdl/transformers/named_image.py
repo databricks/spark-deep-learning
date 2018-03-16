@@ -20,6 +20,7 @@ import py4j
 from pyspark import SparkContext
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
+from pyspark.ml.util import JavaMLReadable, JavaMLWritable, JavaMLReader
 from pyspark.ml.wrapper import JavaTransformer
 from pyspark.sql.functions import udf
 from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
@@ -140,17 +141,31 @@ class _LazyScaleHintConverter:
 _scaleHintConverter = _LazyScaleHintConverter()
 
 
-class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
+class _DeepImageFeaturizerReader(JavaMLReader):
+    def __init__(self, clazz):
+        super(_DeepImageFeaturizerReader, self).__init__(clazz)
+
+    @classmethod
+    def _java_loader_class(cls, clazz):
+        return "com.databricks.sparkdl.DeepImageFeaturizer"
+
+
+class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
     """
     Applies the model specified by its popular name, with its prediction layer(s) chopped off,
     to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
     can be used in a MLlib Pipeline.
     The input image column should be ImageSchema.
     """
-
+    # NOTE: We are not inheriting from HasInput/HasOutput to mirror the scala side. It also helps
+    # us to avoid issue with serialization/deserialization - default values based on uid do not
+    # always get set to correct value on the python side after deserialization. Default values do
+    # not get reset to the jvm side value unless they param value is not set.
+    # See pyspark.ml.wrapper.JavaParams._transfer_params_from_java
+    inputCol = Param(Params._dummy(), "inputCol", "input column name.", typeConverter=TypeConverters.toString)
+    outputCol = Param(Params._dummy(), "outputCol", "output column name.", typeConverter=TypeConverters.toString)
     modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
-
     scaleHint = Param(Params._dummy(), "scaleHint", "Hint which algorhitm to use for image resizing",
                       typeConverter=_scaleHintConverter)
 
@@ -175,6 +190,18 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
         self._transfer_params_to_java()
         return self
 
+    def setInputCol(selfs, value):
+        return self._set(inputCol=value)
+
+    def getInputCol(self):
+        return self.getOrDefault(self.inputCol)
+
+    def setOutputCol(selfs, value):
+        return self._set(outputCol=value)
+
+    def getOutputCol(self):
+        return self.getOrDefault(self.outputCol)
+
     def setModelName(self, value):
         return self._set(modelName=value)
 
@@ -182,10 +209,26 @@ class DeepImageFeaturizer(JavaTransformer, HasInputCol, HasOutputCol):
         return self.getOrDefault(self.modelName)
 
     def setScaleHint(self, value):
-            return self._set(scaleHint=value)
+        return self._set(scaleHint=value)
 
     def getScaleHint(self):
         return self.getOrDefault(self.scaleHint)
+
+    @classmethod
+    def read(cls):
+        return _DeepImageFeaturizerReader(cls)
+
+    @classmethod
+    def _from_java(cls, java_stage):
+        """
+        Given a Java object, create and return a Python wrapper of it.
+        Used for ML persistence.
+        """
+        res = DeepImageFeaturizer()
+        res._java_obj = java_stage
+        res._resetUid(java_stage.uid())
+        res._transfer_params_from_java()
+        return res
 
 
 class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
