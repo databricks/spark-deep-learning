@@ -76,9 +76,18 @@ def _build_graph(sess):
     Given a session (implicitly), adds nodes of computations
 
     It takes a vector input, with `_tensor_size` columns and returns an float64 scalar.
+    Also takes pairs of (input tensor name, output tensor name)
     """
-    x = tf.placeholder(tf.float64, shape=[None, _tensor_size], name=_tensor_input_name)
-    _ = tf.reduce_max(x, axis=1, name=_tensor_output_name)
+    integer_input = tf.placeholder(tf.int32, shape=[None, _tensor_size], name="integer_tensor")
+    integer_output = tf.reduce_max(x, axis=1, name="integer_output")
+    float_input = tf.placeholder(tf.float32, shape=[None, _tensor_size], name="float_tensor")
+    float_output = tf.reduce_max(x, axis=1, name="float_output")
+    double_input = tf.placeholder(tf.double, shape=[None, _tensor_size], name="double_tensor")
+    double_output = tf.reduce_max(x, axis=1, name="double_output")
+    short_input = tf.placeholder(tf.int16, shape=[None, _tensor_size], name="short_tensor")
+    short_output = tf.reduce_max(x, axis=1, name="short_output")
+    long_input = tf.placeholder(tf.int64, shape=[None, _tensor_size], name="long_tensor")
+    long_output = tf.reduce_max(x, axis=1, name="long_output")
 
 
 def _build_local_features():
@@ -86,6 +95,15 @@ def _build_local_features():
     Build numpy array (i.e. local) features.
     """
     # Build local features and DataFrame from it
+    return {
+        "integer_col": [1, 2, 3],
+        "float_col": [-1.0, -2.0, -3.0],
+        "long_col": [100, 200, 300],
+        "short_col": [4, 5, 6],
+        "double_col": [7.0, 8.0, 9.0]
+    }
+
+
     local_features = []
     np.random.seed(997)
     for idx in range(100):

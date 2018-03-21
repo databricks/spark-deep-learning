@@ -19,6 +19,8 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation, Reshape
 from keras.initializers import glorot_uniform
 
+from pyspark.sql.types import *
+
 from sparkdl.transformers.keras_tensor import KerasTransformer
 from ..tests import SparkDLTempDirTestCase
 
@@ -100,13 +102,17 @@ class KerasTransformerTest(SparkDLTempDirTestCase):
         """
         np.random.seed(self.RANDOM_SEED)
         data_shape = [num_examples] + example_shape
-        return np.random.randn(*data_shape)
+        return np.random.randn(*data_shape).astype(np.float32)
 
     def _getInputDF(self, sqlContext, inputShape, inputCol, idCol):
         """ Return a DataFrame containing a long ID column and an input column of arrays. """
         x_train = self._createNumpyData(num_examples=20, example_shape=inputShape)
         train_rows = [{idCol: i, inputCol: x_train[i].tolist()} for i in range(len(x_train))]
-        return sqlContext.createDataFrame(train_rows)
+        input_col_type = FloatType()
+        for _ in range(len(inputShape)):
+            input_col_type = ArrayType(input_col_type)
+        schema = StructType([StructField(idCol, IntegerType()), StructField(inputCol, input_col_type)])
+        return sqlContext.createDataFrame(train_rows, schema)
 
     def _writeKerasModelFile(self, model, filename):
         """
