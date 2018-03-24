@@ -154,134 +154,214 @@ print("Training set accuracy = " + str(evaluator.evaluate(predictionAndLabels)))
 
 ### Applying deep learning models at scale
 
-** TODO: add TFTransformer, re-organize **
+Spark DataFrames are a natural construct for applying deep learning models to a large-scale dataset. Deep Learning Pipelines provides a set of Spark MLlib Transformers for applying TensorFlow Graphs and TensorFlow-backed Keras Models at scale. The Transformers, backed by the Tensorframes library, efficiently handle the distribution of models and data to Spark workers.
 
-Spark DataFrames are a natural construct for applying deep learning models to a large-scale dataset. Deep Learning Pipelines provides a set of (Spark MLlib) Transformers for applying TensorFlow Graphs and TensorFlow-backed Keras Models at scale. In addition, popular images models can be applied out of the box, without requiring any TensorFlow or Keras code. The Transformers, backed by the Tensorframes library, efficiently handle the distribution of models and data to Spark workers.
+#### Applying deep learning models at scale to images
+Deep Learning Pipelines provides several ways to apply models to images at scale: 
+* Popular images models can be applied out of the box, without requiring any TensorFlow or Keras code
+* TensorFlow graphs that work on images
+* Keras models that work on images
 
-1.  Applying popular image models
+##### Applying popular image models
+There are many well-known deep learning models for images. If the task at hand is very similar to what the models provide (e.g. object recognition with ImageNet classes), or for pure exploration, one can use the Transformer `DeepImagePredictor` by simply specifying the model name.
 
-    There are many well-known deep learning models for images. If the task at hand is very similar to what the models provide (e.g. object recognition with ImageNet classes), or for pure exploration, one can use the Transformer `DeepImagePredictor` by simply specifying the model name.
 
-    ```python
-    from sparkdl.image.image import ImageSchema
-    from sparkdl import DeepImagePredictor
+```python
+from sparkdl import readImages, DeepImagePredictor
 
-    predictor = DeepImagePredictor(inputCol="image", outputCol="predicted_labels",
-                                   modelName="InceptionV3", decodePredictions=True, topK=10)
+image_df = readImages(sample_img_dir)
 
-    image_df = ImageSchema.readImages("/data/myimages")
-    predictions_df = predictor.transform(image_df)
-    ```
+predictor = DeepImagePredictor(inputCol="image", outputCol="predicted_labels", modelName="InceptionV3", decodePredictions=True, topK=10)
+predictions_df = predictor.transform(image_df)
 
-2.  For TensorFlow users
+display(predictions_df.select("filePath", "predicted_labels"))
+```
 
-    Deep Learning Pipelines provides a Transformer that will apply the given TensorFlow Graph to a DataFrame containing a column of images (e.g. loaded using the utilities described in the previous section). Here is a very simple example of how a TensorFlow Graph can be used with the Transformer. In practice, the TensorFlow Graph will likely be restored from files before calling `TFImageTransformer`.
+##### For TensorFlow users
+Deep Learning Pipelines provides an MLlib Transformer that will apply the given TensorFlow Graph to a DataFrame containing a column of images (e.g. loaded using the utilities described in the previous section). Here is a very simple example of how a TensorFlow Graph can be used with the Transformer. In practice, the TensorFlow Graph will likely be restored from files before calling `TFImageTransformer`.
 
-    ```python
-    from sparkdl import TFImageTransformer
-    import sparkdl.graph.utils as tfx
-    from sparkdl.image.image import ImageSchema
-    from sparkdl.transformers import utils
-    import tensorflow as tf
 
-    graph = tf.Graph()
-    with tf.Session(graph=graph) as sess:
-        image_arr = utils.imageInputPlaceholder()
-        resized_images = tf.image.resize_images(image_arr, (299, 299))
-        frozen_graph = tfx.strip_and_freeze_until([resized_images], graph, sess, return_graph=True)
+```python
+from sparkdl import readImages, TFImageTransformer
+import sparkdl.graph.utils as tfx  # strip_and_freeze_until was moved from sparkdl.transformers to sparkdl.graph.utils in 0.2.0
+from sparkdl.transformers import utils
+import tensorflow as tf
 
-    transformer = TFImageTransformer(inputCol="image", outputCol="predictions", graph=frozen_graph,
-                                     inputTensor=image_arr, outputTensor=resized_images,
-                                     outputMode="image")
+graph = tf.Graph()
+with tf.Session(graph=graph) as sess:
+    image_arr = utils.imageInputPlaceholder()
+    resized_images = tf.image.resize_images(image_arr, (299, 299))
+    # the following step is not necessary for this graph, but can be for graphs with variables, etc
+    frozen_graph = tfx.strip_and_freeze_until([resized_images], graph, sess, return_graph=True)
 
-    image_df = ImageSchema.readImages("/data/myimages")
-    processed_image_df = transformer.transform(image_df)
-    ```
+transformer = TFImageTransformer(inputCol="image", outputCol="predictions", graph=frozen_graph,
+                                 inputTensor=image_arr, outputTensor=resized_images,
+                                 outputMode="image")
 
-3.  For Keras users
+image_df = readImages(sample_img_dir)
+processed_image_df = transformer.transform(image_df)
+```
 
-    #### Images
+##### For Keras users
+For applying Keras models in a distributed manner using Spark, [`KerasImageFileTransformer`](link_here) works on TensorFlow-backed Keras models. It 
+* Internally creates a DataFrame containing a column of images by applying the user-specified image loading and processing function to the input DataFrame containing a column of image URIs
+* Loads a Keras model from the given model file path 
+* Applies the model to the image DataFrame
 
-    For applying Keras models to images in a distributed manner using Spark,
-    `KerasImageFileTransformer` works on TensorFlow-backed Keras models. It
+The difference in the API from `TFImageTransformer` above stems from the fact that usual Keras workflows have very specific ways to load and resize images that are not part of the TensorFlow Graph.
 
-    1.  Internally creates a DataFrame containing a column of images by applying the user-specified image loading and processing function to the input DataFrame containing a column of image URIs
-    2.  Loads a Keras model from the given model file path
-    3.  Applies the model to the image DataFrame
+To use the transformer, we first need to have a Keras model stored as a file. For this notebook we'll just save the Keras built-in InceptionV3 model instead of training one.
 
-    The difference in the API from `TFImageTransformer` above stems from the fact that usual Keras workflows have very specific ways to load and resize images that are not part of the TensorFlow Graph.
 
-    To use the transformer, we first need to have a Keras model stored as a file. For this example we'll just save the Keras built-in InceptionV3 model instead of training one.
+```python
+from keras.applications import InceptionV3
 
-    ```python
-    from keras.applications import InceptionV3
+model = InceptionV3(weights="imagenet")
+model.save('/tmp/model-full.h5')  # saves to the local filesystem
+# move to a permanent place for future use
+dbfs_model_path = 'dbfs:/models/model-full.h5'
+dbutils.fs.cp('file:/tmp/model-full.h5', dbfs_model_path)  
+```
 
-    model = InceptionV3(weights="imagenet")
-    model.save('/tmp/model-full.h5')
-    ```
+Now on the prediction side:
 
-    Now on the prediction side, we can do:
 
-    ```python
-    from keras.applications.inception_v3 import preprocess_input
-    from keras.preprocessing.image import img_to_array, load_img
-    import numpy as np
-    import os
-    from sparkdl import KerasImageFileTransformer
+```python
+from keras.applications.inception_v3 import preprocess_input
+from keras.preprocessing.image import img_to_array, load_img
+import numpy as np
+from pyspark.sql.types import StringType
+from sparkdl import KerasImageFileTransformer
 
-    def loadAndPreprocessKerasInceptionV3(uri):
-        # this is a typical way to load and prep images in keras
-        image = img_to_array(load_img(uri, target_size=(299, 299)))
-        image = np.expand_dims(image, axis=0)
-        return preprocess_input(image)
+def loadAndPreprocessKerasInceptionV3(uri):
+  # this is a typical way to load and prep images in keras
+  image = img_to_array(load_img(uri, target_size=(299, 299)))  # image dimensions for InceptionV3
+  image = np.expand_dims(image, axis=0)
+  return preprocess_input(image)
 
-    transformer = KerasImageFileTransformer(inputCol="uri", outputCol="predictions",
-                                            modelFile="/tmp/model-full.h5",
-                                            imageLoader=loadAndPreprocessKerasInceptionV3,
-                                            outputMode="vector")
+dbutils.fs.cp(dbfs_model_path, 'file:/tmp/model-full-tmp.h5')
+transformer = KerasImageFileTransformer(inputCol="uri", outputCol="predictions",
+                                        modelFile='/tmp/model-full-tmp.h5',  # local file path for model
+                                        imageLoader=loadAndPreprocessKerasInceptionV3,
+                                        outputMode="vector")
 
-    files = [os.path.abspath(os.path.join(dirpath, f)) for f in os.listdir("/data/myimages") if f.endswith('.jpg')]
-    uri_df = sqlContext.createDataFrame(files, StringType()).toDF("uri")
+files = ["/dbfs" + str(f.path)[5:] for f in dbutils.fs.ls(sample_img_dir)]  # make "local" file paths for images
+uri_df = sqlContext.createDataFrame(files, StringType()).toDF("uri")
 
-    final_df = transformer.transform(uri_df)
-    ```
+keras_pred_df = transformer.transform(uri_df)
+```
 
-    #### Tensor Inputs
 
-    `KerasTransformer` applies a TensorFlow-backed Keras model to inputs of up to 2 dimensions. It
-    loads a Keras model from a given model file path and applies the model to a column of arrays
-    (where an array corresponds to a Tensor), outputting a column of arrays.
+```python
+display(keras_pred_df.select("uri", "predictions"))
+```
 
-    ```python
-    from sparkdl import KerasTransformer
-    from keras.models import Sequential
-    from keras.layers import Dense
-    import numpy as np
+#### Applying deep learning models at scale to tensors
+Deep Learning Pipelines also provides ways to apply models written in popular deep learning libraries to tensors:
+* TensorFlow graphs
+* Keras models
 
-    # Generate random input data
-    num_features = 10
-    num_examples = 100
-    input_data = [{"features" : np.random.randn(num_features).tolist()} for i in range(num_examples)]
-    input_df = sqlContext.createDataFrame(input_data)
+##### For TensorFlow users
 
-    # Create and save a single-hidden-layer Keras model for binary classification
-    # NOTE: In a typical workflow, we'd train the model before exporting it to disk,
-    # but we skip that step here for brevity
-    model = Sequential()
-    model.add(Dense(units=20, input_shape=[num_features], activation='relu'))
-    model.add(Dense(units=1, activation='sigmoid'))
-    model_path = "/tmp/simple-binary-classification"
-    model.save(model_path)
+```python
+# import relevant libraries
+import sparkdl
+import tensorflow as tf
+import numpy as np
+import pandas as pd
+import matplotlib
+from pyspark.ml.feature import VectorAssembler
+from sparkdl import TFTransformer
+from sparkdl.graph.input import TFInputGraph
+from matplotlib import pyplot as plt
+import sparkdl.graph.utils as tfx
+import tensorframes
+from pyspark.sql.types import Row
 
-    # Create transformer and apply it to our input data
-    transformer = KerasTransformer(inputCol="features", outputCol="predictions",
-                                   modelFile=model_path)
-    final_df = transformer.transform(input_df)
-    ```
+# Generate sample Gaussian distributed around two different centers
+n_sample = 1000
+center_0 = [-1.5, 1.5]
+center_1 = [1.5, -1.5]
+
+def to_row(args):
+  xy, l = args
+  return Row(inputCol = xy, label = l)
+
+samples_0 = [np.random.randn(2) + center_0 for _ in range(n_sample//2)]
+labels_0 = [0 for _ in range(n_sample//2)]
+samples_1 = [np.random.randn(2) + center_1 for _ in range(n_sample//2)]
+labels_1 = [1 for _ in range(n_sample//2)]
+
+# Generate a tensorflow graph
+def build_graph(sess, w0):
+  X = tf.placeholder(tf.float32, shape=[None, 2], name="input_tensor")
+  model = tf.sigmoid(tf.matmul(X, w0), name="output_tensor")
+  return model, X
+
+# Make dataframe
+rows = map(to_row, zip(map(lambda x: x.tolist(), samples_0 + samples_1), labels_0 + labels_1))
+sdf = spark.createDataFrame(rows)
+```
+
+
+```python
+w0 = np.array([[1], [-1]]).astype(np.float32)
+with tf.Session() as sess:
+  model, X = build_graph(sess, w0)
+  output = sess.run(model, feed_dict = {
+    X : samples_0 + samples_1
+  })
+```
+
+
+```python
+graph = tf.Graph()
+with tf.Session(graph=graph) as session, graph.as_default():
+    _, _ = build_graph(session, w0)
+    gin = TFInputGraph.fromGraph(session.graph, session,
+                       ["input_tensor"], ["output_tensor"])
+
+transformer = TFTransformer(
+      tfInputGraph = gin,
+      inputMapping = {'inputCol': tfx.tensor_name("input_tensor")},
+      outputMapping = {tfx.tensor_name("output_tensor"): 'outputCol'})
+
+odf = transformer.transform(sdf)
+```
+
+##### For Keras users
+`KerasTransformer` applies a TensorFlow-backed Keras model to tensor inputs of up to 2 dimensions. It loads a Keras model from a given model file path and applies the model to a column of arrays (where an array corresponds to a Tensor), outputting a column of arrays.
+
+
+```python
+from sparkdl import KerasTransformer
+from keras.models import Sequential
+from keras.layers import Dense
+import numpy as np
+
+# Generate random input data
+num_features = 10
+num_examples = 100
+input_data = [{"features" : np.random.randn(num_features).tolist()} for i in range(num_examples)]
+input_df = sqlContext.createDataFrame(input_data)
+
+# Create and save a single-hidden-layer Keras model for binary classification
+# NOTE: In a typical workflow, we'd train the model before exporting it to disk,
+# but we skip that step here for brevity
+model = Sequential()
+model.add(Dense(units=20, input_shape=[num_features], activation='relu'))
+model.add(Dense(units=1, activation='sigmoid'))
+model_path = "/tmp/simple-binary-classification"
+model.save(model_path)
+
+# Create transformer and apply it to our input data
+transformer = KerasTransformer(inputCol="features", outputCol="predictions", modelFile=model_path)
+final_df = transformer.transform(input_df)
+```
 
 ### Deploying models as SQL functions
 
-One way to productionize a model is to deploy it as a Spark SQL User Defined Function, which allows anyone who knows SQL to use it. Deep Learning Pipelines provides mechanisms to take a deep learning model and register a Spark SQL User Defined Function (UDF). In particular, Deep Learning Pipelines 0.2.0 adds support for creating SQL UDFs from Keras models that work on image data. 
+One way to productionize a model is to deploy it as a Spark SQL User Defined Function, which allows anyone who knows SQL to use it. Deep Learning Pipelines provides mechanisms to take a deep learning model and *register* a Spark SQL User Defined Function (UDF). In particular, Deep Learning Pipelines 0.2.0 adds support for creating SQL UDFs from Keras models that work on image data. 
 
 The resulting UDF takes a column (formatted as a image struct "SpImage") and produces the output of the given Keras model; e.g. for Inception V3, it produces a real valued score vector over the ImageNet object categories.
 
@@ -297,12 +377,7 @@ registerKerasImageUDF("inceptionV3_udf", InceptionV3(weights="imagenet"))
 Alternatively, we can also register a UDF from a model file:
 
 ```python
-from keras.applications import InceptionV3
-
-model = InceptionV3(weights="imagenet")
-model.save("/tmp/model-full.h5")
-
-registerKerasImageUDF("my_custom_keras_model_udf", "/tmp/model-full.h5")
+registerKerasImageUDF("my_custom_keras_model_udf", "/tmp/model-full-tmp.h5")
 ```
 
 In Keras workflows dealing with images, it's common to have preprocessing steps before the model is applied to the image. If our workflow requires preprocessing, we can optionally provide a preprocessing function to UDF registration. The preprocessor should take in a filepath and return an image array; below is a simple example.
@@ -317,16 +392,15 @@ def keras_load_img(fpath):
     img = load_img(fpath, target_size=(299, 299))
     return img_to_array(img).astype(np.uint8)
 
-registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"), keras_load_img)
-
+registerKerasImageUDF("inceptionV3_udf_with_preprocessing", InceptionV3(weights="imagenet"), keras_load_img)
 ```
 
 Once a UDF has been registered, it can be used in a SQL query, e.g.
 
 ```python
-from sparkdl.image.image import ImageSchema
+from sparkdl import readImages
 
-image_df = ImageSchema.readImages("/data/myimages")
+image_df = readImages(sample_img_dir)
 image_df.registerTempTable("sample_images")
 ```
 
