@@ -17,13 +17,12 @@
 package org.tensorframes.impl
 
 import java.nio.file.{Files, Paths => JPaths}
-import scala.collection.JavaConverters._
 
-import org.tensorflow.{Graph => TFGraph, Session => TFSession, Output => TFOut, Tensor}
 import org.tensorflow.framework.GraphDef
-
+import org.tensorflow.{Tensor, Graph => TFGraph, Output => TFOut, Session => TFSession}
 import org.tensorframes.ShapeDescription
-import org.tensorframes.dsl.Implicits._
+
+import scala.collection.JavaConverters._
 
 
 /**
@@ -47,14 +46,14 @@ class GraphBuilder(g: TFGraph) {
     g.close()
   }
 
-  def op(opType: String, name: Option[String] = None)(in0: TFOut, ins: TFOut*): TFOut = { 
+  def op(opType: String, name: Option[String] = None)(in0: TFOut[_], ins: TFOut[_]*): TFOut[_] = {
     val opName = name.getOrElse(s"$opType-${varIdx += 1}")
     var b = g.opBuilder(opType, opName).addInput(in0)
     ins.foreach { in => b = b.addInput(in) }
     b.build().output(0)
   }  
 
-  def const[T](name: String, value: T): TFOut = {
+  def const[T](name: String, value: T): TFOut[_] = {
     val tnsr = Tensor.create(value)
     g.opBuilder("Const", name)
       .setAttr("dtype", tnsr.dataType())
@@ -62,14 +61,14 @@ class GraphBuilder(g: TFGraph) {
       .build().output(0)
   }
 
-  def run(feeds: Map[String, Any], fetch: String): Tensor = {
+  def run(feeds: Map[String, Any], fetch: String): Tensor[_] = {
     run(feeds, Seq(fetch)).head
   }
 
-  def run(feeds: Map[String, Any], fetches: Seq[String]): Seq[Tensor] = {
+  def run(feeds: Map[String, Any], fetches: Seq[String]): Seq[Tensor[_]] = {
     var runner = sess.runner()
     feeds.foreach { 
-      case (name, tnsr: Tensor) =>
+      case (name, tnsr: Tensor[_]) =>
         runner = runner.feed(name, tnsr)
       case (name, value) =>
         runner = runner.feed(name, Tensor.create(value))

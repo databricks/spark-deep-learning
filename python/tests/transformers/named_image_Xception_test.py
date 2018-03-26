@@ -20,3 +20,5 @@ class NamedImageTransformerXceptionTest(NamedImageTransformerBaseTestCase):
 
     __test__ = True
     name = "Xception"
+    featurizerCompareDigitsExact = 4
+
