@@ -265,17 +265,11 @@ Deep Learning Pipelines also provides ways to apply models written in popular de
 
 ```python
 # import relevant libraries
-import sparkdl
 import tensorflow as tf
 import numpy as np
-import pandas as pd
-import matplotlib
-from pyspark.ml.feature import VectorAssembler
 from sparkdl import TFTransformer
 from sparkdl.graph.input import TFInputGraph
-from matplotlib import pyplot as plt
 import sparkdl.graph.utils as tfx
-import tensorframes
 from pyspark.sql.types import Row
 
 # Generate sample Gaussian distributed around two different centers
@@ -303,6 +297,7 @@ rows = map(to_row, zip(map(lambda x: x.tolist(), samples_0 + samples_1), labels_
 sdf = spark.createDataFrame(rows)
 ```
 
+Following is the code you would write to predict using tensorflow on a single node.
 
 ```python
 w0 = np.array([[1], [-1]]).astype(np.float32)
@@ -313,6 +308,7 @@ with tf.Session() as sess:
   })
 ```
 
+Now you can use the following Spark (ML Lib) transformer to apply the model to a DataFrame in a distributed fashion.
 
 ```python
 graph = tf.Graph()
