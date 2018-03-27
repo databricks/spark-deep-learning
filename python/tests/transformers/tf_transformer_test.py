@@ -17,7 +17,8 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import tensorflow as tf
 
-from pyspark.sql.types import Row
+from pyspark.sql import Row
+from pyspark.sql.types import *
 
 import tensorframes as tfs
 
@@ -29,17 +30,23 @@ from ..tests import SparkDLTestCase
 
 
 class TFTransformerTests(SparkDLTestCase):
-    def test_graph_novar(self):
-        transformer = _build_transformer(lambda session:
-                                         TFInputGraph.fromGraph(session.graph, session,
-                                                                [_tensor_input_name],
-                                                                [_tensor_output_name]))
-        gin = transformer.getTFInputGraph()
-        local_features = _build_local_features()
-        expected = _get_expected_result(gin, local_features)
-        dataset = self.session.createDataFrame(local_features)
-        _check_transformer_output(transformer, dataset, expected)
-
+    def test_graph_array_types(self):
+        test_dtypes = [(tf.int32, ArrayType(IntegerType()), np.int32),
+                       (tf.int64, ArrayType(LongType()), np.int64),
+                       (tf.float32, ArrayType(FloatType()), np.float32),
+                       (tf.float64, ArrayType(DoubleType()), np.float64)]
+        for tf_dtype, spark_dtype, np_type in test_dtypes:
+            transformer = _build_transformer(lambda session:
+                                             TFInputGraph.fromGraph(session.graph, session,
+                                                                    [_tensor_input_name],
+                                                                    [_tensor_output_name]),
+                                             tf_dtype)
+            gin = transformer.getTFInputGraph()
+            local_features = _build_local_features(np_type)
+            expected = _get_expected_result(gin, local_features)
+            schema = StructType([StructField('inputCol', spark_dtype)])
+            dataset = self.session.createDataFrame(local_features, schema)
+            _check_transformer_output(transformer, dataset, expected)
 
 # The name of the input tensor
 _tensor_input_name = "input_tensor"
@@ -55,7 +62,7 @@ _output_mapping = {tfx.tensor_name(_tensor_output_name): 'outputCol'}
 _all_close_tolerance = 1e-5
 
 
-def _build_transformer(gin_function):
+def _build_transformer(gin_function, tf_dtype):
     """
     Makes a session and a default graph, loads the simple graph into it, and then calls
     gin_function(session) to build the :py:obj:`TFInputGraph` object.
@@ -63,7 +70,7 @@ def _build_transformer(gin_function):
     """
     graph = tf.Graph()
     with tf.Session(graph=graph) as sess, graph.as_default():
-        _build_graph(sess)
+        _build_graph(sess, tf_dtype)
         gin = gin_function(sess)
 
     return TFTransformer(tfInputGraph=gin,
@@ -71,45 +78,28 @@ def _build_transformer(gin_function):
                          outputMapping=_output_mapping)
 
 
-def _build_graph(sess):
+def _build_graph(sess, tf_dtype):
     """
     Given a session (implicitly), adds nodes of computations
 
     It takes a vector input, with `_tensor_size` columns and returns an float64 scalar.
-    Also takes pairs of (input tensor name, output tensor name)
     """
-    integer_input = tf.placeholder(tf.int32, shape=[None, _tensor_size], name="integer_tensor")
-    integer_output = tf.reduce_max(x, axis=1, name="integer_output")
-    float_input = tf.placeholder(tf.float32, shape=[None, _tensor_size], name="float_tensor")
-    float_output = tf.reduce_max(x, axis=1, name="float_output")
-    double_input = tf.placeholder(tf.double, shape=[None, _tensor_size], name="double_tensor")
-    double_output = tf.reduce_max(x, axis=1, name="double_output")
-    short_input = tf.placeholder(tf.int16, shape=[None, _tensor_size], name="short_tensor")
-    short_output = tf.reduce_max(x, axis=1, name="short_output")
-    long_input = tf.placeholder(tf.int64, shape=[None, _tensor_size], name="long_tensor")
-    long_output = tf.reduce_max(x, axis=1, name="long_output")
+    x = tf.placeholder(tf_dtype, shape=[None, _tensor_size], name=_tensor_input_name)
+    _ = tf.reduce_max(x, axis=1, name=_tensor_output_name)
 
 
-def _build_local_features():
+def _build_local_features(np_dtype):
     """
     Build numpy array (i.e. local) features.
     """
     # Build local features and DataFrame from it
-    return {
-        "integer_col": [1, 2, 3],
-        "float_col": [-1.0, -2.0, -3.0],
-        "long_col": [100, 200, 300],
-        "short_col": [4, 5, 6],
-        "double_col": [7.0, 8.0, 9.0]
-    }
-
-
     local_features = []
     np.random.seed(997)
     for idx in range(100):
         _dict = {'idx': idx}
         for colname, _ in _input_mapping.items():
-            _dict[colname] = np.random.randn(_tensor_size).tolist()
+            colvalue = np.random.randn(_tensor_size) * 100
+            _dict[colname] = colvalue.astype(np_dtype).tolist()
 
         local_features.append(Row(**_dict))
 
