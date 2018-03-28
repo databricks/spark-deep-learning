@@ -29,6 +29,9 @@ from keras.applications.imagenet_utils import preprocess_input
 
 import pyspark.ml.linalg as spla
 import pyspark.sql.types as sptyp
+import pyspark.sql.functions as F
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 
 from sparkdl.estimators.keras_image_file_estimator import KerasImageFileEstimator
 from sparkdl.transformers.keras_image import KerasImageFileTransformer
@@ -61,7 +64,7 @@ class KerasEstimatorsTest(SparkDLTestCase):
             label_inds = label_inds.ravel()
             assert label_inds.shape[0] == cardinality, label_inds.shape
             one_hot_vec = spla.Vectors.dense(label_inds.tolist())
-            _row_struct = {self.input_col: uri, self.label_col: one_hot_vec}
+            _row_struct = {self.input_col: uri, self.one_hot_col: one_hot_vec, self.label_col: float(label)}
             row = sptyp.Row(**_row_struct)
             local_rows.append(row)
 
@@ -69,8 +72,15 @@ class KerasEstimatorsTest(SparkDLTestCase):
         image_uri_df.printSchema()
         return image_uri_df
 
-    def _get_estimator(self, model, optimizer='adam', loss='categorical_crossentropy',
-                       keras_fit_params={'verbose': 1}):
+    def _get_model(self, label_cardinality):
+        # We need a small model so that machines with limited resources can run it
+        model = Sequential()
+        model.add(Flatten(input_shape=(299, 299, 3)))
+        model.add(Dense(label_cardinality))
+        model.add(Activation("softmax"))
+        return model
+
+    def _get_estimator(self, model):
         """
         Create a :py:obj:`KerasImageFileEstimator` from an existing Keras model
         """
@@ -79,40 +89,63 @@ class KerasEstimatorsTest(SparkDLTestCase):
         model.save(model_filename)
         estm = KerasImageFileEstimator(inputCol=self.input_col,
                                        outputCol=self.output_col,
-                                       labelCol=self.label_col,
+                                       labelCol=self.one_hot_col,
                                        imageLoader=_load_image_from_uri,
-                                       kerasOptimizer=optimizer,
-                                       kerasLoss=loss,
-                                       kerasFitParams=keras_fit_params,
+                                       kerasOptimizer='adam',
+                                       kerasLoss='categorical_crossentropy',
                                        modelFile=model_filename)
         return estm
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.input_col = 'kerasTestImageUri'
-        self.label_col = 'kerasTestlabel'
+        self.label_col = 'kerasTestLabel'
+        self.one_hot_col = 'kerasTestOneHot'
         self.output_col = 'kerasTestPreds'
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def test_valid_workflow(self):
+    def test_single_training(self):
         # Create image URI dataframe
         label_cardinality = 10
         image_uri_df = self._create_train_image_uris_and_labels(
             repeat_factor=3, cardinality=label_cardinality)
 
-        # We need a small model so that machines with limited resources can run it
-        model = Sequential()
-        model.add(Flatten(input_shape=(299, 299, 3)))
-        model.add(Dense(label_cardinality))
-        model.add(Activation("softmax"))
-
+        model = self._get_model(label_cardinality)
         estimator = self._get_estimator(model)
+        estimator.setKerasFitParams({'verbose': 1})
         self.assertTrue(estimator._validateParams())
+
         transformers = estimator.fit(image_uri_df)
         self.assertEqual(1, len(transformers))
         self.assertIsInstance(transformers[0]['transformer'], KerasImageFileTransformer)
+
+    def test_tuning(self):
+        # Create image URI dataframe
+        label_cardinality = 2
+        image_uri_df = self._create_train_image_uris_and_labels(
+            repeat_factor=3, cardinality=label_cardinality)
+
+        model = self._get_model(label_cardinality)
+        estimator = self._get_estimator(model)
+
+        paramGrid = (
+            ParamGridBuilder()
+            .addGrid(estimator.kerasFitParams, [{"batch_size": 32}, {"batch_size": 64}])
+            .build()
+        )
+
+        bc = BinaryClassificationEvaluator(rawPredictionCol=self.output_col, labelCol=self.label_col)
+        cv = CrossValidator(estimator=estimator, estimatorParamMaps=paramGrid, evaluator=bc, numFolds=2)
+
+        transformers = cv.fit(image_uri_df)
+        self.assertEqual(2, len(transformers))
+        self.assertIsInstance(transformers[0]['transformer'], KerasImageFileTransformer)
+        self.assertIsInstance(transformers[1]['transformer'], KerasImageFileTransformer)
+        df = transformers[0].transform(image_uri_df)
+        self.assertEqual(len(df.collect()), len(image_uri_df.collect()))
+
 
     def test_keras_training_utils(self):
         self.assertTrue(kmutil.is_valid_optimizer('adam'))
