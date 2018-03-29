@@ -230,7 +230,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
 
 
         sc = JVMAPI._curr_sc()
-        paramNameMaps = map(lambda x: {param.name: val for param, val in x.items()}, paramMaps)
+        paramNameMaps = list(map(lambda x: {param.name: val for param, val in x.items()}, paramMaps))
         paramNameMapsRDD = sc.parallelize(paramNameMaps, numSlices=len(paramNameMaps))
 
         # Extract image URI from provided dataset and create features as numpy arrays
