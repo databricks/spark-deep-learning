@@ -117,9 +117,11 @@ class KerasEstimatorsTest(SparkDLTestCase):
         estimator.setKerasFitParams({'verbose': 1})
         self.assertTrue(estimator._validateParams())
 
-        transformers = estimator.fit(image_uri_df)
-        self.assertEqual(1, len(transformers))
-        self.assertIsInstance(transformers[0]['transformer'], KerasImageFileTransformer)
+        transformer = estimator.fit(image_uri_df)
+        self.assertIsInstance(transformer, KerasImageFileTransformer, "output should be KIFT")
+        output_df = transformer.transform(image_uri_df)
+        self.assertEqual(len(output_df.select(F.col(self.output_col)).collect()), len(image_uri_df.collect()),
+                         "output column should exist and be equal sized")
 
     def test_tuning(self):
         # Create image URI dataframe
@@ -139,13 +141,11 @@ class KerasEstimatorsTest(SparkDLTestCase):
         bc = BinaryClassificationEvaluator(rawPredictionCol=self.output_col, labelCol=self.label_col)
         cv = CrossValidator(estimator=estimator, estimatorParamMaps=paramGrid, evaluator=bc, numFolds=2)
 
-        transformers = cv.fit(image_uri_df)
-        self.assertEqual(2, len(transformers))
-        self.assertIsInstance(transformers[0]['transformer'], KerasImageFileTransformer)
-        self.assertIsInstance(transformers[1]['transformer'], KerasImageFileTransformer)
-        df = transformers[0].transform(image_uri_df)
-        self.assertEqual(len(df.collect()), len(image_uri_df.collect()))
-
+        transformer = cv.fit(image_uri_df)
+        self.assertIsInstance(transformer.bestModel, KerasImageFileTransformer, "best model should be KIFT")
+        output_df = transformer.transform(image_uri_df)
+        self.assertEqual(len(output_df.select(F.col(self.output_col)).collect()), len(image_uri_df.collect()),
+                         "output column should exist and be equal sized")
 
     def test_keras_training_utils(self):
         self.assertTrue(kmutil.is_valid_optimizer('adam'))

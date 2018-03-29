@@ -40,6 +40,7 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
                  outputMode="vector")
         """
         super(KerasImageFileTransformer, self).__init__()
+        self._setDefault(outputMode="vector")
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
         self._inputTensor = None
@@ -58,8 +59,7 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
 
     def _transform(self, dataset):
         with KSessionWrap() as (sess, keras_graph):
-            graph, inputTensorName, outputTensorName = self._loadTFGraph(sess=sess,
-                                                                         graph=keras_graph)
+            graph, inputTensorName, outputTensorName = self._loadTFGraph(sess=sess, graph=keras_graph)
             image_df = self.loadImagesInternal(dataset, self.getInputCol())
             transformer = TFImageTransformer(channelOrder='RGB', inputCol=self._loadedImageCol(),
                                              outputCol=self.getOutputCol(), graph=graph,
