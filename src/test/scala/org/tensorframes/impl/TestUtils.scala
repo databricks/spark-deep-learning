@@ -18,11 +18,12 @@ package org.tensorframes.impl
 
 import java.nio.file.{Files, Paths => JPaths}
 
+import scala.collection.JavaConverters._
+
 import org.tensorflow.framework.GraphDef
 import org.tensorflow.{Tensor, Graph => TFGraph, Output => TFOut, Session => TFSession}
 import org.tensorframes.ShapeDescription
 
-import scala.collection.JavaConverters._
 
 
 /**

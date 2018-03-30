@@ -1,12 +1,11 @@
 sudo: required
 
-dist: xenial
+dist: trusty
+
+services:
+  - docker
 
 language: python
-python:
-  - "2.7"
-  - "3.6"
-  - "3.5"
 
 cache:
   directories:
@@ -15,19 +14,95 @@ cache:
     - $HOME/.cache/spark-versions
 
 env:
+  global:
+    - SCALA_VERSION=2.11.8
+    - SPARK_VERSION=2.3.0
+    - SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7"
+    - SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-2.3.0/spark-2.3.0-bin-hadoop2.7.tgz"
   matrix:
-    - SCALA_VERSION=2.11.8 SPARK_VERSION=2.3.0 SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7" SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-2.3.0/spark-2.3.0-bin-hadoop2.7.tgz"
+    - PYTHON_VERSION=2.7.13
+    - PYTHON_VERSION=3.5.1
+    - PYTHON_VERSION=3.6.2
 
 before_install:
- - ./bin/download_travis_dependencies.sh
+  - ./bin/download_travis_dependencies.sh
+  - ci_env=`bash <(curl -s https://codecov.io/env)`
+  - if [[ "$PYTHON_VERSION" == 2.* ]]; then
+        export CONDA_URL="repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh"
+        export PYSPARK_PYTHON=python2;
+    else
+        export CONDA_URL="repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh";
+        export PYSPARK_PYTHON=python3;
+    fi
 
+  - docker run $ci_env
+               -e "JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64"
+               -e SPARK_VERSION
+               -e SPARK_BUILD
+               -e SCALA_VERSION
+               -e PYTHON_VERSION
+               -e PYSPARK_PYTHON
+               -e CONDA_URL
+               -d --name ubuntu-test -v $HOME ubuntu:16.04 tail -f /dev/null
+  - docker ps
+
+# See this page: http://conda.pydata.org/docs/travis.html
 install:
- - pip install -r ./python/requirements.txt
+  # install needed ubuntu packages
+  - docker exec -t ubuntu-test bash -c "
+      apt-get update;
+      apt-get upgrade -y;
+      apt-get install -y curl openjdk-8-jdk bzip2"
+
+  # Copy the current dir into the docker container
+  - docker cp `pwd` ubuntu-test:$HOME/
+
+  # Download and set up miniconda
+  - docker exec -t ubuntu-test bash -c "
+     curl https://$CONDA_URL >> $HOME/miniconda.sh;
+     bash $HOME/miniconda.sh -b -p $HOME/miniconda;
+     bash $HOME/miniconda.sh -b -p $HOME/miniconda;
+     $HOME/miniconda/bin/conda config --set always_yes yes --set changeps1 no;
+     $HOME/miniconda/bin/conda update -q conda;
+     $HOME/miniconda/bin/conda info -a;
+     $HOME/miniconda/bin/conda create -q -n test-environment python=$PYTHON_VERSION"
+
+ # Activate conda environment ad install required packages
+  - docker exec -t ubuntu-test bash -c "
+      source $HOME/miniconda/bin/activate test-environment;
+      python --version;
+      pip --version;
+      pip install --user -r $HOME/spark-deep-learning/python/requirements.txt;
+      pip install --user tensorflow==1.6"
 
 script:
-  - ./build/sbt -Dspark.version=$SPARK_VERSION -Dscala.version=$SCALA_VERSION "set test in assembly := {}" assembly
-  - ./build/sbt -Dspark.version=$SPARK_VERSION -Dscala.version=$SCALA_VERSION coverage test coverageReport
-  - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD RUN_ONLY_LIGHT_TESTS=True ./python/run-tests.sh
+  - docker cp $HOME/.cache ubuntu-test:$HOME/
+  # build assembly
+  - docker exec -t ubuntu-test bash -c "
+      source $HOME/miniconda/bin/activate test-environment;
+      cd $HOME/spark-deep-learning;
+      ./build/sbt -Dspark.version=$SPARK_VERSION
+                  -Dscala.version=$SCALA_VERSION
+                  \"set test in assembly := {}\"
+                  assembly"
+  # build coverage
+  - docker exec -t ubuntu-test bash -c "
+      cd $HOME/spark-deep-learning;
+      ./build/sbt -Dspark.version=$SPARK_VERSION
+                  -Dscala.version=$SCALA_VERSION
+                  coverage test coverageReport"
+
+  # run the python tests
+  - docker exec -t ubuntu-test bash -c "
+      source $HOME/miniconda/bin/activate test-environment;
+      cd $HOME/spark-deep-learning;
+      SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD RUN_ONLY_LIGHT_TESTS=True ./python/run-tests.sh;"
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  # Unfortunately we need to install coverage here even though it's been installed via pip in the virual env.
+  # The codecov bash script executes `which coverage` and that comes up empty unless we install it directly.
+  - docker exec -t ubuntu-test bash -c "
+      source $HOME/miniconda/bin/activate test-environment;
+      $HOME/miniconda/bin/conda install -c anaconda coverage;
+      cd $HOME/spark-deep-learning;
+      bash <(curl -s https://codecov.io/bash)"
