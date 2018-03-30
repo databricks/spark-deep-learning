@@ -171,4 +171,4 @@ class GraphPiecesTest(SparkDLTestCase):
 
             self.assertTrue(np.all(preds_tgt == preds_ref))
 
-model_sizes = {'InceptionV3':(299,299), 'Xception':(299,299), 'ResNet50':(224,224)}
+model_sizes = {'InceptionV3': (299, 299), 'Xception': (299, 299), 'ResNet50': (224, 224)}
