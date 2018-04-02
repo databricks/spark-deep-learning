@@ -20,7 +20,7 @@ from tensorflow.python.tools import optimize_for_inference_lib as infr_opt
 import tensorframes as tfs
 
 from pyspark.ml import Transformer
-from pyspark.sql.types import BooleanType
+from pyspark.sql.types import DoubleType
 
 from sparkdl.graph.builder import GraphFunction
 import sparkdl.graph.utils as tfx
