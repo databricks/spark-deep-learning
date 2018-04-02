@@ -20,7 +20,7 @@ scalaVersion := scalaVer
 spName := "databricks/spark-deep-learning"
 
 // Don't forget to set the version
-version := s"0.3.0-spark$sparkBranch"
+version := s"1.0.0-spark$sparkBranch"
 
 // All Spark Packages need a license
 licenses := Seq("Apache-2.0" -> url("http://opensource.org/licenses/Apache-2.0"))
@@ -35,7 +35,7 @@ sparkComponents ++= Seq("mllib-local", "mllib", "sql")
 
 // add any Spark Package dependencies using spDependencies.
 // e.g. spDependencies += "databricks/spark-avro:0.1"
-spDependencies += s"databricks/tensorframes:0.2.9-s_${scalaMajorVersion}"
+spDependencies += s"databricks/tensorframes:0.3.0-s_${scalaMajorVersion}"
 
 
 // These versions are ancient, but they cross-compile around scala 2.10 and 2.11.

@@ -69,6 +69,8 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
     name = None
     # Allow subclasses to force number of partitions - a hack to avoid OOM issues
     numPartitionsOverride = None
+    featurizerCompareDigitsExact = 6
+    featurizerCompareDigitsCosine = 1
 
     @classmethod
     def getSampleImageList(cls):
@@ -198,7 +200,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         dfFeatures = transformer.transform(imageDf).collect()
         dfFeatures = np.array([i.features for i in dfFeatures])
         kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
-        np.testing.assert_array_almost_equal(kerasReshaped, dfFeatures)
+        np.testing.assert_array_almost_equal(kerasReshaped, dfFeatures, decimal=self.featurizerCompareDigitsExact)
 
 
     def test_featurization(self):
@@ -218,7 +220,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
                 kerasReshaped[i],
                 features_sc[i]) for i in range(
                 len(features_sc))]
-        np.testing.assert_array_almost_equal(0, diffs, decimal=2)
+        np.testing.assert_array_almost_equal(0, diffs, decimal=self.featurizerCompareDigitsCosine)
 
     def test_featurizer_in_pipeline(self):
         """

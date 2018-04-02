@@ -21,3 +21,4 @@ class NamedImageTransformerVGG16Test(NamedImageTransformerBaseTestCase):
     __test__ = os.getenv('RUN_ONLY_LIGHT_TESTS', False) != "True"
     name = "VGG16"
     numPartitionsOverride = 1  # hits OOM if more than 2 threads
+    featurizerCompareDigitsCosine = 1

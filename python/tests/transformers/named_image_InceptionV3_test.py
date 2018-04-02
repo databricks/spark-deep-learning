@@ -20,3 +20,4 @@ class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
 
     __test__ = True
     name = "InceptionV3"
+    featurizerCompareDigitsExact = 4
