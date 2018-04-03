@@ -257,22 +257,25 @@ display(keras_pred_df.select("uri", "predictions"))
 ```
 
 #### Applying deep learning models at scale to tensors
-Deep Learning Pipelines also provides ways to apply models written in popular deep learning libraries to tensors:
+Deep Learning Pipelines also provides ways to apply models with tensor inputs (up to 2 dimensions), written in popular deep learning libraries:
 * TensorFlow graphs
 * Keras models
 
 ##### For TensorFlow users
 
 ```python
-# import relevant libraries
-import tensorflow as tf
 import numpy as np
+from pyspark.sql.types import Row
 from sparkdl import TFTransformer
 from sparkdl.graph.input import TFInputGraph
 import sparkdl.graph.utils as tfx
-from pyspark.sql.types import Row
+import tensorflow as tf
 
-# Generate sample Gaussian distributed around two different centers
+```
+
+First we generate sample dataset of 2-dimensional points, Gaussian distributed around two different centers
+
+```python
 n_sample = 1000
 center_0 = [-1.5, 1.5]
 center_1 = [1.5, -1.5]
@@ -286,15 +289,20 @@ labels_0 = [0 for _ in range(n_sample//2)]
 samples_1 = [np.random.randn(2) + center_1 for _ in range(n_sample//2)]
 labels_1 = [1 for _ in range(n_sample//2)]
 
-# Generate a tensorflow graph
+# Make dataframe for the Spark use case
+rows = map(to_row, zip(map(lambda x: x.tolist(), samples_0 + samples_1), labels_0 + labels_1))
+sdf = spark.createDataFrame(rows)
+
+```
+
+Next, we write a function that returns a tensorflow graph and its input
+
+```python
 def build_graph(sess, w0):
   X = tf.placeholder(tf.float32, shape=[None, 2], name="input_tensor")
   model = tf.sigmoid(tf.matmul(X, w0), name="output_tensor")
   return model, X
 
-# Make dataframe
-rows = map(to_row, zip(map(lambda x: x.tolist(), samples_0 + samples_1), labels_0 + labels_1))
-sdf = spark.createDataFrame(rows)
 ```
 
 Following is the code you would write to predict using tensorflow on a single node.
@@ -308,19 +316,19 @@ with tf.Session() as sess:
   })
 ```
 
-Now you can use the following Spark (ML Lib) transformer to apply the model to a DataFrame in a distributed fashion.
+Now you can use the following Spark MLlib Transformer to apply the model to a DataFrame in a distributed fashion.
 
 ```python
 graph = tf.Graph()
 with tf.Session(graph=graph) as session, graph.as_default():
     _, _ = build_graph(session, w0)
     gin = TFInputGraph.fromGraph(session.graph, session,
-                       ["input_tensor"], ["output_tensor"])
+                                 ["input_tensor"], ["output_tensor"])
 
 transformer = TFTransformer(
-      tfInputGraph = gin,
-      inputMapping = {'inputCol': tfx.tensor_name("input_tensor")},
-      outputMapping = {tfx.tensor_name("output_tensor"): 'outputCol'})
+    tfInputGraph=gin,
+    inputMapping={'inputCol': tfx.tensor_name("input_tensor")},
+    outputMapping={tfx.tensor_name("output_tensor"): 'outputCol'})
 
 odf = transformer.transform(sdf)
 ```
