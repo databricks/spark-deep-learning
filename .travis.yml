@@ -70,10 +70,7 @@ install:
  # Activate conda environment ad install required packages
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
-      python --version;
-      pip --version;
-      pip install --user -r $HOME/spark-deep-learning/python/requirements.txt;
-      pip install --user tensorflow==1.6"
+      pip install --user -r $HOME/spark-deep-learning/python/requirements.txt;"
 
 script:
   - docker cp $HOME/.cache ubuntu-test:$HOME/
