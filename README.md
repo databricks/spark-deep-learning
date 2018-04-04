@@ -41,7 +41,7 @@ For an overview of the library, see the Databricks [blog post](https://databrick
 
 The library is in its early days, and we welcome everyone's feedback and contribution.
 
-Maintainers: Bago Amirbekian, Joseph Bradley, Sue Ann Hong, Tim Hunter, Siddarth Murching, Tomas Nykodym
+Maintainers: Bago Amirbekian, Joseph Bradley, Sue Ann Hong, Tim Hunter, Siddharth Murching, Tomas Nykodym
 
 
 ## Building and running unit tests
@@ -99,7 +99,10 @@ Deep Learning Pipelines provides a suite of tools around working with and proces
 -   [Applying deep learning models at scale - to tensors](#applying-deep-learning-models-at-scale-to-tensors) : of up to 2 dimensions
 -   [Deploying models as SQL functions](#deploying-models-as-sql-functions) : empower everyone by making deep learning available in SQL.
 
-To try running the examples below, check out the Databricks notebook in the [Databricks docs for Deep Learning Pipelines](https://docs.databricks.com/applications/deep-learning/deep-learning-pipelines.html), which works with the latest release of Deep Learning Pipelines. Here are some Databricks notebooks compatible with earlier releases: [0.1.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html), [0.2.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/1674891575666800/3983381308530741/latest.html), [0.3.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/1674891575666868/3983381308530741/latest.html).
+To try running the examples below, check out the Databricks notebook in the [Databricks docs for Deep Learning Pipelines](https://docs.databricks.com/applications/deep-learning/deep-learning-pipelines.html), which works with the latest release of Deep Learning Pipelines. Here are some Databricks notebooks compatible with earlier releases:
+[0.1.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html),
+[0.2.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/1674891575666800/3983381308530741/latest.html),
+[0.3.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/4856334613426202/3381529530484660/4079725938146156/latest.html).
 
 
 ### Working with images in Spark
@@ -173,8 +176,6 @@ image_df = readImages(sample_img_dir)
 
 predictor = DeepImagePredictor(inputCol="image", outputCol="predicted_labels", modelName="InceptionV3", decodePredictions=True, topK=10)
 predictions_df = predictor.transform(image_df)
-
-display(predictions_df.select("filePath", "predicted_labels"))
 ```
 
 ##### For TensorFlow users
@@ -217,10 +218,7 @@ To use the transformer, we first need to have a Keras model stored as a file. Fo
 from keras.applications import InceptionV3
 
 model = InceptionV3(weights="imagenet")
-model.save('/tmp/model-full.h5')  # saves to the local filesystem
-# move to a permanent place for future use
-dbfs_model_path = 'dbfs:/models/model-full.h5'
-dbutils.fs.cp('file:/tmp/model-full.h5', dbfs_model_path)  
+model.save('/tmp/model-full.h5')
 ```
 
 Now on the prediction side:
@@ -230,6 +228,7 @@ Now on the prediction side:
 from keras.applications.inception_v3 import preprocess_input
 from keras.preprocessing.image import img_to_array, load_img
 import numpy as np
+import os
 from pyspark.sql.types import StringType
 from sparkdl import KerasImageFileTransformer
 
@@ -239,22 +238,17 @@ def loadAndPreprocessKerasInceptionV3(uri):
   image = np.expand_dims(image, axis=0)
   return preprocess_input(image)
 
-dbutils.fs.cp(dbfs_model_path, 'file:/tmp/model-full-tmp.h5')
 transformer = KerasImageFileTransformer(inputCol="uri", outputCol="predictions",
                                         modelFile='/tmp/model-full-tmp.h5',  # local file path for model
                                         imageLoader=loadAndPreprocessKerasInceptionV3,
                                         outputMode="vector")
 
-files = ["/dbfs" + str(f.path)[5:] for f in dbutils.fs.ls(sample_img_dir)]  # make "local" file paths for images
+files = [os.path.abspath(os.path.join(dirpath, f)) for f in os.listdir("/data/myimages") if f.endswith('.jpg')]
 uri_df = sqlContext.createDataFrame(files, StringType()).toDF("uri")
 
 keras_pred_df = transformer.transform(uri_df)
 ```
 
-
-```python
-display(keras_pred_df.select("uri", "predictions"))
-```
 
 #### Applying deep learning models at scale to tensors
 Deep Learning Pipelines also provides ways to apply models with tensor inputs (up to 2 dimensions), written in popular deep learning libraries:
@@ -263,19 +257,12 @@ Deep Learning Pipelines also provides ways to apply models with tensor inputs (u
 
 ##### For TensorFlow users
 
-```python
-import numpy as np
-from pyspark.sql.types import Row
-from sparkdl import TFTransformer
-from sparkdl.graph.input import TFInputGraph
-import sparkdl.graph.utils as tfx
-import tensorflow as tf
-
-```
-
 First we generate sample dataset of 2-dimensional points, Gaussian distributed around two different centers
 
 ```python
+import numpy as np
+from pyspark.sql.types import Row
+
 n_sample = 1000
 center_0 = [-1.5, 1.5]
 center_1 = [1.5, -1.5]
@@ -289,7 +276,6 @@ labels_0 = [0 for _ in range(n_sample//2)]
 samples_1 = [np.random.randn(2) + center_1 for _ in range(n_sample//2)]
 labels_1 = [1 for _ in range(n_sample//2)]
 
-# Make dataframe for the Spark use case
 rows = map(to_row, zip(map(lambda x: x.tolist(), samples_0 + samples_1), labels_0 + labels_1))
 sdf = spark.createDataFrame(rows)
 
@@ -298,6 +284,8 @@ sdf = spark.createDataFrame(rows)
 Next, we write a function that returns a tensorflow graph and its input
 
 ```python
+import tensorflow as tf
+
 def build_graph(sess, w0):
   X = tf.placeholder(tf.float32, shape=[None, 2], name="input_tensor")
   model = tf.sigmoid(tf.matmul(X, w0), name="output_tensor")
@@ -319,6 +307,10 @@ with tf.Session() as sess:
 Now you can use the following Spark MLlib Transformer to apply the model to a DataFrame in a distributed fashion.
 
 ```python
+from sparkdl import TFTransformer
+from sparkdl.graph.input import TFInputGraph
+import sparkdl.graph.utils as tfx
+
 graph = tf.Graph()
 with tf.Session(graph=graph) as session, graph.as_default():
     _, _ = build_graph(session, w0)
