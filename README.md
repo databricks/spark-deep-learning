@@ -31,7 +31,9 @@ The library comes from Databricks and leverages Spark for its two strongest face
 1.  In the spirit of Spark and [Spark MLlib](https://spark.apache.org/mllib/), it provides easy-to-use APIs that enable deep learning in very few lines of code.
 2.  It uses Spark's powerful distributed engine to scale out deep learning on massive datasets.
 
-Currently, TensorFlow and TensorFlow-backed Keras workflows are supported, with a focus on model inference/scoring and transfer learning on image data at scale, with hyper-parameter tuning in the works.
+Currently, TensorFlow and TensorFlow-backed Keras workflows are supported, with a focus on:
+* large-scale inference / scoring
+* transfer learning and hyperparameter tuning on image data
 
 Furthermore, it provides tools for data scientists and machine learning experts to turn deep learning models into SQL functions that can be used by a much wider group of users. It does not perform single-model distributed training - this is an area of active research, and here we aim to provide the most practical solutions for the majority of deep learning use cases.
 
@@ -39,14 +41,14 @@ For an overview of the library, see the Databricks [blog post](https://databrick
 
 The library is in its early days, and we welcome everyone's feedback and contribution.
 
-Maintainers: Bago Amirbekian, Joseph Bradley, Sue Ann Hong, Tim Hunter, Philip Yang
+Maintainers: Bago Amirbekian, Joseph Bradley, Sue Ann Hong, Tim Hunter, Siddarth Murching, Tomas Nykodym
 
 
 ## Building and running unit tests
 
 To compile this project, run `build/sbt assembly` from the project home directory. This will also run the Scala unit tests.
 
-To run the Python unit tests, run the `run-tests.sh` script from the `python/` directory. You will need to set a few environment variables, e.g.
+To run the Python unit tests, run the `run-tests.sh` script from the `python/` directory (after compiling). You will need to set a few environment variables, e.g.
 
 ```bash
 # Be sure to run build/sbt assembly before running the Python tests
@@ -69,12 +71,13 @@ You can also post bug reports and feature requests in Github issues.
 
 ## Releases
 <!--
-- 1.0.0 release: Spark 2.3 required. Python 3.6 & Scala 2.11 recommended.
+TODO: might want to add TensorFlow compatibility information.
+- 1.0.0 release: Spark 2.3 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.5.0+ required.
     1. Using the definition of images from Spark 2.3. The new definition uses the BGR channel ordering 
        for 3-channel images instead of the RGB ordering used in this project before the change. 
     2. Persistence for DeepImageFeaturizer (both Python and Scala).
 -->
-- [0.3.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.3.0) release: Spark 2.2.0, Python 3.6 & Scala 2.11 recommended.
+- [0.3.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.3.0) release: Spark 2.2.0, Python 3.6 & Scala 2.11 recommended. TensorFlow 1.4.1- required.
     1. KerasTransformer & TFTransformer for large-scale batch inference on non-image (tensor) data.
     2. Scala API for transfer learning (`DeepImageFeaturizer`). InceptionV3 is supported.
     3. Added VGG16, VGG19 models to DeepImageFeaturizer & DeepImagePredictor (Python).
@@ -84,17 +87,20 @@ You can also post bug reports and feature requests in Github issues.
     3. Added Xception, Resnet50 models to DeepImageFeaturizer & DeepImagePredictor.
 - 0.1.0 Alpha release: Spark 2.1.1 & Python 2.7 recommended.
 
+
 ## Quick user guide
 
-The current version of Deep Learning Pipelines provides a suite of tools around working with and processing images using deep learning. The tools can be categorized as
+Deep Learning Pipelines provides a suite of tools around working with and processing images using deep learning. The tools can be categorized as
 
 -   [Working with images in Spark](#working-with-images-in-spark) : natively in Spark DataFrames
 -   [Transfer learning](#transfer-learning) : a super quick way to leverage deep learning
--   [Applying deep learning models at scale](#applying-deep-learning-models-at-scale) : apply your own or known popular models to image data to make predictions or transform them into features
--   [Deploying models as SQL functions](#deploying-models-as-sql-functions) : empower everyone by making deep learning available in SQL.
 -   Distributed hyper-parameter tuning : via Spark MLlib Pipelines (coming soon)
+-   [Applying deep learning models at scale - to images](#applying-deep-learning-models-at-scale) : apply your own or known popular models to make predictions or transform them into features
+-   [Applying deep learning models at scale - to tensors](#applying-deep-learning-models-at-scale-to-tensors) : of up to 2 dimensions
+-   [Deploying models as SQL functions](#deploying-models-as-sql-functions) : empower everyone by making deep learning available in SQL.
 
-To try running the examples below, check out the Databricks notebook in the [Databricks docs for Deep Learning Pipelines](https://docs.databricks.com/applications/deep-learning/deep-learning-pipelines.html).
+To try running the examples below, check out the Databricks notebook in the [Databricks docs for Deep Learning Pipelines](https://docs.databricks.com/applications/deep-learning/deep-learning-pipelines.html), which works with the latest release of Deep Learning Pipelines. Here are some Databricks notebooks compatible with earlier releases: [0.1.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html), [0.2.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/1674891575666800/3983381308530741/latest.html), [0.3.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/1674891575666868/3983381308530741/latest.html).
+
 
 ### Working with images in Spark
 
@@ -120,7 +126,8 @@ The resulting DataFrame contains a string column named "image" containing an ima
 image_df.show()
 ```
 
-The goal is to add support for more data types, such as text and time series, as there is interest.
+**Why images?** Deep learning has shown to be powerful for tasks involving images, so we have added native Spark support for images. The goal is to support more data types, such as text and time series, based on community interest.
+
 
 ### Transfer learning
 
@@ -147,6 +154,8 @@ print("Training set accuracy = " + str(evaluator.evaluate(predictionAndLabels)))
 
 ### Applying deep learning models at scale
 
+** TODO: add TFTransformer, re-organize **
+
 Spark DataFrames are a natural construct for applying deep learning models to a large-scale dataset. Deep Learning Pipelines provides a set of (Spark MLlib) Transformers for applying TensorFlow Graphs and TensorFlow-backed Keras Models at scale. In addition, popular images models can be applied out of the box, without requiring any TensorFlow or Keras code. The Transformers, backed by the Tensorframes library, efficiently handle the distribution of models and data to Spark workers.
 
 1.  Applying popular image models
@@ -155,11 +164,11 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
 
     ```python
     from sparkdl.image.image import ImageSchema
-
     from sparkdl import DeepImagePredictor
 
     predictor = DeepImagePredictor(inputCol="image", outputCol="predicted_labels",
                                    modelName="InceptionV3", decodePredictions=True, topK=10)
+
     image_df = ImageSchema.readImages("/data/myimages")
     predictions_df = predictor.transform(image_df)
     ```
@@ -169,9 +178,9 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     Deep Learning Pipelines provides a Transformer that will apply the given TensorFlow Graph to a DataFrame containing a column of images (e.g. loaded using the utilities described in the previous section). Here is a very simple example of how a TensorFlow Graph can be used with the Transformer. In practice, the TensorFlow Graph will likely be restored from files before calling `TFImageTransformer`.
 
     ```python
-    from sparkdl.image.image import ImageSchema
     from sparkdl import TFImageTransformer
     import sparkdl.graph.utils as tfx
+    from sparkdl.image.image import ImageSchema
     from sparkdl.transformers import utils
     import tensorflow as tf
 
@@ -179,12 +188,12 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
     with tf.Session(graph=graph) as sess:
         image_arr = utils.imageInputPlaceholder()
         resized_images = tf.image.resize_images(image_arr, (299, 299))
-        frozen_graph = tfx.strip_and_freeze_until([resized_images], graph, sess,
-                                                  return_graph=True)
+        frozen_graph = tfx.strip_and_freeze_until([resized_images], graph, sess, return_graph=True)
 
     transformer = TFImageTransformer(inputCol="image", outputCol="predictions", graph=frozen_graph,
                                      inputTensor=image_arr, outputTensor=resized_images,
                                      outputMode="image")
+
     image_df = ImageSchema.readImages("/data/myimages")
     processed_image_df = transformer.transform(image_df)
     ```
@@ -272,35 +281,31 @@ Spark DataFrames are a natural construct for applying deep learning models to a 
 
 ### Deploying models as SQL functions
 
-One way to productionize a model is to deploy it as a [Spark SQL User Defined Function](https://docs.databricks.com/spark/latest/spark-sql/udf-in-python.html), which allows anyone who knows SQL to use it. Deep Learning Pipelines provides mechanisms to take a deep learning model and register a Spark SQL User Defined Function (UDF).
+One way to productionize a model is to deploy it as a Spark SQL User Defined Function, which allows anyone who knows SQL to use it. Deep Learning Pipelines provides mechanisms to take a deep learning model and register a Spark SQL User Defined Function (UDF). In particular, Deep Learning Pipelines 0.2.0 adds support for creating SQL UDFs from Keras models that work on image data. 
 
-The resulting UDF takes a column (formatted as a image struct "`SpImage`") and produces the output of the given Keras model (e.g. for [Inception V3](https://keras.io/applications/#inceptionv3), it produces a real valued score vector over the ImageNet object categories). For other models, the output could have different meanings. Please consult the actual models specification.
+The resulting UDF takes a column (formatted as a image struct "SpImage") and produces the output of the given Keras model; e.g. for Inception V3, it produces a real valued score vector over the ImageNet object categories.
 
-We can register any Keras models that work on images as follows.
+We can register a UDF for a Keras model that works on images as follows:
 
 ```python
 from keras.applications import InceptionV3
 from sparkdl.udf.keras_image_model import registerKerasImageUDF
 
-from keras.applications import InceptionV3
-registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"))
+registerKerasImageUDF("inceptionV3_udf", InceptionV3(weights="imagenet"))
 ```
 
-To use a customized Keras model, we can save it and pass the file path as parameter.
+Alternatively, we can also register a UDF from a model file:
 
 ```python
-# Assume we have a compiled and trained Keras model
-model.save('path/to/my/model.h5')
-registerKerasImageUDF("my_custom_keras_model_udf", "path/to/my/model.h5")
+from keras.applications import InceptionV3
+
+model = InceptionV3(weights="imagenet")
+model.save("/tmp/model-full.h5")
+
+registerKerasImageUDF("my_custom_keras_model_udf", "/tmp/model-full.h5")
 ```
 
-Once the UDF is registered as described above, it can be used in a SQL query.
-
-```sql
-SELECT my_custom_keras_model_udf(image) as predictions from my_spark_image_table
-```
-
-If there are further preprocessing steps required to prepare the images, the user has the option to provide a preprocessing function `preprocessor`. The `preprocessor` converts a file path into a image array. This function is usually introduced in Keras workflow, as in the following example.
+In Keras workflows dealing with images, it's common to have preprocessing steps before the model is applied to the image. If our workflow requires preprocessing, we can optionally provide a preprocessing function to UDF registration. The preprocessor should take in a filepath and return an image array; below is a simple example.
 
 ```python
 from keras.applications import InceptionV3
@@ -315,6 +320,20 @@ def keras_load_img(fpath):
 registerKerasImageUDF("my_keras_inception_udf", InceptionV3(weights="imagenet"), keras_load_img)
 
 ```
+
+Once a UDF has been registered, it can be used in a SQL query, e.g.
+
+```python
+from sparkdl.image.image import ImageSchema
+
+image_df = ImageSchema.readImages("/data/myimages")
+image_df.registerTempTable("sample_images")
+```
+
+```sql
+SELECT my_custom_keras_model_udf(image) as predictions from sample_images
+```
+
 
 ## License
 * The Deep Learning Pipelines source code is released under the Apache License 2.0 (see the LICENSE file).
