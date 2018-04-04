@@ -257,6 +257,12 @@ Deep Learning Pipelines also provides ways to apply models with tensor inputs (u
 
 ##### For TensorFlow users
 
+`TFTransformer` applies a user-specified TensorFlow graph to tensor inputs of up to 2 dimensions.
+The TensorFlow graph may be specified as TensorFlow graph objects (`tf.Graph` or `tf.GraphDef`) or checkpoint or `SavedModel` objects
+(see the [input object class](https://github.com/databricks/spark-deep-learning/blob/master/python/sparkdl/graph/input.py#L27) for more detail).
+The `transform()` function applies the TensorFlow graph to a column of arrays (where an array corresponds to a Tensor) in the input DataFrame
+and outputs a column of arrays corresponding to the output of the graph.
+
 First we generate sample dataset of 2-dimensional points, Gaussian distributed around two different centers
 
 ```python
