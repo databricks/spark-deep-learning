@@ -17,15 +17,14 @@
 # pylint: disable=protected-access
 from __future__ import absolute_import, division, print_function
 
-import logging
 import threading
 
 import numpy as np
+from typing import Dict
 
+import pyspark
 from pyspark.ml import Estimator
 import pyspark.ml.linalg as spla
-from pyspark.ml.param import Param, Params, TypeConverters
-
 from sparkdl.image.imageIO import imageStructToArray
 from sparkdl.param import (
     keyword_only, CanLoadImage, HasKerasModel, HasKerasOptimizer, HasKerasLoss, HasOutputMode,
@@ -35,8 +34,6 @@ import sparkdl.utils.jvmapi as JVMAPI
 import sparkdl.utils.keras_model as kmutil
 
 __all__ = ['KerasImageFileEstimator']
-
-logger = logging.getLogger('sparkdl')
 
 
 class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
@@ -133,22 +130,16 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         kwargs = self._input_kwargs
         return self._set(**kwargs)
 
-    def _validateParams(self):
+    def _validateParams(self, paramMap):
+        # type: (Dict[pyspark.ml.param.Param, object]) -> bool
         """
         Check Param values so we can throw errors on the driver, rather than workers.
         :return: True if parameters are valid
         """
-        if not self.isDefined(self.inputCol):
+        if not self.isDefined(self.inputCol) or self.inputCol in paramMap:
             raise ValueError("Input column must be defined")
-        if not self.isDefined(self.outputCol):
+        if not self.isDefined(self.outputCol) or self.outputCol in paramMap:
             raise ValueError("Output column must be defined")
-        return True
-
-    def _validateFitParams(self, params):
-        """ Check if an input parameter set is valid """
-        if isinstance(params, (list, tuple, dict)):
-            assert self.getInputCol() not in params, \
-                "params {} cannot contain input column name {}".format(params, self.getInputCol())
         return True
 
     def _getNumpyFeaturesAndLabels(self, dataset):
@@ -208,10 +199,11 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         :param paramMaps: list of ParamMaps matching the maps in `kerasModelsRDD`
         :return: list of MLlib models
         """
-        # we can just use the ordering of rdd because they are in the same order as params map
-        for i, (param_map, model_bytes) in enumerate(kerasModelsBytesRDD.collect()):
-            model_filename = kmutil.bytes_to_h5file(model_bytes)
-            yield i, self._copyValues(KerasImageFileTransformer(modelFile=model_filename))
+        lock = threading.Lock()
+        for (i, model_bytes) in kerasModelsBytesRDD.collect():
+            with lock:
+                model_filename = kmutil.bytes_to_h5file(model_bytes)
+                yield i, self._copyValues(KerasImageFileTransformer(modelFile=model_filename))
 
     def fitMultiple(self, dataset, paramMaps):
         """
@@ -227,10 +219,15 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
                      existence of a sufficiently large (and writable) file system, users are
                      advised to not train too many models in a single Spark job.
         """
+        [self._validateParams(pm) for pm in paramMaps]
+
+        def _name_value_map(paramMap):
+            """takes a dictionary {param -> value} and returns a map of {param.name -> value}"""
+            return {param.name: val for param, val in paramMap.items()}
 
 
         sc = JVMAPI._curr_sc()
-        paramNameMaps = list(map(lambda x: {param.name: val for param, val in x.items()}, paramMaps))
+        paramNameMaps = list(enumerate(map(_name_value_map, paramMaps)))
         paramNameMapsRDD = sc.parallelize(paramNameMaps, numSlices=len(paramNameMaps))
 
         # Extract image URI from provided dataset and create features as numpy arrays
@@ -243,9 +240,8 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         modelBytesBc = sc.broadcast(modelBytes)
 
         # Obtain params for this estimator instance
-        baseParamMap = self.extractParamMap()
-        baseParamDict = {param.name: val for param, val in baseParamMap.items()}
-        baseParamDictBc = sc.broadcast(baseParamDict)
+        baseParams = _name_value_map(self.extractParamMap())
+        baseParamsBc = sc.broadcast(baseParams)
 
         def _local_fit(override_param_map):
             """
@@ -256,7 +252,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
             :return: serialized Keras HDF5 file bytes
             """
             # Update params
-            params = baseParamDictBc.value
+            params = baseParamsBc.value
             params.update(override_param_map)
 
             # Create Keras model
@@ -271,7 +267,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
 
             return kmutil.model_to_bytes(model)
 
-        kerasModelBytesRDD = paramNameMapsRDD.map(lambda paramMap: (paramMap, _local_fit(paramMap)))
+        kerasModelBytesRDD = paramNameMapsRDD.map(lambda (i, paramMap): (i, _local_fit(paramMap)))
         return self._collectModels(kerasModelBytesRDD)
 
     def _loadModelAsBytes(self):
@@ -285,5 +281,5 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         return fileContent
 
     def _fit(self, dataset):
-        tuples = self.fitMultiple(dataset, [self.extractParamMap()])
+        tuples = self.fitMultiple(dataset, [{}])
         return dict(tuples)[0]

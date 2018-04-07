@@ -40,7 +40,6 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
                  outputMode="vector")
         """
         super(KerasImageFileTransformer, self).__init__()
-        self._setDefault(outputMode="vector")
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
         self._inputTensor = None

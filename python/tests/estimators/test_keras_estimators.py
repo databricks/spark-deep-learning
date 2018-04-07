@@ -22,21 +22,18 @@ import tempfile
 import uuid
 
 import PIL.Image
-import numpy as np
+from keras.applications.imagenet_utils import preprocess_input
 from keras.layers import Activation, Dense, Flatten
 from keras.models import Sequential
-from keras.applications.imagenet_utils import preprocess_input
+import numpy as np
 
-import pyspark.ml.linalg as spla
-import pyspark.sql.types as sptyp
-import pyspark.sql.functions as F
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
+import pyspark.ml.linalg as spla
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
-
+import pyspark.sql.types as sptyp
 from sparkdl.estimators.keras_image_file_estimator import KerasImageFileEstimator
 from sparkdl.transformers.keras_image import KerasImageFileTransformer
 import sparkdl.utils.keras_model as kmutil
-
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import getSampleImagePaths
 
@@ -69,7 +66,6 @@ class KerasEstimatorsTest(SparkDLTestCase):
             local_rows.append(row)
 
         image_uri_df = self.session.createDataFrame(local_rows)
-        image_uri_df.printSchema()
         return image_uri_df
 
     def _get_model(self, label_cardinality):
@@ -114,14 +110,13 @@ class KerasEstimatorsTest(SparkDLTestCase):
 
         model = self._get_model(label_cardinality)
         estimator = self._get_estimator(model)
-        estimator.setKerasFitParams({'verbose': 1})
-        self.assertTrue(estimator._validateParams())
+        estimator.setKerasFitParams({'verbose': 0})
+        self.assertTrue(estimator._validateParams({}))
 
         transformer = estimator.fit(image_uri_df)
         self.assertIsInstance(transformer, KerasImageFileTransformer, "output should be KIFT")
-        output_df = transformer.transform(image_uri_df)
-        self.assertEqual(len(output_df.select(F.col(self.output_col)).collect()), len(image_uri_df.collect()),
-                         "output column should exist and be equal sized")
+        for p in map(lambda p: p.name, transformer.params):
+            self.assertEqual(transformer.getOrDefault(p), estimator.getOrDefault(p), str(transformer.getOrDefault(p)))
 
     def test_tuning(self):
         # Create image URI dataframe
@@ -134,7 +129,7 @@ class KerasEstimatorsTest(SparkDLTestCase):
 
         paramGrid = (
             ParamGridBuilder()
-            .addGrid(estimator.kerasFitParams, [{"batch_size": 32}, {"batch_size": 64}])
+            .addGrid(estimator.kerasFitParams, [{"batch_size": 32, "verbose": 0}, {"batch_size": 64, "verbose": 0}])
             .build()
         )
 
@@ -143,9 +138,6 @@ class KerasEstimatorsTest(SparkDLTestCase):
 
         transformer = cv.fit(image_uri_df)
         self.assertIsInstance(transformer.bestModel, KerasImageFileTransformer, "best model should be KIFT")
-        output_df = transformer.transform(image_uri_df)
-        self.assertEqual(len(output_df.select(F.col(self.output_col)).collect()), len(image_uri_df.collect()),
-                         "output column should exist and be equal sized")
 
     def test_keras_training_utils(self):
         self.assertTrue(kmutil.is_valid_optimizer('adam'))

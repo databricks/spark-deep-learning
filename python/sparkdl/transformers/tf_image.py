@@ -83,6 +83,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         super(TFImageTransformer, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
+        self._setDefault(inputTensor=IMAGE_INPUT_TENSOR_NAME)
         self.channelOrder = channelOrder
 
     @keyword_only
@@ -94,8 +95,6 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                   inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
                   outputMode="vector")
         """
-        self._setDefault(inputTensor=IMAGE_INPUT_TENSOR_NAME)
-        self._setDefault(outputMode="vector")
         kwargs = self._input_kwargs
         return self._set(**kwargs)
 
