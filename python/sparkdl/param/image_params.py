@@ -26,7 +26,7 @@ from sparkdl.image.imageIO import imageArrayToStruct
 from sparkdl.image.imageIO import _reverseChannels
 from sparkdl.param import SparkDLTypeConverters
 
-OUTPUT_MODES = ["vector", "image"]
+OUTPUT_MODES = ["vector", "image", "sql"]
 
 
 class HasInputImageNodeName(Params):
