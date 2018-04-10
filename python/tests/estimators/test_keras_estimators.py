@@ -31,9 +31,11 @@ from pyspark.ml.evaluation import BinaryClassificationEvaluator
 import pyspark.ml.linalg as spla
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 import pyspark.sql.types as sptyp
+
 from sparkdl.estimators.keras_image_file_estimator import KerasImageFileEstimator
 from sparkdl.transformers.keras_image import KerasImageFileTransformer
 import sparkdl.utils.keras_model as kmutil
+
 from ..tests import SparkDLTestCase
 from ..transformers.image_utils import getSampleImagePaths
 
