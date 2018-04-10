@@ -19,7 +19,6 @@ from __future__ import absolute_import, division, print_function
 
 import threading
 import numpy as np
-from typing import Dict
 
 import pyspark
 from pyspark.ml import Estimator
