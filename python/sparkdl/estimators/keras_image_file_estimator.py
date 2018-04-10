@@ -37,7 +37,8 @@ __all__ = ['KerasImageFileEstimator']
 
 class _ThreadSafeIterator(object):
     """
-    Utility iterator class used by KerasImageFileEstimator.fitMultiple to serve models in a thread safe manner.
+    Utility iterator class used by KerasImageFileEstimator.fitMultiple to serve models in a thread
+    safe manner.
 
     >>> list(_ThreadSafeIterator(range(5)))
     [0, 1, 2, 3, 4]
@@ -168,15 +169,17 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         return self._set(**kwargs)
 
     def _validateParams(self, paramMap):
-        # type: (Dict[pyspark.ml.param.Param, object]) -> bool
         """
         Check Param values so we can throw errors on the driver, rather than workers.
+        :param paramMap: Dict[pyspark.ml.param.Param, object]
         :return: True if parameters are valid
         """
-        if not (self.isDefined(self.inputCol) or self.inputCol in paramMap):
-            raise ValueError("Input column must be defined or fine-tuned")
-        if not (self.isDefined(self.outputCol) or self.outputCol in paramMap):
-            raise ValueError("Output column must be defined or fine-tuned")
+        if not self.isDefined(self.inputCol):
+            raise ValueError("Input column must be defined")
+        if not self.isDefined(self.outputCol):
+            raise ValueError("Output column must be defined")
+        if self.inputCol in paramMap:
+            raise ValueError("Input column can not be fine tuned")
         return True
 
     def _getNumpyFeaturesAndLabels(self, dataset):
@@ -238,7 +241,8 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         """
         for (i, param_map, model_bytes) in kerasModelBytesRDD.collect():
             model_filename = kmutil.bytes_to_h5file(model_bytes)
-            yield i, self._copyValues(KerasImageFileTransformer(modelFile=model_filename), extra=param_map)
+            yield i, self._copyValues(KerasImageFileTransformer(modelFile=model_filename),
+                                      extra=param_map)
 
     def fitMultiple(self, dataset, paramMaps):
         """
@@ -283,10 +287,11 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
             """
             Fit locally a model with a combination of this estimator's param,
             with overriding parameters provided by the input.
-            :param index: int, index of parameter map
-            :param override_param_map: dict, key type is a string that is an MLllib Param Name
-                                       They are meant to override the base estimator's params.
-            :return: tuple of index and serialized Keras HDF5 file bytes
+            :param row: a list or tuple containing index and override_param_map. Index is an int
+                        representing the index of parameter map and override_param_map is a dict
+                        whose key is a string representing an MLllib Param Name. These are meant
+                        to override the base estimator's params.
+            :return: tuple of index, override_param_map and serialized Keras HDF5 file bytes
             """
             index, override_param_map = row
             # Update params
