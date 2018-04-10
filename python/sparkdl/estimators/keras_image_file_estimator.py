@@ -18,7 +18,6 @@
 from __future__ import absolute_import, division, print_function
 
 import threading
-
 import numpy as np
 from typing import Dict
 
@@ -238,9 +237,9 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         :param paramMaps: list of ParamMaps matching the maps in `kerasModelsRDD`
         :return: list of MLlib models
         """
-        for (i, model_bytes) in kerasModelBytesRDD.collect():
+        for (i, param_map, model_bytes) in kerasModelBytesRDD.collect():
             model_filename = kmutil.bytes_to_h5file(model_bytes)
-            yield i, self._copyValues(KerasImageFileTransformer(modelFile=model_filename))
+            yield i, self._copyValues(KerasImageFileTransformer(modelFile=model_filename), extra=param_map)
 
     def fitMultiple(self, dataset, paramMaps):
         """
@@ -305,7 +304,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
             _fit_params = params['kerasFitParams']
             model.fit(x=features, y=labels, **_fit_params)
 
-            return index, kmutil.model_to_bytes(model)
+            return index, override_param_map, kmutil.model_to_bytes(model)
 
         kerasModelBytesRDD = paramNameMapsRDD.map(_local_fit)
         models = self._collectModels(kerasModelBytesRDD)
