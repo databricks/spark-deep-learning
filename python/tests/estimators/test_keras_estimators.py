@@ -140,6 +140,7 @@ class KerasEstimatorsTest(SparkDLTestCase):
 
         transformer = cv.fit(image_uri_df)
         self.assertIsInstance(transformer.bestModel, KerasImageFileTransformer, "best model should be KIFT")
+        self.assertIn('batch_size', transformer.bestModel.getKerasFitParams(), "fit params must be copied")
 
     def test_keras_training_utils(self):
         self.assertTrue(kmutil.is_valid_optimizer('adam'))
