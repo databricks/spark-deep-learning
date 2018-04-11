@@ -18,7 +18,7 @@ from sparkdl.param.shared_params import (
     # TFTransformer Params
     HasInputMapping, HasOutputMapping, HasTFInputGraph, HasTFHParams,
     # Keras Estimator Params
-    HasKerasModel, HasKerasLoss, HasKerasOptimizer, HasOutputNodeName)
+    HasKerasModel, HasKerasLoss, HasKerasOptimizer)
 from sparkdl.param.converters import SparkDLTypeConverters
 from sparkdl.param.image_params import (
-    CanLoadImage, HasInputImageNodeName, HasOutputMode, OUTPUT_MODES)
+    CanLoadImage, HasOutputMode, OUTPUT_MODES)

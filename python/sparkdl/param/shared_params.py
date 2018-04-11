@@ -105,19 +105,6 @@ class HasOutputCol(Params):
 ########################################################
 
 
-class HasOutputNodeName(Params):
-    # TODO: docs
-    outputNodeName = Param(Params._dummy(), "outputNodeName",
-                           "name of the graph element/node corresponding to the output",
-                           typeConverter=TypeConverters.toString)
-
-    def setOutputNodeName(self, value):
-        return self._set(outputNodeName=value)
-
-    def getOutputNodeName(self):
-        return self.getOrDefault(self.outputNodeName)
-
-
 class HasLabelCol(Params):
     """
     When training Keras image models in a supervised learning setting,
