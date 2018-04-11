@@ -105,6 +105,24 @@ class KerasEstimatorsTest(SparkDLTestCase):
     def tearDown(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    def test_validate_params(self):
+        kifest = KerasImageFileEstimator()
+        # remove the defaults for testing
+        kifest._defaultParamMap = {}
+
+        # should raise an error to define required parameters
+        self.assertRaisesRegexp(ValueError, 'defined', kifest._validateParams, {})
+        kifest.setParams(imageLoader=_load_image_from_uri, inputCol='c1', labelCol='c2')
+        kifest.setParams(modelFile='/path/to/file.ext')
+
+        # should raise an error to define or tune parameters
+        self.assertRaisesRegexp(ValueError, 'tuned', kifest._validateParams, {})
+        kifest.setParams(kerasOptimizer='adam', kerasLoss='mse', kerasFitParams={})
+        kifest.setParams(outputCol='c3', outputMode='vector')
+
+        # should pass test on supplying all parameters
+        self.assertTrue(kifest._validateParams({}))
+
     def test_single_training(self):
         # Create image URI dataframe
         label_cardinality = 10
