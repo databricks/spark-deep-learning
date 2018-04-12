@@ -167,20 +167,22 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         :param paramMap: Dict[pyspark.ml.param.Param, object]
         :return: True if parameters are valid
         """
-        input_params = ['imageLoader', 'inputCol', 'labelCol']
-        model_params_untunable = ['modelFile']
-        model_params = ['kerasOptimizer', 'kerasLoss', 'kerasFitParams']
-        output_params = ['outputCol', 'outputMode']
+        model_params = [self.kerasOptimizer, self.kerasLoss, self.kerasFitParams]
+        output_params = [self.outputCol, self.outputMode]
 
-        params = input_params + model_params_untunable
-        failed = [p for p in params if not self.isDefined(p)]
-        if failed:
-            raise ValueError("Params: {} must be defined".format(", ".join(failed)))
+        params = self.params
+        undefined = set([p for p in params if not self.isDefined(p)])
+        undefined_tunable = undefined.intersection(model_params + output_params)
+        failed_define = [p.name for p in undefined.difference(undefined_tunable)]
+        failed_tune = [p.name for p in undefined_tunable if p not in paramMap]
 
-        params = model_params + output_params
-        failed = [p for p in params if not (self.isDefined(p) or self.getParam(p) in paramMap)]
-        if failed:
-            raise ValueError("Params: {} must be defined or tuned".format(", ".join(failed)))
+        if failed_define or failed_tune:
+            msg = "Following Params must be"
+            if failed_define:
+                msg += " defined: [" + ", ".join(failed_define) + "]"
+            if failed_tune:
+                msg += " defined or tuned: [" + ", ".join(failed_tune) + "]"
+            raise ValueError(msg)
 
         return True
 

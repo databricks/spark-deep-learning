@@ -80,9 +80,7 @@ class KerasEstimatorsTest(SparkDLTestCase):
         return model
 
     def _get_estimator(self, model):
-        """
-        Create a :py:obj:`KerasImageFileEstimator` from an existing Keras model
-        """
+        """Create a :py:obj:`KerasImageFileEstimator` from an existing Keras model"""
         _random_filename_suffix = str(uuid.uuid4())
         model_filename = os.path.join(self.temp_dir, 'model-{}.h5'.format(_random_filename_suffix))
         model.save(model_filename)
@@ -106,16 +104,17 @@ class KerasEstimatorsTest(SparkDLTestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_validate_params(self):
+        """Test that `KerasImageFileEstimator._validateParams` method works as expected"""
         kifest = KerasImageFileEstimator()
-        # remove the defaults for testing
-        kifest._defaultParamMap = {}
 
         # should raise an error to define required parameters
+        # assuming at least one param without default value
         self.assertRaisesRegexp(ValueError, 'defined', kifest._validateParams, {})
         kifest.setParams(imageLoader=_load_image_from_uri, inputCol='c1', labelCol='c2')
         kifest.setParams(modelFile='/path/to/file.ext')
 
         # should raise an error to define or tune parameters
+        # assuming at least one tunable param without default value
         self.assertRaisesRegexp(ValueError, 'tuned', kifest._validateParams, {})
         kifest.setParams(kerasOptimizer='adam', kerasLoss='mse', kerasFitParams={})
         kifest.setParams(outputCol='c3', outputMode='vector')
@@ -124,6 +123,7 @@ class KerasEstimatorsTest(SparkDLTestCase):
         self.assertTrue(kifest._validateParams({}))
 
     def test_single_training(self):
+        """Test that single model fitting works well"""
         # Create image URI dataframe
         label_cardinality = 10
         image_uri_df = self._create_train_image_uris_and_labels(repeat_factor=3,
@@ -141,6 +141,7 @@ class KerasEstimatorsTest(SparkDLTestCase):
                              str(transformer.getOrDefault(p)))
 
     def test_tuning(self):
+        """Test that multiple model fitting using `CrossValidator` works well"""
         # Create image URI dataframe
         label_cardinality = 2
         image_uri_df = self._create_train_image_uris_and_labels(repeat_factor=3,
@@ -168,6 +169,7 @@ class KerasEstimatorsTest(SparkDLTestCase):
                       "fit params must be copied")
 
     def test_keras_training_utils(self):
+        """Test some Keras training utils"""
         self.assertTrue(kmutil.is_valid_optimizer('adam'))
         self.assertFalse(kmutil.is_valid_optimizer('noSuchOptimizer'))
         self.assertTrue(kmutil.is_valid_loss_function('mse'))
