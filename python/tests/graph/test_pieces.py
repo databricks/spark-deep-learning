@@ -116,13 +116,11 @@ class GraphPiecesTest(SparkDLTestCase):
         """ Keras GraphFunctions should give the same result as standard Keras models """
         img_fpaths = glob(os.path.join(_getSampleJPEGDir(), '*.jpg'))
 
-        for model_gen, preproc_fn in [(InceptionV3, iv3.preprocess_input),
-                                      (Xception, xcpt.preprocess_input),
-                                      (ResNet50, rsnt.preprocess_input)]:
+        for model_gen, preproc_fn, target_size in [(InceptionV3, iv3.preprocess_input, model_sizes['InceptionV3']),
+                                      (Xception, xcpt.preprocess_input, model_sizes['Xception']),
+                                      (ResNet50, rsnt.preprocess_input, model_sizes['ResNet50'])]:
 
             keras_model = model_gen(weights="imagenet")
-            target_size = tuple(keras_model.input.shape.as_list()[1:-1])
-
             _preproc_img_list = []
             for fpath in img_fpaths:
                 img = load_img(fpath, target_size=target_size)
@@ -153,7 +151,7 @@ class GraphPiecesTest(SparkDLTestCase):
         piped_model = GraphFunction.fromList(stages)
 
         for fpath in img_fpaths:
-            target_size = tuple(xcpt_model.input.shape.as_list()[1:-1])
+            target_size = model_sizes['Xception']
             img = load_img(fpath, target_size=target_size)
             img_arr = np.expand_dims(img_to_array(img), axis=0)
             img_input = xcpt.preprocess_input(img_arr)
@@ -172,3 +170,5 @@ class GraphPiecesTest(SparkDLTestCase):
                 # NamedTemporaryFile(prefix="gdef", suffix=".html").name)
 
             self.assertTrue(np.all(preds_tgt == preds_ref))
+
+model_sizes = {'InceptionV3': (299, 299), 'Xception': (299, 299), 'ResNet50': (224, 224)}

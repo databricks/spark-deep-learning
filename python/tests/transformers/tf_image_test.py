@@ -65,7 +65,7 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
             image = images[0]
             image.shape = (1, image.shape[0] * image.shape[1] * image.shape[2])
             keras_processed = image[0]
-            self.assertTrue((processed == keras_processed).all())
+            np.testing.assert_array_almost_equal(keras_processed, processed, decimal=6)
 
     def test_load_image_vs_keras_RGB(self):
         g = tf.Graph()
@@ -83,13 +83,13 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         df = transformer.transform(image_df.limit(5))
 
         for row in df.collect():
-            processed = np.array(row[output_col]).astype(np.float32)
+            processed = np.array(row[output_col], dtype = np.float32)
             # compare to keras loading
             images = self._loadImageViaKeras(row["image"]['origin'])
             image = images[0]
             image.shape = (1, image.shape[0] * image.shape[1] * image.shape[2])
             keras_processed = image[0]
-            self.assertTrue((processed == keras_processed).all())
+            np.testing.assert_array_almost_equal(keras_processed, processed, decimal = 6)
 
     # Test full pre-processing for InceptionV3 as an example of a simple computation graph
 
@@ -175,4 +175,4 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                                                      image_df)
         self.compareClassSets(tf_topK, transformer_topK)
         self.compareClassOrderings(tf_topK, transformer_topK)
-        self.compareArrays(tf_values, transformer_values)
+        self.compareArrays(tf_values, transformer_values, decimal=6)

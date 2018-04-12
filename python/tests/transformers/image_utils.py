@@ -74,14 +74,17 @@ class ImageNetOutputComparisonTestCase(unittest.TestCase):
             topK[uri] = decode_predictions(values[uri], top=5)[0]
         return values, topK
 
-    def compareArrays(self, values1, values2):
+    def compareArrays(self, values1, values2, decimal=None):
         """
         values1 & values2 are {key => numpy array}.
         """
         for k, v1 in values1.items():
             v1f = v1.astype(np.float32)
             v2f = values2[k].astype(np.float32)
-            np.testing.assert_array_equal(v1f, v2f)
+            if decimal:
+                np.testing.assert_array_almost_equal(v1f, v2f, decimal)
+            else:
+                np.testing.assert_array_equal(v1f, v2f)
 
     def compareClassOrderings(self, preds1, preds2):
         """
