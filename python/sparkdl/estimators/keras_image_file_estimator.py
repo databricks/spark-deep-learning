@@ -20,14 +20,13 @@ from __future__ import absolute_import, division, print_function
 import threading
 import numpy as np
 
-import pyspark
 from pyspark.ml import Estimator
 import pyspark.ml.linalg as spla
 
 from sparkdl.image.imageIO import imageStructToArray
 from sparkdl.param import (
     keyword_only, CanLoadImage, HasKerasModel, HasKerasOptimizer, HasKerasLoss, HasOutputMode,
-    HasInputCol, HasInputImageNodeName, HasLabelCol, HasOutputNodeName, HasOutputCol)
+    HasInputCol, HasLabelCol, HasOutputCol)
 from sparkdl.transformers.keras_image import KerasImageFileTransformer
 import sparkdl.utils.jvmapi as JVMAPI
 import sparkdl.utils.keras_model as kmutil
@@ -74,10 +73,8 @@ class _ThreadSafeIterator(object):
         return self.__next__()
 
 
-class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
-                              HasOutputCol, HasOutputNodeName, HasLabelCol,
-                              HasKerasModel, HasKerasOptimizer, HasKerasLoss,
-                              CanLoadImage, HasOutputMode):
+class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, HasKerasModel,
+                              HasKerasOptimizer, HasKerasLoss, CanLoadImage, HasOutputMode):
     """
     Build a Estimator from a Keras model.
 
@@ -138,13 +135,11 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
     """
 
     @keyword_only
-    def __init__(self, inputCol=None, inputImageNodeName=None, outputCol=None,
-                 outputNodeName=None, outputMode="vector", labelCol=None,
+    def __init__(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
                  modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,
                  kerasFitParams=None):
         """
-        __init__(self, inputCol=None, inputImageNodeName=None, outputCol=None,
-                 outputNodeName=None, outputMode="vector", labelCol=None,
+        __init__(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
                  modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,
                  kerasFitParams=None)
         """
@@ -155,13 +150,11 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, inputImageNodeName=None, outputCol=None,
-                  outputNodeName=None, outputMode="vector", labelCol=None,
+    def setParams(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
                   modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,
                   kerasFitParams=None):
         """
-        setParams(self, inputCol=None, inputImageNodeName=None, outputCol=None,
-                  outputNodeName=None, outputMode="vector", labelCol=None,
+        setParams(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
                   modelFile=None, imageLoader=None, kerasOptimizer=None, kerasLoss=None,
                   kerasFitParams=None)
         """
@@ -174,12 +167,23 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         :param paramMap: Dict[pyspark.ml.param.Param, object]
         :return: True if parameters are valid
         """
-        if not self.isDefined(self.inputCol):
-            raise ValueError("Input column must be defined")
-        if not self.isDefined(self.outputCol):
-            raise ValueError("Output column must be defined")
-        if self.inputCol in paramMap:
-            raise ValueError("Input column can not be fine tuned")
+        model_params = [self.kerasOptimizer, self.kerasLoss, self.kerasFitParams]
+        output_params = [self.outputCol, self.outputMode]
+
+        params = self.params
+        undefined = set([p for p in params if not self.isDefined(p)])
+        undefined_tunable = undefined.intersection(model_params + output_params)
+        failed_define = [p.name for p in undefined.difference(undefined_tunable)]
+        failed_tune = [p.name for p in undefined_tunable if p not in paramMap]
+
+        if failed_define or failed_tune:
+            msg = "Following Params must be"
+            if failed_define:
+                msg += " defined: [" + ", ".join(failed_define) + "]"
+            if failed_tune:
+                msg += " defined or tuned: [" + ", ".join(failed_tune) + "]"
+            raise ValueError(msg)
+
         return True
 
     def _getNumpyFeaturesAndLabels(self, dataset):
@@ -236,8 +240,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         """
         Collect Keras models on workers to MLlib Models on the driver.
         :param kerasModelBytesRDD: RDD of (param_map, model_bytes) tuples
-        :param paramMaps: list of ParamMaps matching the maps in `kerasModelsRDD`
-        :return: list of MLlib models
+        :return: generator of (index, MLlib model) tuples
         """
         for (i, param_map, model_bytes) in kerasModelBytesRDD.collect():
             model_filename = kmutil.bytes_to_h5file(model_bytes)
@@ -263,7 +266,6 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasInputImageNodeName,
         def _name_value_map(paramMap):
             """takes a dictionary {param -> value} and returns a map of {param.name -> value}"""
             return {param.name: val for param, val in paramMap.items()}
-
 
         sc = JVMAPI._curr_sc()
         paramNameMaps = list(enumerate(map(_name_value_map, paramMaps)))

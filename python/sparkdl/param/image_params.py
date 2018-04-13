@@ -29,19 +29,6 @@ from sparkdl.param import SparkDLTypeConverters
 OUTPUT_MODES = ["vector", "image"]
 
 
-class HasInputImageNodeName(Params):
-    # TODO: docs
-    inputImageNodeName = Param(Params._dummy(), "inputImageNodeName",
-                               "name of the graph element/node corresponding to the input",
-                               typeConverter=TypeConverters.toString)
-
-    def setInputImageNodeName(self, value):
-        return self._set(inputImageNodeName=value)
-
-    def getInputImageNodeName(self):
-        return self.getOrDefault(self.inputImageNodeName)
-
-
 class CanLoadImage(Params):
     """
     In standard Keras workflow, we use provides an image loading function
