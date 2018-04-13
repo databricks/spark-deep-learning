@@ -63,7 +63,8 @@ class KerasEstimatorsTest(SparkDLTestCase):
             label_inds = label_inds.ravel()
             assert label_inds.shape[0] == cardinality, label_inds.shape
             one_hot_vec = spla.Vectors.dense(label_inds.tolist())
-            _row_struct = {self.input_col: uri, self.one_hot_col: one_hot_vec, self.label_col: float(label)}
+            _row_struct = {self.input_col: uri, self.one_hot_col: one_hot_vec,
+                           self.one_hot_label_col: float(label)}
             row = sptyp.Row(**_row_struct)
             local_rows.append(row)
 
@@ -97,7 +98,7 @@ class KerasEstimatorsTest(SparkDLTestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.input_col = 'kerasTestImageUri'
-        self.label_col = 'kerasTestLabel'
+        self.one_hot_label_col = 'kerasTestLabel'
         self.one_hot_col = 'kerasTestOneHot'
         self.output_col = 'kerasTestPreds'
 
@@ -107,8 +108,8 @@ class KerasEstimatorsTest(SparkDLTestCase):
     def test_single_training(self):
         # Create image URI dataframe
         label_cardinality = 10
-        image_uri_df = self._create_train_image_uris_and_labels(
-            repeat_factor=3, cardinality=label_cardinality)
+        image_uri_df = self._create_train_image_uris_and_labels(repeat_factor=3,
+                                                                cardinality=label_cardinality)
 
         model = self._get_model(label_cardinality)
         estimator = self._get_estimator(model)
@@ -118,29 +119,35 @@ class KerasEstimatorsTest(SparkDLTestCase):
         transformer = estimator.fit(image_uri_df)
         self.assertIsInstance(transformer, KerasImageFileTransformer, "output should be KIFT")
         for p in map(lambda p: p.name, transformer.params):
-            self.assertEqual(transformer.getOrDefault(p), estimator.getOrDefault(p), str(transformer.getOrDefault(p)))
+            self.assertEqual(transformer.getOrDefault(p), estimator.getOrDefault(p),
+                             str(transformer.getOrDefault(p)))
 
     def test_tuning(self):
         # Create image URI dataframe
         label_cardinality = 2
-        image_uri_df = self._create_train_image_uris_and_labels(
-            repeat_factor=3, cardinality=label_cardinality)
+        image_uri_df = self._create_train_image_uris_and_labels(repeat_factor=3,
+                                                                cardinality=label_cardinality)
 
         model = self._get_model(label_cardinality)
         estimator = self._get_estimator(model)
 
         paramGrid = (
             ParamGridBuilder()
-            .addGrid(estimator.kerasFitParams, [{"batch_size": 32, "verbose": 0}, {"batch_size": 64, "verbose": 0}])
+            .addGrid(estimator.kerasFitParams, [{"batch_size": 32, "verbose": 0},
+                                                {"batch_size": 64, "verbose": 0}])
             .build()
         )
 
-        bc = BinaryClassificationEvaluator(rawPredictionCol=self.output_col, labelCol=self.label_col)
-        cv = CrossValidator(estimator=estimator, estimatorParamMaps=paramGrid, evaluator=bc, numFolds=2)
+        bc = BinaryClassificationEvaluator(rawPredictionCol=self.output_col,
+                                           labelCol=self.one_hot_label_col)
+        cv = CrossValidator(estimator=estimator, estimatorParamMaps=paramGrid, evaluator=bc,
+                            numFolds=2)
 
         transformer = cv.fit(image_uri_df)
-        self.assertIsInstance(transformer.bestModel, KerasImageFileTransformer, "best model should be KIFT")
-        self.assertIn('batch_size', transformer.bestModel.getKerasFitParams(), "fit params must be copied")
+        self.assertIsInstance(transformer.bestModel, KerasImageFileTransformer,
+                              "best model should be an instance of KerasImageFileTransformer")
+        self.assertIn('batch_size', transformer.bestModel.getKerasFitParams(),
+                      "fit params must be copied")
 
     def test_keras_training_utils(self):
         self.assertTrue(kmutil.is_valid_optimizer('adam'))
