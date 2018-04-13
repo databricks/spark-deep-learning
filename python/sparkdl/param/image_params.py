@@ -111,6 +111,10 @@ class HasOutputMode(Params):
                        "tools in this package.",
                        typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(OUTPUT_MODES))
 
+    def __init__(self):
+        super(HasOutputMode, self).__init__()
+        self._setDefault(outputMode="vector")
+
     def setOutputMode(self, value):
         return self._set(outputMode=value)
 
