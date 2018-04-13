@@ -167,21 +167,24 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         :param paramMap: Dict[pyspark.ml.param.Param, object]
         :return: True if parameters are valid
         """
-        model_params = [self.kerasOptimizer, self.kerasLoss, self.kerasFitParams]
-        output_params = [self.outputCol, self.outputMode]
 
-        params = self.params
-        undefined = set([p for p in params if not self.isDefined(p)])
-        undefined_tunable = undefined.intersection(model_params + output_params)
+        tunable_params = [self.kerasOptimizer, self.kerasLoss, self.kerasFitParams,  # model params
+                          self.outputCol, self.outputMode]  # output params
+
+        undefined = set([p for p in self.params if not self.isDefined(p)])
+        undefined_tunable = undefined.intersection(tunable_params)
         failed_define = [p.name for p in undefined.difference(undefined_tunable)]
         failed_tune = [p.name for p in undefined_tunable if p not in paramMap]
+        untunable_overrides = [p.name for p in paramMap if p not in tunable_params]
 
-        if failed_define or failed_tune:
+        if failed_define or failed_tune or untunable_overrides:
             msg = "Following Params must be"
             if failed_define:
-                msg += " defined: [" + ", ".join(failed_define) + "]"
+                msg += " defined: " + str(failed_define)
             if failed_tune:
-                msg += " defined or tuned: [" + ", ".join(failed_tune) + "]"
+                msg += " defined or tuned: " + str(failed_tune)
+            if untunable_overrides:
+                msg += " not tuned: " + str(untunable_overrides)
             raise ValueError(msg)
 
         return True

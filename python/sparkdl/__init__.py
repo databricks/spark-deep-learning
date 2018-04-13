@@ -19,10 +19,10 @@ from .transformers.keras_tensor import KerasTransformer
 from .transformers.tf_image import TFImageTransformer
 from .transformers.tf_tensor import TFTransformer
 from .transformers.utils import imageInputPlaceholder
-
+from .estimators.keras_image_file_estimator import KerasImageFileEstimator
 
 __all__ = [
     'imageSchema', 'imageType', 'readImages',
     'TFImageTransformer', 'TFInputGraph', 'TFTransformer',
     'DeepImagePredictor', 'DeepImageFeaturizer', 'KerasImageFileTransformer', 'KerasTransformer',
-    'imageInputPlaceholder']
+    'imageInputPlaceholder', 'KerasImageFileEstimator']
