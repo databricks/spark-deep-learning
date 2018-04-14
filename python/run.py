@@ -1,25 +1,80 @@
 #!/usr/bin/env python
+"""
+This script can be used to run all things dev. Environment setup, Style-checks, Testing etc.
+"""
 
-import argparse, argh
+from __future__ import print_function
+
+import argh
+from argh import arg
+import subprocess
 
 def print_if(cond, *args):
     if(cond):
         print(*args)
 
+# pylint -h | egrep -o '\-\-[0-9a-z\-]+'
+__pylint_flags = """
+--help
+--help-msg
+--version
+--help
+--long-help
+--rcfile
+--init-hook
+--errors-only
+--py3k
+--ignore
+--ignore-patterns
+--persistent
+--load-plugins
+--jobs
+--extension-pkg-whitelist
+--suggestion-mode
+--help-msg
+--list-msgs
+--list-conf-levels
+--full-documentation
+--generate-rcfile
+--confidence
+--enable
+--disable
+--disable
+--disable
+--disable
+--enable
+--disable
+--enable
+--disable
+--output-format
+--reports
+--evaluation
+--score
+--msg-template
+ """
+
 def pylint(*args, **kwargs):
-    print(args, kwargs)
+    opts = ["--{}={}".format(k.replace("_", "-"), v) for k, v in kwargs.items() if v]
+    subprocess.call(["pylint",] + opts + list(args))
+
+
+for f in set(__pylint_flags.split("\n")):
+    f = f.strip()
+    if len(f) and f != "--help":
+        pylint = arg(f)(pylint)
 
 
 def prospector(*args, **kwargs):
-    print(args, kwargs)
+    opts = ["--{}={}".format(k.replace("_", "-"), v) for k, v in kwargs.items() if v]
+    subprocess.call(["prospector", ] + opts + list(args))
 
 
-def unittest(*args, **kwargs):
-    print(args, kwargs)
+def unittest(*args):
+    print(args)
 
 
-def nosettest(*args, **kwargs):
-    print(args, kwargs)
+def nosettest(*args):
+    print(args)
 
 
 def envsetup(default=False, interactive=False, missing_only=False, verbose=False):
@@ -58,10 +113,10 @@ def envsetup(default=False, interactive=False, missing_only=False, verbose=False
                 if new_value:
                     env[k] = new_value
 
-    env_str = ["export {}={}".format(k, v) for k, v in env.items()
-               if k in missing_vars or not missing_only]
-    print("\n".join(env_str))
-    return 0
+    env = {k: v for k, v in env.items() if k in missing_vars or not missing_only}
+
+    env_str = "\n".join("export {}={}".format(k, v) for k, v in env.items())
+    print(env_str)
 
 parser = argh.ArghParser()
 args = parser.add_commands([pylint, prospector, unittest, nosettest, envsetup])
