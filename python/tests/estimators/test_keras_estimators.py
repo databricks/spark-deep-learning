@@ -119,6 +119,10 @@ class KerasEstimatorsTest(SparkDLTestCase):
         kifest.setParams(kerasOptimizer='adam', kerasLoss='mse', kerasFitParams={})
         kifest.setParams(outputCol='c3', outputMode='vector')
 
+        # should raise an error to not override
+        self.assertRaisesRegexp(ValueError, 'not tuned', kifest._validateParams,
+                                {kifest.imageLoader: None})
+
         # should pass test on supplying all parameters
         self.assertTrue(kifest._validateParams({}))
 
