@@ -9,72 +9,93 @@ import argh
 from argh import arg
 import subprocess
 
+
 def print_if(cond, *args):
     if(cond):
         print(*args)
 
-# pylint -h | egrep -o '\-\-[0-9a-z\-]+'
+
+def call_subprocess(process, keyword_args, trail_args):
+    """wrapper function to format kwargs into bash arguments, print and then make the call"""
+    single_char_options = [k for k, v in keyword_args.items() if v and len(k) == 1]
+    multiple_char_options = [k for k, v in keyword_args.items() if v and len(k) > 1]
+    opts = ["-{}{}".format(k.replace("_", "-"), keyword_args[k]) for k in single_char_options]
+    opts += ["--{}={}".format(k.replace("_", "-"), keyword_args[k]) for k in multiple_char_options]
+    print("calling subprocess: {}".format([process, ] + opts + list(trail_args)))
+    subprocess.call([process, ] + opts + list(trail_args))
+
+
+def add_all_args(all_args, split_on="\n"):
+    """decorator with arguments to split a string containing all argh (--argument-strings) and
+    decorate a function with all those"""
+    def decorator(func):
+        for a in set(all_args.split(split_on)):
+            if len(a) and a != "--help":
+                func = arg(a)(func)
+        return func
+    return decorator
+
+
+# list of commands that can be run
+
+# this is the list of arguments pylint can take and can be generated using the following command
+# pylint -h | egrep -o '\-\-[0-9a-z\-]+' | sort | uniq
 __pylint_flags = """
---help
---help-msg
---version
---help
---long-help
---rcfile
---init-hook
+--confidence
+--disable
+--enable
 --errors-only
---py3k
---ignore
---ignore-patterns
---persistent
---load-plugins
---jobs
+--evaluation
 --extension-pkg-whitelist
---suggestion-mode
---help-msg
---list-msgs
---list-conf-levels
 --full-documentation
 --generate-rcfile
---confidence
---enable
---disable
---disable
---disable
---disable
---enable
---disable
---enable
---disable
---output-format
---reports
---evaluation
---score
+--help
+--help-msg
+--ignore
+--ignore-patterns
+--init-hook
+--jobs
+--list-conf-levels
+--list-msgs
+--load-plugins
+--long-help
 --msg-template
- """
+--output-format
+--persistent
+--py3k
+--rcfile
+--reports
+--score
+--suggestion-mode
+--version
+"""
 
+@add_all_args(__pylint_flags)
 def pylint(*args, **kwargs):
-    opts = ["--{}={}".format(k.replace("_", "-"), v) for k, v in kwargs.items() if v]
-    subprocess.call(["pylint",] + opts + list(args))
+    """calls pylint with a limited set of keywords. run `pylint --help` for more details."""
+    call_subprocess("pylint", keyword_args=kwargs, trail_args=args)
 
 
-for f in set(__pylint_flags.split("\n")):
-    f = f.strip()
-    if len(f) and f != "--help":
-        pylint = arg(f)(pylint)
-
-
+@add_all_args("")
 def prospector(*args, **kwargs):
-    opts = ["--{}={}".format(k.replace("_", "-"), v) for k, v in kwargs.items() if v]
-    subprocess.call(["prospector", ] + opts + list(args))
+    """calls prospector with a limited set of keywords. run `prospector --help` for more details."""
+    call_subprocess("prospector", keyword_args=kwargs, trail_args=args)
 
 
-def unittest(*args):
-    print(args)
+@add_all_args("")
+def unittest(*args, **kwargs):
+    """calls unittest with a limited set of keywords. run `python -m unittest --help` for more
+    details."""
+    kwargs["m"] = "unittest"
+    call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
-def nosettest(*args):
-    print(args)
+@add_all_args("")
+def nose(*args, **kwargs):
+    """calls nosettest with a limited set of keywords. run `python -m nose --help` for more
+    details."""
+    kwargs["m"] = "nose"
+    call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
 def envsetup(default=False, interactive=False, missing_only=False, verbose=False):
@@ -119,7 +140,7 @@ def envsetup(default=False, interactive=False, missing_only=False, verbose=False
     print(env_str)
 
 parser = argh.ArghParser()
-args = parser.add_commands([pylint, prospector, unittest, nosettest, envsetup])
+args = parser.add_commands([pylint, prospector, unittest, nose, envsetup])
 
 if __name__ == '__main__':
     parser.dispatch()
