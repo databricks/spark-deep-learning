@@ -22,7 +22,6 @@ from .transformers.utils import imageInputPlaceholder
 from .estimators.keras_image_file_estimator import KerasImageFileEstimator
 
 __all__ = [
-    'imageSchema', 'imageType', 'readImages',
-    'TFImageTransformer', 'TFInputGraph', 'TFTransformer',
+    'imageType', 'TFImageTransformer', 'TFInputGraph', 'TFTransformer',
     'DeepImagePredictor', 'DeepImageFeaturizer', 'KerasImageFileTransformer', 'KerasTransformer',
     'imageInputPlaceholder', 'KerasImageFileEstimator']
