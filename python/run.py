@@ -8,10 +8,13 @@ from __future__ import print_function
 import argh
 from argh import arg
 import subprocess
+import argcomplete
+import sys
+import os
 
 
 def print_if(cond, *args):
-    if(cond):
+    if (cond):
         print(*args)
 
 
@@ -29,6 +32,7 @@ def add_all_args(all_args, split_on="\n"):
     """decorator with arguments to split a string containing all argh (--argument-strings) and
     decorate a function with all those"""
     def decorator(func):
+        """decorator with all_args"""
         for a in set(all_args.split(split_on)):
             if len(a) and a != "--help":
                 func = arg(a)(func)
@@ -70,6 +74,9 @@ __pylint_flags = """
 --version
 """
 
+
+@arg("--rcfile", default="./python/.pylint/accepted.rc")
+@arg("--reports", default="y")
 @add_all_args(__pylint_flags)
 def pylint(*args, **kwargs):
     """calls pylint with a limited set of keywords. run `pylint --help` for more details."""
@@ -98,21 +105,30 @@ def nose(*args, **kwargs):
     call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
-def envsetup(default=False, interactive=False, missing_only=False, verbose=False):
+def envsetup(default=False, interactive=False, missing_only=False, completion=False, verbose=False):
     """
     Prints out shell commands that can be used in terminal to setup the environment.
 
     This tool inspects the current environment, adds default values, and/or interactively asks
     user for values and prints all or the missing variables that need to be set.
 
+    You can source the setup as follows:
+
+    ```
+    python/run.py envsetup -d -c > ./python/.setup.sh && source ./python/.setup.sh
+    ```
+
     :param default: if default values should be set in this script or not
     :param interactive: if user should be prompted for values or not
     :param missing_only: if only missing variable should be printed
     :param verbose: if user should be guided or not
     """
-    import os
+    env_str = "#!/bin/bash\n"
+
     default_env = {'PYSPARK_PYTHON': 'python', 'SPARK_VERSION': '2.3.0',
-                   'SPARK_HOME': '$PATH/spark-2.3.0-bin-hadoop2.7/', 'SCALA_VERSION': '2.11.8'}
+                   'SPARK_HOME': os.path.join(os.getenv('HOME', ''),
+                                              'bin/spark-2.3.0-bin-hadoop2.7/'),
+                   'SCALA_VERSION': '2.11.8'}
     env = {k: os.environ.get(k, None) for k in default_env.keys()}
     given_vars = [k for k, v in env.items() if v]
     missing_vars = [k for k, v in env.items() if not v]
@@ -130,14 +146,45 @@ def envsetup(default=False, interactive=False, missing_only=False, verbose=False
             print_if(verbose, 'enter values for the following')
             print_if(default and verbose, 'if left blank, default values will be used')
             for k in missing_vars:
-                new_value = input("{}=".format(k))
-                if new_value:
-                    env[k] = new_value
+                try:
+                    new_value = input("{}=".format(k))
+                    if new_value:
+                        env[k] = new_value
+                except SyntaxError:
+                    pass
 
     env = {k: v for k, v in env.items() if k in missing_vars or not missing_only}
+    env_str += "\n".join("export {}={}".format(k, v) for k, v in env.items())
 
-    env_str = "\n".join("export {}={}".format(k, v) for k, v in env.items())
+    if completion:
+        env_str += argcomplete.shellcode(sys.argv[0])
+
+    env_str += """
+    # The current directory of the script.
+    export DIR={}
+    """.format(os.path.dirname(os.path.realpath(__file__)))
+
+    env_str += """
+    LIBS=""
+    for lib in "$SPARK_HOME/python/lib"/*zip ; do
+      LIBS=$LIBS:$lib
+    done
+    
+    a=( ${SCALA_VERSION//./ } )
+    scala_version_major_minor="${a[0]}.${a[1]}"
+    assembly_path="$DIR/../target/scala-$scala_version_major_minor"
+    JAR_PATH=""
+    for assembly in $assembly_path/spark-deep-learning-assembly*.jar ; do
+      JAR_PATH=$assembly
+    done
+    
+    # python dir ($DIR) should be before assembly so dev changes can be picked up.
+    export PYTHONPATH=$PYTHONPATH:$DIR
+    export PYTHONPATH=$PYTHONPATH:$assembly   # same $assembly used for the JAR_PATH above
+    export PYTHONPATH=$PYTHONPATH:$SPARK_HOME/python:$LIBS:.
+    """
     print(env_str)
+
 
 parser = argh.ArghParser()
 args = parser.add_commands([pylint, prospector, unittest, nose, envsetup])
