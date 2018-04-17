@@ -8,7 +8,8 @@ from __future__ import print_function
 import argh
 from argh import arg
 import subprocess
-
+import argcomplete
+import sys
 
 def print_if(cond, *args):
     if(cond):
@@ -98,7 +99,7 @@ def nose(*args, **kwargs):
     call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
-def envsetup(default=False, interactive=False, missing_only=False, verbose=False):
+def envsetup(default=False, interactive=False, missing_only=False, completion=False, verbose=False):
     """
     Prints out shell commands that can be used in terminal to setup the environment.
 
@@ -135,8 +136,9 @@ def envsetup(default=False, interactive=False, missing_only=False, verbose=False
                     env[k] = new_value
 
     env = {k: v for k, v in env.items() if k in missing_vars or not missing_only}
-
     env_str = "\n".join("export {}={}".format(k, v) for k, v in env.items())
+    if completion:
+        env_str += argcomplete.shellcode(sys.argv[0])
     print(env_str)
 
 parser = argh.ArghParser()
