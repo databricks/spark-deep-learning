@@ -23,7 +23,7 @@ from PIL import Image
 # pyspark
 from pyspark import Row
 from pyspark import SparkContext
-from sparkdl.image.image import ImageSchema
+from pyspark.ml.image import ImageSchema
 from pyspark.sql.functions import udf
 from pyspark.sql.types import (
     BinaryType, IntegerType, StringType, StructField, StructType)

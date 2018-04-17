@@ -112,7 +112,7 @@ The first step to applying deep learning on images is the ability to load the im
 Using Spark's ImageSchema
 
 ```python
-from sparkdl.image.image import ImageSchema
+from pyspark.ml.image import ImageSchema
 image_df = ImageSchema.readImages("/data/myimages")
 ```
 

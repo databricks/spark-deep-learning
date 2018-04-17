@@ -24,7 +24,7 @@ from pyspark.sql.functions import col, udf
 from pyspark.sql.types import BinaryType, StringType, StructField, StructType
 
 from sparkdl.image import imageIO
-from sparkdl.image.image import ImageSchema
+from pyspark.ml.image import ImageSchema
 from ..tests import SparkDLTestCase
 
 # Create some fake image data to work with

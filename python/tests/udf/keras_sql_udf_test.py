@@ -27,7 +27,7 @@ from keras.models import Sequential
 from pyspark import SparkContext
 from pyspark.sql import DataFrame, Row
 from pyspark.sql.functions import udf
-from sparkdl.image.image import ImageSchema
+from pyspark.ml.image import ImageSchema
 
 from sparkdl.graph.builder import IsolatedSession
 from sparkdl.graph.tensorframes_udf import makeGraphUDF
