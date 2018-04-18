@@ -128,9 +128,7 @@ disable=print-statement,
         dict-keys-not-iterating,
         dict-values-not-iterating,
         unused-argument, too-many-arguments,
-        no-member,
-        missing-docstring,
-        no-init
+        no-member 
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -379,11 +377,11 @@ class-naming-style=PascalCase
 #class-rgx=
 
 # Naming style matching correct constant names
-#const-naming-style=
+const-naming-style=UPPER_CASE
 
 # Regular expression matching correct constant names. Overrides const-naming-
 # style
-const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$|logger
+#const-rgx=
 
 # Minimum line length for functions/classes that require docstrings, shorter
 # ones are exempt.
@@ -396,6 +394,7 @@ docstring-min-length=-1
 # naming-style
 function-rgx=(([a-z_][a-zA-Z0-9]{2,30})|(__[a-z][a-zA-Z0-9_]+__))$|(([a-z_][a-z0-9_]{2,30})|(_[a-z0-9_]*)|(__[a-z][a-z0-9_]+__))$
 
+
 # Good variable names which should always be accepted, separated by a comma
 good-names=i,
            j,
@@ -404,9 +403,7 @@ good-names=i,
            Run,
            _,
            x, y, X, Y,
-           sc,
-           df,
-           PIL_decode, PIL_decode_and_resize, PIL_to_imageStruct
+           sc
 
 # Include a hint for the correct naming format with invalid-name
 include-naming-hint=no
@@ -423,15 +420,14 @@ inlinevar-naming-style=any
 
 # Regular expression matching correct method names. Overrides method-naming-
 # style
-method-rgx=(([a-z_][a-zA-Z0-9]{2,30})|(__[a-z][a-zA-Z0-9_]+__))$|(([a-z_][a-z0-9_]{2,30})|(_[a-z0-9_]*)|(__[a-z][a-z0-9_]+__))$|(test_[a-zA-Z0-9_]{1,63})$
-#              [_]camelCase 3-30     |  __camelCase__ >1        |  _snake_case 3-30      | _snake_case | __snake_case__        | test_whatEva_h
+method-rgx=(([a-z_][a-zA-Z0-9]{2,30})|(__[a-z][a-zA-Z0-9_]+__))$|(([a-z_][a-z0-9_]{2,30})|(_[a-z0-9_]*)|(__[a-z][a-z0-9_]+__))$
 
 # Naming style matching correct module names
-#module-naming-style=
+module-naming-style=snake_case
 
 # Regular expression matching correct module names. Overrides module-naming-
 # style
-module-rgx=([a-z_][a-z0-9_]*)$|([a-z_][a-zA-Z0-9]*)$
+#module-rgx=
 
 # Colon-delimited sets of names that determine each other's naming style when
 # the name regexes allow several styles.
