@@ -148,6 +148,8 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         super(KerasImageFileEstimator, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
+        self._tunable_params = [self.kerasOptimizer, self.kerasLoss, self.kerasFitParams,
+                          self.outputCol, self.outputMode]  # model params and output params
 
     @keyword_only
     def setParams(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
@@ -168,14 +170,11 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         :return: True if parameters are valid
         """
 
-        tunable_params = [self.kerasOptimizer, self.kerasLoss, self.kerasFitParams,  # model params
-                          self.outputCol, self.outputMode]  # output params
-
         undefined = set([p for p in self.params if not self.isDefined(p)])
-        undefined_tunable = undefined.intersection(tunable_params)
+        undefined_tunable = undefined.intersection(self._tunable_params)
         failed_define = [p.name for p in undefined.difference(undefined_tunable)]
         failed_tune = [p.name for p in undefined_tunable if p not in paramMap]
-        untunable_overrides = [p.name for p in paramMap if p not in tunable_params]
+        untunable_overrides = [p.name for p in paramMap if p not in self._tunable_params]
 
         if failed_define or failed_tune or untunable_overrides:
             msg = "Following Params must be"
@@ -285,7 +284,8 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         modelBytesBc = sc.broadcast(modelBytes)
 
         # Obtain params for this estimator instance
-        baseParams = _name_value_map(self.extractParamMap())
+        baseParams = {param.name: val for param, val in self.extractParamMap().items()
+                      if param in self._tunable_params}
         baseParamsBc = sc.broadcast(baseParams)
 
         def _local_fit(row):
