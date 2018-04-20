@@ -63,7 +63,7 @@ def imageTypeByOrdinal(ord):
 
 def imageTypeByName(name):
     if not name in _ocvTypesByName:
-        raise KeyError("unsupported image type with name '%s', supported supported OpenCV types = %s" % (
+        raise KeyError("unsupported image type with name '%s', supported OpenCV types = %s" % (
             name, str(_supportedOcvTypes)))
     return _ocvTypesByName[name]
 
@@ -228,11 +228,12 @@ def PIL_decode_and_resize(size):
 
 def readImagesWithCustomFn(path, decode_f, numPartition=None):
     """
-    Read a directory of images (or a single image) into a DataFrame using a custom library to decode the images.
+    Read a directory of images (or a single image) into a DataFrame using a custom library to
+    decode the images.
 
     :param path: str, file path.
-    :param decode_f: function to decode the raw bytes into an array compatible with one of the supported OpenCv modes.
-                 see @imageIO.PIL_decode for an example.
+    :param decode_f: function to decode the raw bytes into an array compatible with one of the
+        supported OpenCv modes. see @imageIO.PIL_decode for an example.
     :param numPartition: [optional] int, number or partitions to use for reading files.
     :return: DataFrame with schema == ImageSchema.imageSchema.
     """
