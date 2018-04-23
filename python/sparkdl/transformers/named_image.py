@@ -94,7 +94,7 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
             modelName=self.getModelName(),
             featurize=False)
         transformed = transformer.transform(dataset)
-        if self.getOrDefault(self.decodePredictions):
+        if self.getOrDefault(self.decodePredictions):   # pylint: disable=no-else-return
             return self._decodeOutputAsPredictions(transformed)
         else:
             return transformed.withColumnRenamed(
@@ -137,7 +137,7 @@ def _getScaleHintList():
         return []
     return dict(featurizer.scaleHintsJava()).keys()
 
-
+# pylint: disable=too-few-public-methods
 class _LazyScaleHintConverter:
     _sizeHintConverter = None
 
@@ -148,10 +148,9 @@ class _LazyScaleHintConverter:
         return self._sizeHintConverter(value)
 
 
-_scaleHintConverter = _LazyScaleHintConverter()
-
-
+# pylint: disable=useless-super-delegation
 class _DeepImageFeaturizerReader(JavaMLReader):
+
     def __init__(self, clazz):
         super(_DeepImageFeaturizerReader, self).__init__(clazz)
 
@@ -193,7 +192,7 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
         "scaleHint",
         "Hint which algorhitm to use for image "
         "resizing",
-        typeConverter=_scaleHintConverter)
+        typeConverter=_LazyScaleHintConverter())
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelName=None,
