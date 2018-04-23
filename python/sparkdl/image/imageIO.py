@@ -149,13 +149,13 @@ def fixColorChannelOrdering(currentOrder, imgAry):
     elif currentOrder == 'BGR':
         return imgAry
     elif currentOrder == 'L':
-        if len(img.shape) != 1:
+        if len(imgAry.shape) != 1:
             raise ValueError(
-                "channel order suggests only one color channel but got shape " + str(img.shape))
+                "channel order suggests only one color channel but got shape " + str(imgAry.shape))
         return imgAry
     else:
         raise ValueError(
-            "Unexpected channel order, expected one of L,RGB,BGR but got " + currentChannelOrder)
+            "Unexpected channel order, expected one of L,RGB,BGR but got " + currentOrder)
 
 
 def _reverseChannels(ary):
