@@ -130,7 +130,8 @@ disable=print-statement,
         unused-argument, too-many-arguments,
         no-member,
         missing-docstring,
-        no-init
+        no-init,
+        protected-access
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
