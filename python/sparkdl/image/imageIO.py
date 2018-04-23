@@ -25,8 +25,7 @@ from pyspark import Row
 from pyspark import SparkContext
 from pyspark.ml.image import ImageSchema
 from pyspark.sql.functions import udf
-from pyspark.sql.types import (
-    BinaryType, IntegerType, StringType, StructField, StructType)
+from pyspark.sql.types import BinaryType, StringType, StructField, StructType
 
 
 # ImageType represents supported OpenCV types
@@ -39,8 +38,7 @@ from pyspark.sql.types import (
 #  NOTE: likely to be migrated to Spark ImageSchema code in the near future.
 _OcvType = namedtuple("OcvType", ["name", "ord", "nChannels", "dtype"])
 
-
-_supportedOcvTypes = (
+_SUPPORTED_OCV_TYPES = (
     _OcvType(name="CV_8UC1", ord=0, nChannels=1, dtype="uint8"),
     _OcvType(name="CV_32FC1", ord=5, nChannels=1, dtype="float32"),
     _OcvType(name="CV_8UC3", ord=16, nChannels=3, dtype="uint8"),
@@ -50,22 +48,22 @@ _supportedOcvTypes = (
 )
 
 #  NOTE: likely to be migrated to Spark ImageSchema code in the near future.
-_ocvTypesByName = {m.name: m for m in _supportedOcvTypes}
-_ocvTypesByOrdinal = {m.ord: m for m in _supportedOcvTypes}
+_OCV_TYPES_BY_NAME = {m.name: m for m in _SUPPORTED_OCV_TYPES}
+_OCV_TYPES_BY_ORDINAL = {m.ord: m for m in _SUPPORTED_OCV_TYPES}
 
 
-def imageTypeByOrdinal(ord):
-    if not ord in _ocvTypesByOrdinal:
+def imageTypeByOrdinal(ordinal):
+    if not ordinal in _OCV_TYPES_BY_ORDINAL:
         raise KeyError("unsupported image type with ordinal %d, supported OpenCV types = %s" % (
-            ord, str(_supportedOcvTypes)))
-    return _ocvTypesByOrdinal[ord]
+            ordinal, str(_SUPPORTED_OCV_TYPES)))
+    return _OCV_TYPES_BY_ORDINAL[ordinal]
 
 
 def imageTypeByName(name):
-    if not name in _ocvTypesByName:
+    if not name in _OCV_TYPES_BY_NAME:
         raise KeyError("unsupported image type with name '%s', supported OpenCV types = %s" % (
-            name, str(_supportedOcvTypes)))
-    return _ocvTypesByName[name]
+            name, str(_SUPPORTED_OCV_TYPES)))
+    return _OCV_TYPES_BY_NAME[name]
 
 
 def imageArrayToStruct(imgArray, origin=""):
@@ -176,6 +174,7 @@ def createResizeImageUDF(size):
     if len(size) != 2:
         raise ValueError(
             "New image size should have format [height, width] but got {}".format(size))
+    # pylint: disable=invalid-name
     sz = (size[1], size[0])
 
     def _resizeImageAsRow(imgAsRow):
