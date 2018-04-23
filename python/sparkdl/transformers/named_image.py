@@ -94,7 +94,7 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
             modelName=self.getModelName(),
             featurize=False)
         transformed = transformer.transform(dataset)
-        if self.getOrDefault(self.decodePredictions):   # pylint: disable=no-else-return
+        if self.getOrDefault(self.decodePredictions):
             return self._decodeOutputAsPredictions(transformed)
         else:
             return transformed.withColumnRenamed(

@@ -155,7 +155,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
             output_shape = final_graph.get_tensor_by_name(original_output_name).shape
             output_mode = self.getOrDefault(self.outputMode)
             # TODO: support non-1d tensors (return np.array).
-            if output_mode == "image":  # pylint: disable=no-else-return
+            if output_mode == "image":
                 return self._convertOutputToImage(final_df, tfs_output_name, output_shape)
             else:
                 assert output_mode == "vector", "Unknown output mode: %s" % output_mode
