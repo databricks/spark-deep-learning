@@ -27,6 +27,7 @@ import sparkdl.graph.utils as tfx
 
 logger = logging.getLogger('sparkdl')
 
+# pylint: disable=fixme
 
 class IsolatedSession(object):
     """
@@ -256,7 +257,8 @@ class GraphFunction(object):
 
             for idx, (scope, gfn) in enumerate(functions):
                 # Give a scope to each function to avoid name conflict
-                if scope is None or len(scope.strip()) == 0:
+                if scope is None or len(scope.strip()) == 0:    # pylint: disable=len-as-condition
+                    # TODO: refactor above and test: if not (scope and scope.strip())
                     scope = 'GFN-BLK-{}'.format(idx)
                 _msg = 'merge: stage {}, scope {}'.format(idx, scope)
                 logger.info(_msg)
