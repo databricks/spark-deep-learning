@@ -16,11 +16,11 @@
 import logging
 import os
 import shutil
-import six
 from tempfile import mkdtemp
 
 import keras.backend as K
 from keras.models import Model as KerasModel, load_model
+import six
 import tensorflow as tf
 
 import sparkdl.graph.utils as tfx
@@ -83,7 +83,7 @@ class IsolatedSession(object):
 
         :param inputs: list, graph elements representing the inputs
         :param outputs: list, graph elements representing the outputs
-        :param strip_and_freeze: bool, should we remove unused part of the graph and freee its values
+        :param strip_and_freeze: bool, should we remove unused part of the graph and free its values
         """
         if strip_and_freeze:
             gdef = tfx.strip_and_freeze_until(outputs, self.graph, self.sess)
@@ -100,9 +100,11 @@ class IsolatedSession(object):
 
         .. _a link: https://www.tensorflow.org/api_docs/python/tf/import_graph_def
 
-        :param gfn: GraphFunction, an object representing a TensorFlow graph and its inputs and outputs
+        :param gfn: GraphFunction, an object representing a TensorFlow graph and its inputs and
+        outputs
         :param input_map: dict, mapping from input names to existing graph elements
-        :param prefix: str, the scope for all the variables in the :py:class:`GraphFunction` elements
+        :param prefix: str, the scope for all the variables in the :py:class:`GraphFunction`
+        elements
 
                        .. _a link: https://www.tensorflow.org/programmers_guide/variable_scope
 
@@ -142,7 +144,8 @@ class GraphFunction(object):
     """
     Represent a TensorFlow graph with its GraphDef, input and output operation names.
 
-    :param graph_def: GraphDef, a static ProtocolBuffer object holding informations of a TensorFlow graph
+    :param graph_def: GraphDef, a static ProtocolBuffer object holding information of a
+    TensorFlow graph
     :param input_names: names to the input graph elements (must be of Placeholder type)
     :param output_names: names to the output graph elements
     """
@@ -179,7 +182,8 @@ class GraphFunction(object):
         """
         Build a GraphFunction from a Keras model
 
-        :param model_or_file_path: KerasModel or str, either a Keras model or the file path name to one
+        :param model_or_file_path: KerasModel or str, either a Keras model or the file path name
+        to one
         """
         if isinstance(model_or_file_path, KerasModel):
             model = model_or_file_path
