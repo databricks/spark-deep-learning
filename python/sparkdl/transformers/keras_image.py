@@ -14,12 +14,10 @@
 #
 
 from pyspark.ml import Transformer
-
-from sparkdl.param import (
-    keyword_only, HasInputCol, HasOutputCol,
-    CanLoadImage, HasKerasModel, HasOutputMode)
-from sparkdl.transformers.tf_image import TFImageTransformer
+from sparkdl.param import CanLoadImage, HasInputCol, HasKerasModel, HasOutputCol, HasOutputMode, \
+    keyword_only
 from sparkdl.transformers.keras_utils import KSessionWrap
+from sparkdl.transformers.tf_image import TFImageTransformer
 
 
 class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
