@@ -219,13 +219,13 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
         self._transfer_params_to_java()
         return self
 
-    def setInputCol(selfs, value):
+    def setInputCol(self, value):
         return self._set(inputCol=value)
 
     def getInputCol(self):
         return self.getOrDefault(self.inputCol)
 
-    def setOutputCol(selfs, value):
+    def setOutputCol(self, value):
         return self._set(outputCol=value)
 
     def getOutputCol(self):
