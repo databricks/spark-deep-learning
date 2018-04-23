@@ -23,12 +23,9 @@ Type conversion utilities for defining MLlib `Params` used in Spark Deep Learnin
 """
 
 import six
-
 import tensorflow as tf
 
-from pyspark.ml.param import TypeConverters
-
-from sparkdl.graph.input import *
+from sparkdl.graph.input import TFInputGraph
 import sparkdl.utils.keras_model as kmutil
 
 __all__ = ['SparkDLTypeConverters']
