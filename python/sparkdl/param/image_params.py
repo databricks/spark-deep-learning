@@ -38,7 +38,8 @@ class CanLoadImage(Params):
     This parameter allows users to specify such an image loading function.
     When using inside a pipeline stage, calling this function on an input DataFrame
     will load each image from the image URI column, encode the image in
-    our :py:obj:`~sparkdl.imageIO.imageSchema` format and store it in the :py:meth:`~_loadedImageCol` column.
+    our :py:obj:`~sparkdl.imageIO.imageSchema` format and store it in the
+    :py:meth:`~_loadedImageCol` column.
 
     Below is an example ``image_loader`` function to load Xception https://arxiv.org/abs/1610.02357
     compatible images.
@@ -58,10 +59,13 @@ class CanLoadImage(Params):
             return img_tnsr
     """
 
-    imageLoader = Param(Params._dummy(), "imageLoader",
-                        "Function containing the logic for loading and pre-processing images. " +
-                        "The function should take in a URI string and return a 4-d numpy.array " +
-                        "with shape (batch_size (1), height, width, num_channels). Expected to return result with color channels in RGB order.")
+    imageLoader = Param(
+        Params._dummy(),
+        "imageLoader",
+        """Function containing the logic for loading and pre-processing images. The function 
+        should take in a URI string and return a 4-d numpy.array with shape (batch_size (1), 
+        height, width, num_channels). Expected to return result with color channels in RGB 
+        order.""")
 
     def setImageLoader(self, value):
         return self._set(imageLoader=value)
@@ -92,11 +96,12 @@ class CanLoadImage(Params):
 
 class HasOutputMode(Params):
     # TODO: docs
-    outputMode = Param(Params._dummy(), "outputMode",
-                       "How the output column should be formatted. 'vector' for a 1-d MLlib " +
-                       "Vector of floats. 'image' to format the output to work with the image " +
-                       "tools in this package.",
-                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(OUTPUT_MODES))
+    outputMode = Param(
+        Params._dummy(),
+        "outputMode",
+        """How the output column should be formatted. 'vector' for a 1-d MLlib Vector of floats. 
+        'image' to format the output to work with the image tools in this package.""",
+        typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(OUTPUT_MODES))
 
     def __init__(self):
         super(HasOutputMode, self).__init__()
