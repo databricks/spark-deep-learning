@@ -137,8 +137,8 @@ def _getScaleHintList():
         return []
     return dict(featurizer.scaleHintsJava()).keys()
 
-# pylint: disable=too-few-public-methods
-class _LazyScaleHintConverter:
+
+class _LazyScaleHintConverter:  # pylint: disable=too-few-public-methods
     _sizeHintConverter = None
 
     def __call__(self, value):
@@ -148,10 +148,9 @@ class _LazyScaleHintConverter:
         return self._sizeHintConverter(value)
 
 
-# pylint: disable=useless-super-delegation
 class _DeepImageFeaturizerReader(JavaMLReader):
 
-    def __init__(self, clazz):
+    def __init__(self, clazz):  # pylint: disable=useless-super-delegation
         super(_DeepImageFeaturizerReader, self).__init__(clazz)
 
     @classmethod
