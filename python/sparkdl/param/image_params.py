@@ -62,9 +62,9 @@ class CanLoadImage(Params):
     imageLoader = Param(
         Params._dummy(),
         "imageLoader",
-        """Function containing the logic for loading and pre-processing images. The function 
-        should take in a URI string and return a 4-d numpy.array with shape (batch_size (1), 
-        height, width, num_channels). Expected to return result with color channels in RGB 
+        """Function containing the logic for loading and pre-processing images. The function
+        should take in a URI string and return a 4-d numpy.array with shape (batch_size (1),
+        height, width, num_channels). Expected to return result with color channels in RGB
         order.""")
 
     def setImageLoader(self, value):
@@ -99,7 +99,7 @@ class HasOutputMode(Params):
     outputMode = Param(
         Params._dummy(),
         "outputMode",
-        """How the output column should be formatted. 'vector' for a 1-d MLlib Vector of floats. 
+        """How the output column should be formatted. 'vector' for a 1-d MLlib Vector of floats.
         'image' to format the output to work with the image tools in this package.""",
         typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(OUTPUT_MODES))
 

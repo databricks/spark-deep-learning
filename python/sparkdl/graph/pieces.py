@@ -55,7 +55,7 @@ def buildSpImageConverter(channelOrder, img_dtype):
         elif img_dtype == 'float32':
             image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
         else:
-            raise ValueError('''unsupported image data type "%s", currently only know how to 
+            raise ValueError('''unsupported image data type "%s", currently only know how to
             handle uint8 and float32''' % img_dtype)
         image_reshaped = tf.reshape(image_float, shape, name="reshaped")
         image_reshaped = imageIO.fixColorChannelOrdering(channelOrder, image_reshaped)
