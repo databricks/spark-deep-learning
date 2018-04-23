@@ -356,7 +356,7 @@ argument-rgx=(([a-z_][a-zA-Z0-9]{2,30})|(__[a-z][a-zA-Z0-9_]+__))$|(([a-z_][a-z0
 
 # Regular expression matching correct attribute names. Overrides attr-naming-
 # style
-#attr-rgx=(([a-z_][a-zA-Z0-9]{2,30})|(__[a-z][a-zA-Z0-9_]+__))$|(([a-z_][a-z0-9_]{2,30})|(_[a-z0-9_]*)|(__[a-z][a-z0-9_]+__))$
+attr-rgx=(([a-z_][a-zA-Z0-9]{2,30})|(__[a-z][a-zA-Z0-9_]+__))$|(([a-z_][a-z0-9_]{2,30})|(_[a-z0-9_]*)|(__[a-z][a-z0-9_]+__))$
 
 # Bad variable names which should always be refused, separated by a comma
 bad-names=foo,
