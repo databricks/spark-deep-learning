@@ -34,7 +34,7 @@ class KSessionWrap():
         self.g = self.requested_graph or tf.Graph()
         self.current_session = tf.Session(graph=self.g)
         K.set_session(self.current_session)
-        return (self.current_session, self.g)
+        return self.current_session, self.g
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Restore the previous session
