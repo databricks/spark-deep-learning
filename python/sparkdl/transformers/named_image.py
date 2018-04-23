@@ -23,15 +23,13 @@ from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.ml.util import JavaMLReadable, JavaMLWritable, JavaMLReader
 from pyspark.ml.wrapper import JavaTransformer
 from pyspark.sql.functions import udf
-from pyspark.sql.types import (ArrayType, FloatType, StringType, StructField, StructType)
+from pyspark.sql.types import ArrayType, FloatType, StringType, StructField, StructType
 
 import sparkdl.graph.utils as tfx
 from sparkdl.image.imageIO import createResizeImageUDF
 import sparkdl.transformers.keras_applications as keras_apps
-from sparkdl.param import (
-    keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters)
+from sparkdl.param import keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters
 from sparkdl.transformers.tf_image import TFImageTransformer
-
 
 SUPPORTED_MODELS = ["InceptionV3", "Xception", "ResNet50", "VGG16", "VGG19"]
 
@@ -43,13 +41,21 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
     The output is a MLlib Vector.
     """
 
-    modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
-    decodePredictions = Param(Params._dummy(), "decodePredictions",
-                              "If true, output predictions in the (class, description, probability) format",
-                              typeConverter=TypeConverters.toBoolean)
-    topK = Param(Params._dummy(), "topK", "How many classes to return if decodePredictions is True",
-                 typeConverter=TypeConverters.toInt)
+    modelName = Param(
+        Params._dummy(),
+        "modelName",
+        "A deep learning model name",
+        typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
+    decodePredictions = Param(
+        Params._dummy(),
+        "decodePredictions",
+        "If true, output predictions in the (class, description, probability) format",
+        typeConverter=TypeConverters.toBoolean)
+    topK = Param(
+        Params._dummy(),
+        "topK",
+        "How many classes to return if decodePredictions is True",
+        typeConverter=TypeConverters.toInt)
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelName=None, decodePredictions=False,
@@ -82,9 +88,11 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
         return self.getOrDefault(self.modelName)
 
     def _transform(self, dataset):
-        transformer = _NamedImageTransformer(inputCol=self.getInputCol(),
-                                             outputCol=self._getIntermediateOutputCol(),
-                                             modelName=self.getModelName(), featurize=False)
+        transformer = _NamedImageTransformer(
+            inputCol=self.getInputCol(),
+            outputCol=self._getIntermediateOutputCol(),
+            modelName=self.getModelName(),
+            featurize=False)
         transformed = transformer.transform(dataset)
         if self.getOrDefault(self.decodePredictions):
             return self._decodeOutputAsPredictions(transformed)
@@ -104,16 +112,18 @@ class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
             decoded = decode_predictions(pred_arr, top=topK)[0]
             # convert numpy dtypes to python native types
             return [(t[0], t[1], t[2].item()) for t in decoded]
+
         decodedSchema = ArrayType(
-            StructType([StructField("class", StringType(), False),
-                        StructField("description", StringType(), False),
-                        StructField("probability", FloatType(), False)]))
+            StructType([
+                StructField("class", StringType(), False),
+                StructField("description", StringType(), False),
+                StructField("probability", FloatType(), False)
+            ]))
         decodeUDF = udf(decode, decodedSchema)
         interim_output = self._getIntermediateOutputCol()
-        return (
-            df.withColumn(self.getOutputCol(), decodeUDF(df[interim_output]))
-              .drop(interim_output)
-        )
+        return df \
+            .withColumn(self.getOutputCol(), decodeUDF(df[interim_output])) \
+            .drop(interim_output)
 
     def _getIntermediateOutputCol(self):
         return "__tmp_" + self.getOutputCol()
@@ -162,17 +172,35 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
     # always get set to correct value on the python side after deserialization. Default values do
     # not get reset to the jvm side value unless they param value is not set.
     # See pyspark.ml.wrapper.JavaParams._transfer_params_from_java
-    inputCol = Param(Params._dummy(), "inputCol", "input column name.", typeConverter=TypeConverters.toString)
-    outputCol = Param(Params._dummy(), "outputCol", "output column name.", typeConverter=TypeConverters.toString)
-    modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
-    scaleHint = Param(Params._dummy(), "scaleHint", "Hint which algorhitm to use for image resizing",
-                      typeConverter=_scaleHintConverter)
+    inputCol = Param(
+        Params._dummy(),
+        "inputCol",
+        "input column name.",
+        typeConverter=TypeConverters.toString)
+    outputCol = Param(
+        Params._dummy(),
+        "outputCol",
+        "output column name.",
+        typeConverter=TypeConverters.toString)
+    modelName = Param(
+        Params._dummy(),
+        "modelName",
+        "A deep learning model name",
+        typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(
+            SUPPORTED_MODELS))
+    scaleHint = Param(
+        Params._dummy(),
+        "scaleHint",
+        "Hint which algorhitm to use for image "
+        "resizing",
+        typeConverter=_scaleHintConverter)
 
     @keyword_only
-    def __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING"):
+    def __init__(self, inputCol=None, outputCol=None, modelName=None,
+                 scaleHint="SCALE_AREA_AVERAGING"):
         """
-        __init__(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING")
+        __init__(self, inputCol=None, outputCol=None, modelName=None,
+                 scaleHint="SCALE_AREA_AVERAGING")
         """
         super(DeepImageFeaturizer, self).__init__()
         self._java_obj = self._new_java_obj("com.databricks.sparkdl.DeepImageFeaturizer", self.uid)
@@ -181,9 +209,11 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING"):
+    def setParams(self, inputCol=None, outputCol=None, modelName=None,
+                  scaleHint="SCALE_AREA_AVERAGING"):
         """
-        setParams(self, inputCol=None, outputCol=None, modelName=None, scaleHint="SCALE_AREA_AVERAGING")
+        setParams(self, inputCol=None, outputCol=None, modelName=None,
+                  scaleHint="SCALE_AREA_AVERAGING")
         """
         kwargs = self._input_kwargs
         self._set(**kwargs)
@@ -241,11 +271,16 @@ class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
     is a MLlib Vector.
     """
 
-    modelName = Param(Params._dummy(), "modelName", "A deep learning model name",
-                      typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
-    featurize = Param(Params._dummy(), "featurize",
-                      "If true, output features. If false, output predictions. Either way the output is a vector.",
-                      typeConverter=TypeConverters.toBoolean)
+    modelName = Param(
+        Params._dummy(),
+        "modelName",
+        "A deep learning model name",
+        typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(SUPPORTED_MODELS))
+    featurize = Param(
+        Params._dummy(),
+        "featurize",
+        "If true, output features, else, output predictions. Either way the output is a vector.",
+        typeConverter=TypeConverters.toBoolean)
 
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelName=None, featurize=False):
