@@ -15,7 +15,7 @@
 
 import numpy as np
 import tensorflow as tf
-import tensorframes as tfs
+import tensorframes as tfs  # pylint: disable=import-error
 
 from pyspark import Row
 from pyspark.ml import Transformer
@@ -37,6 +37,7 @@ IMAGE_INPUT_TENSOR_NAME = tfx.tensor_name(utils.IMAGE_INPUT_PLACEHOLDER_NAME)
 USER_GRAPH_NAMESPACE = 'given'
 NEW_OUTPUT_PREFIX = 'sdl_flattened'
 
+# pylint: disable=fixme
 
 class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     """
@@ -127,14 +128,14 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         graph = self.getGraph()
         composed_graph = self._addReshapeLayers(graph, self._getImageDtype(dataset))
         final_graph = self._stripGraph(composed_graph)
-        with final_graph.as_default():
+        with final_graph.as_default():  # pylint: disable=not-context-manager
             image = dataset[self.getInputCol()]
             image_df_exploded = (dataset
                                  .withColumn("__sdl_image_height", image.height)
                                  .withColumn("__sdl_image_width", image.width)
                                  .withColumn("__sdl_image_nchannels", image.nChannels)
                                  .withColumn("__sdl_image_data", image.data)
-                                 )
+                                )  # yapf: disable
 
             final_output_name = self._getFinalOutputTensorName()
             output_tensor = final_graph.get_tensor_by_name(final_output_name)
@@ -147,14 +148,14 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
                                  "image_buffer": "__sdl_image_data"})
                 .drop("__sdl_image_height", "__sdl_image_width", "__sdl_image_nchannels",
                       "__sdl_image_data")
-            )
+            )   # yapf: disable
 
             tfs_output_name = tfx.op_name(output_tensor, final_graph)
             original_output_name = self._getOriginalOutputTensorName()
             output_shape = final_graph.get_tensor_by_name(original_output_name).shape
             output_mode = self.getOrDefault(self.outputMode)
             # TODO: support non-1d tensors (return np.array).
-            if output_mode == "image":
+            if output_mode == "image":  # pylint: disable=no-else-return
                 return self._convertOutputToImage(final_df, tfs_output_name, output_shape)
             else:
                 assert output_mode == "vector", "Unknown output mode: %s" % output_mode
@@ -174,8 +175,8 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         input_tensor_name = self.getInputTensor().name
 
         gdef = tf_graph.as_graph_def(add_shapes=True)
-        g = tf.Graph()
-        with g.as_default():
+        g = tf.Graph()  # pylint: disable=invalid-name
+        with g.as_default():    # pylint: disable=not-context-manager
             # Flat image data -> image dimensions
             height = tf.placeholder(tf.int32, [], name="height")
             width = tf.placeholder(tf.int32, [], name="width")
@@ -212,8 +213,8 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     # are not necessary for the computation at hand.
     def _stripGraph(self, tf_graph):
         gdef = tfx.strip_and_freeze_until([self._getFinalOutputOpName()], tf_graph)
-        g = tf.Graph()
-        with g.as_default():
+        g = tf.Graph()  # pylint: disable=invalid-name
+        with g.as_default():    # pylint: disable=not-context-manager
             tf.import_graph_def(gdef, name='')
         return g
 
