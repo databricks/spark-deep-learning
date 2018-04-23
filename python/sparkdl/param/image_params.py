@@ -23,7 +23,7 @@ from pyspark.ml.image import ImageSchema
 from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
 from sparkdl.image.imageIO import _reverseChannels, imageArrayToStruct
-from sparkdl.param import SparkDLTypeConverters
+from sparkdl.param.converters import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
 
