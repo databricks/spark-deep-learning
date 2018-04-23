@@ -94,7 +94,7 @@ class KerasApplicationModel:
 
     def getModelData(self, featurize):
         sess = tf.Session()
-        with sess.as_default():
+        with sess.as_default():     # pylint: disable=not-context-manager
             K.set_learning_phase(0)
             inputImage = imageInputPlaceholder(nChannels=3)
             preprocessed = self.preprocess(inputImage)
