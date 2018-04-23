@@ -90,9 +90,9 @@ class IsolatedSession(object):
             gdef = tfx.strip_and_freeze_until(outputs, self.graph, self.sess)
         else:
             gdef = self.graph.as_graph_def(add_shapes=True)
-        return GraphFunction(graph_def=gdef,
-                             input_names=[tfx.validated_input(elem, self.graph) for elem in inputs],
-                             output_names=[tfx.validated_output(elem, self.graph) for elem in outputs])
+        input_names = [tfx.validated_input(elem, self.graph) for elem in inputs]
+        output_names = [tfx.validated_output(elem, self.graph) for elem in outputs]
+        return GraphFunction(graph_def=gdef, input_names=input_names, output_names=output_names)
 
     def importGraphFunction(self, gfn, input_map=None, prefix="GFN-IMPORT", **gdef_kargs):
         """
@@ -122,13 +122,11 @@ class IsolatedSession(object):
         input_names = gfn.input_names
         output_names = gfn.output_names
         scope_name = prefix
-        if prefix is not None:
+        if prefix:
             scope_name = prefix.strip()
-            if len(scope_name) > 0:
-                output_names = [
-                    scope_name + '/' + op_name for op_name in gfn.output_names]
-                input_names = [
-                    scope_name + '/' + op_name for op_name in gfn.input_names]
+            if scope_name:
+                output_names = [scope_name + '/' + op_name for op_name in gfn.output_names]
+                input_names = [scope_name + '/' + op_name for op_name in gfn.input_names]
 
         # When importing, provide the original output op names
         tf.import_graph_def(gfn.graph_def,
@@ -219,7 +217,7 @@ class GraphFunction(object):
         :param functions: a list of tuples (scope name, GraphFunction object).
         """
         assert len(functions) >= 1, ("must provide at least one function", functions)
-        if 1 == len(functions):
+        if len(functions) == 1:
             return functions[0]
         # Check against each intermediary layer input output function pairs
         for (scope_in, gfn_in), (scope_out, gfn_out) in zip(functions[:-1], functions[1:]):
