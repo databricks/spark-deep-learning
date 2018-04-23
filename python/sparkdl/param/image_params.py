@@ -20,14 +20,14 @@ private APIs.
 """
 
 from pyspark.ml.image import ImageSchema
-from pyspark.ml.param import Param, Params, TypeConverters
+from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
-from sparkdl.image.imageIO import imageArrayToStruct
-from sparkdl.image.imageIO import _reverseChannels
+from sparkdl.image.imageIO import _reverseChannels, imageArrayToStruct
 from sparkdl.param import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
 
+# pylint: disable=fixme
 
 class CanLoadImage(Params):
     """
@@ -73,7 +73,7 @@ class CanLoadImage(Params):
     def getImageLoader(self):
         return self.getOrDefault(self.imageLoader)
 
-    def _loadedImageCol(self):
+    def _loadedImageCol(self):  # pylint: disable=no-self-use
         return "__sdl_img"
 
     def loadImagesInternal(self, dataframe, inputCol):
