@@ -17,18 +17,18 @@ Some parts are copied from pyspark.ml.param.shared and some are complementary
 to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being
 private APIs.
 """
-import textwrap
 from functools import wraps
-import six
+import textwrap
 
-from keras.models import load_model
 import keras.backend as K
+from keras.models import load_model
 
 from pyspark.ml.param import Param, Params, TypeConverters
-
-from sparkdl.graph.input import TFInputGraph
 import sparkdl.graph.utils as tfx
 from sparkdl.param.converters import SparkDLTypeConverters
+
+# pylint: disable=fixme, len-as-condition
+# len-as-condition is ignored because it is used in code copied from pyspark
 
 ########################################################
 # Copied from PySpark for backward compatibility.
