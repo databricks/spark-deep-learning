@@ -53,12 +53,12 @@ To run the Python unit tests, run the `run-tests.sh` script from the `python/` d
 
 ```bash
 # Be sure to run build/sbt assembly before running the Python tests
-sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.3.0-bin-hadoop2.7 PYSPARK_PYTHON=python2 SCALA_VERSION=2.11.8 SPARK_VERSION=2.3.0 ./python/run-tests.sh
+sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.3.0-bin-hadoop2.7 PYSPARK_PYTHON=python3 SCALA_VERSION=2.11.8 SPARK_VERSION=2.3.0 ./python/run-tests.sh
 ```
 
 ## Spark version compatibility
 
-Spark 2.3.0 is required and Python 3.6 are recommended for working with the latest code. See the [travis config](https://github.com/databricks/spark-deep-learning/blob/master/.travis.yml) for the regularly-tested combinations.
+To work with the latest code, Spark 2.3.0 is required and Python 3.6 are recommended . See the [travis config](https://github.com/databricks/spark-deep-learning/blob/master/.travis.yml) for the regularly-tested combinations.
 
 Compatibility requirements for each release are listed in the [Releases](#releases) section.
 
@@ -71,8 +71,8 @@ You can also post bug reports and feature requests in Github issues.
 
 
 ## Releases
-- [1.0.0] release: Spark 2.3.0 is required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.5.0+ required.
-    1. Using the definition of images from Spark 2.3. The new definition uses the BGR channel ordering 
+- [1.0.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.0.0) release: Spark 2.3.0 is required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0+ required.
+    1. Using the definition of images from Spark 2.3.0. The new definition uses the BGR channel ordering 
        for 3-channel images instead of the RGB ordering used in this project before the change. 
     2. Persistence for DeepImageFeaturizer (both Python and Scala).
 - [0.3.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.3.0) release: Spark 2.2.0, Python 3.6 & Scala 2.11 recommended. TensorFlow 1.4.1- required.
@@ -169,7 +169,8 @@ from keras.applications import InceptionV3
 model = InceptionV3(weights="imagenet")
 model.save('/tmp/model-full.h5')
 ```
-Now, we can create a KerasImageFileEstimator that takes our saved model file with an image loading function.
+We also need to create an image loading function that reads the image data from a URI, preprocesses them, and returns the numerical tensor in the keras Model input format.
+Then, we can create a KerasImageFileEstimator that takes our saved model file.
 ```python
 import PIL.Image
 import numpy as np
