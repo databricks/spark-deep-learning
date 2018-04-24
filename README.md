@@ -42,7 +42,7 @@ For an overview of the library, see the Databricks [blog post](https://databrick
 
 The library is in its early days, and we welcome everyone's feedback and contribution.
 
-Maintainers: Bago Amirbekian, Joseph Bradley, Sue Ann Hong, Tim Hunter, Siddharth Murching, Tomas Nykodym
+Maintainers: Bago Amirbekian, Joseph Bradley, Yogesh Garg, Sue Ann Hong, Tim Hunter, Siddharth Murching, Tomas Nykodym, Lu Wang
 
 
 ## Building and running unit tests
@@ -58,7 +58,7 @@ sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.3.0-bin-hadoop2.7 PYSPARK_PYTHON=pyth
 
 ## Spark version compatibility
 
-To work with the latest code, Spark 2.3.0 is required and Python 3.6 are recommended . See the [travis config](https://github.com/databricks/spark-deep-learning/blob/master/.travis.yml) for the regularly-tested combinations.
+To work with the latest code, Spark 2.3.0 is required and Python 3.6 & Scala 2.11 are recommended . See the [travis config](https://github.com/databricks/spark-deep-learning/blob/master/.travis.yml) for the regularly-tested combinations.
 
 Compatibility requirements for each release are listed in the [Releases](#releases) section.
 
@@ -71,7 +71,7 @@ You can also post bug reports and feature requests in Github issues.
 
 
 ## Releases
-- [1.0.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.0.0) release: Spark 2.3.0 is required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0+ required.
+- [1.0.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.0.0) release: Spark 2.3.0 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0 & Keras 2.1.5 required.
     1. Using the definition of images from Spark 2.3.0. The new definition uses the BGR channel ordering 
        for 3-channel images instead of the RGB ordering used in this project before the change. 
     2. Persistence for DeepImageFeaturizer (both Python and Scala).
