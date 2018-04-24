@@ -19,6 +19,8 @@ from sparkdl.param import CanLoadImage, HasInputCol, HasKerasModel, HasOutputCol
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.tf_image import TFImageTransformer
 
+# pylint: disable=duplicate-code
+
 
 class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
                                 CanLoadImage, HasKerasModel, HasOutputMode):

@@ -174,13 +174,12 @@ def createResizeImageUDF(size):
     if len(size) != 2:
         raise ValueError(
             "New image size should have format [height, width] but got {}".format(size))
-    # pylint: disable=invalid-name
-    sz = (size[1], size[0])
+    resize_sizes = (size[1], size[0])
 
     def _resizeImageAsRow(imgAsRow):
-        if (imgAsRow.height, imgAsRow.width) == sz:
+        if (imgAsRow.height, imgAsRow.width) == resize_sizes:
             return imgAsRow
-        imgAsPil = imageStructToPIL(imgAsRow).resize(sz)
+        imgAsPil = imageStructToPIL(imgAsRow).resize(resize_sizes)
         # PIL is RGB based while image schema is BGR based => we need to flip the channels
         imgAsArray = _reverseChannels(np.asarray(imgAsPil))
         return imageArrayToStruct(imgAsArray, origin=imgAsRow.origin)

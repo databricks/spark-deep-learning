@@ -37,7 +37,6 @@ IMAGE_INPUT_TENSOR_NAME = tfx.tensor_name(utils.IMAGE_INPUT_PLACEHOLDER_NAME)
 USER_GRAPH_NAMESPACE = 'given'
 NEW_OUTPUT_PREFIX = 'sdl_flattened'
 
-# pylint: disable=fixme
 
 class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     """

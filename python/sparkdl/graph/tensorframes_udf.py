@@ -23,7 +23,6 @@ from sparkdl.utils import jvmapi as JVMAPI
 
 logger = logging.getLogger('sparkdl')
 
-# pylint: disable=fixme
 
 def makeGraphUDF(graph, udf_name, fetches, feeds_to_fields_map=None, blocked=False, register=True):
     """

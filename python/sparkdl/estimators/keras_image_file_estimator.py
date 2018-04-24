@@ -265,7 +265,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
                      existence of a sufficiently large (and writable) file system, users are
                      advised to not train too many models in a single Spark job.
         """
-        assert all([self._validateParams(pm) for pm in paramMaps])
+        _ = [self._validateParams(pm) for pm in paramMaps]
 
         def _name_value_map(paramMap):
             """takes a dictionary {param -> value} and returns a map of {param.name -> value}"""

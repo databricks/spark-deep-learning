@@ -27,7 +27,6 @@ import sparkdl.graph.utils as tfx
 
 logger = logging.getLogger('sparkdl')
 
-# pylint: disable=fixme
 
 class IsolatedSession(object):
     """
@@ -84,7 +83,8 @@ class IsolatedSession(object):
 
         :param inputs: list, graph elements representing the inputs
         :param outputs: list, graph elements representing the outputs
-        :param strip_and_freeze: bool, should we remove unused part of the graph and free its values
+        :param strip_and_freeze: bool, should we remove unused part of the graph and freeze its
+        values
         """
         if strip_and_freeze:
             gdef = tfx.strip_and_freeze_until(outputs, self.graph, self.sess)

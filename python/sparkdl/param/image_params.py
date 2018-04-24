@@ -27,7 +27,6 @@ from sparkdl.param.converters import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image"]
 
-# pylint: disable=fixme
 
 class CanLoadImage(Params):
     """

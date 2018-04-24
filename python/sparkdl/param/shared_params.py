@@ -27,7 +27,7 @@ from pyspark.ml.param import Param, Params, TypeConverters
 import sparkdl.graph.utils as tfx
 from sparkdl.param.converters import SparkDLTypeConverters
 
-# pylint: disable=fixme, len-as-condition
+# pylint: disable=len-as-condition
 # len-as-condition is ignored because it is used in code copied from pyspark
 
 ########################################################

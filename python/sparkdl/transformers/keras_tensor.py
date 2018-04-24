@@ -18,6 +18,8 @@ from sparkdl.param import HasInputCol, HasKerasModel, HasOutputCol, keyword_only
 from sparkdl.transformers.keras_utils import KSessionWrap
 from .tf_tensor import TFTransformer
 
+# pylint: disable=duplicate-code
+
 
 class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
     """
