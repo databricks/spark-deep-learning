@@ -149,7 +149,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
         self._tunable_params = [self.kerasOptimizer, self.kerasLoss, self.kerasFitParams,
-                          self.outputCol, self.outputMode]  # model params and output params
+                                self.outputCol, self.outputMode]  # model params and output params
 
     @keyword_only
     def setParams(self, inputCol=None, outputCol=None, outputMode="vector", labelCol=None,
