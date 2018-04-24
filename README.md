@@ -71,7 +71,7 @@ You can also post bug reports and feature requests in Github issues.
 
 
 ## Releases
-- 1.0.0 release: Spark 2.3.0 is required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.5.0+ required.
+- [1.0.0] release: Spark 2.3.0 is required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.5.0+ required.
     1. Using the definition of images from Spark 2.3. The new definition uses the BGR channel ordering 
        for 3-channel images instead of the RGB ordering used in this project before the change. 
     2. Persistence for DeepImageFeaturizer (both Python and Scala).
