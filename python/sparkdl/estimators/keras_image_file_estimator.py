@@ -265,14 +265,16 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         """
         [self._validateParams(pm) for pm in paramMaps]
 
-        def _name_value_map(paramMap):
-            """takes a dictionary {param -> value} and returns a map of {param.name -> value}"""
-            return {param.name: val for param, val in paramMap.items()}
+        def _get_tunable_name_value_map(param_map, tunable):
+            """takes a dictionary {`Param` -> value} and a list [`Param`], select keys that are
+            present in both and returns a map of {Param.name -> value}"""
+            return {param.name: val for param, val in param_map.items() if param in tunable}
 
         sc = JVMAPI._curr_sc()
-        paramNameMaps = list(enumerate(map(_name_value_map, paramMaps)))
-        num_models = len(paramNameMaps)
-        paramNameMapsRDD = sc.parallelize(paramNameMaps, numSlices=num_models)
+        param_name_maps = [(i, _get_tunable_name_value_map(pm, self._tunable_params))
+                           for (i, pm) in enumerate(paramMaps)]
+        num_models = len(param_name_maps)
+        paramNameMapsRDD = sc.parallelize(param_name_maps, numSlices=num_models)
 
         # Extract image URI from provided dataset and create features as numpy arrays
         localFeatures, localLabels = self._getNumpyFeaturesAndLabels(dataset)
@@ -284,9 +286,8 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
         modelBytesBc = sc.broadcast(modelBytes)
 
         # Obtain params for this estimator instance
-        baseParams = {param.name: val for param, val in self.extractParamMap().items()
-                      if param in self._tunable_params}
-        baseParamsBc = sc.broadcast(baseParams)
+        base_params = _get_tunable_name_value_map(self.extractParamMap(), self._tunable_params)
+        baseParamsBc = sc.broadcast(base_params)
 
         def _local_fit(row):
             """
