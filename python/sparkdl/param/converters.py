@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 
-# pylint: disable=invalid-name,import-error
-
 """ SparkDLTypeConverters
 
 Type conversion utilities for defining MLlib `Params` used in Spark Deep Learning Pipelines.
@@ -25,12 +23,9 @@ Type conversion utilities for defining MLlib `Params` used in Spark Deep Learnin
 """
 
 import six
-
 import tensorflow as tf
 
-from pyspark.ml.param import TypeConverters
-
-from sparkdl.graph.input import *
+from sparkdl.graph.input import TFInputGraph
 import sparkdl.utils.keras_model as kmutil
 
 __all__ = ['SparkDLTypeConverters']
@@ -129,7 +124,8 @@ class SparkDLTypeConverters(object):
         Create a "converter" that try to check if a value is part of the supported list of values.
 
         :param supportedList: list, containing supported objects.
-        :return: a converter that try to check if a value is part of the `supportedList` and return it.
+        :return: a converter that try to check if a value is part of the `supportedList` and
+        return it.
                  Raise an error otherwise.
         """
 
@@ -171,8 +167,8 @@ class SparkDLTypeConverters(object):
     @staticmethod
     def toChannelOrder(value):
         if not value in ('L', 'RGB', 'BGR'):
-            raise ValueError(
-                "Unsupported channel order. Expected one of ('L', 'RGB', 'BGR') but got '%s'") % value
+            raise ValueError("""Unsupported channel order. Expected one of ('L', 'RGB',
+            'BGR') but got '%s'""" % value)
         return value
 
 
@@ -189,8 +185,8 @@ def _check_is_tensor_name(_maybe_tnsr_name):
     #   may optionally be followed by control inputs that have the format
     #   "^node".
     # Reference:
-    #    https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/node_def.proto
-    #    https://stackoverflow.com/questions/36150834/how-does-tensorflow-name-tensors
+    # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/node_def.proto
+    # https://stackoverflow.com/questions/36150834/how-does-tensorflow-name-tensors
     try:
         _, src_idx = _maybe_tnsr_name.split(":")
         _ = int(src_idx)

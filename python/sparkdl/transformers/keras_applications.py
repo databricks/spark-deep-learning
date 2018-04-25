@@ -75,13 +75,13 @@ from sparkdl.transformers.utils import (imageInputPlaceholder, InceptionV3Consta
 from sparkdl.image.imageIO import _reverseChannels
 
 
-"""
-Essentially a factory function for getting the correct KerasApplicationModel class
-for the network name.
-"""
 
 
 def getKerasApplicationModel(name):
+    """
+    Essentially a factory function for getting the correct KerasApplicationModel class for the
+    network name.
+    """
     try:
         return KERAS_APPLICATION_MODELS[name]()
     except KeyError:
@@ -94,7 +94,7 @@ class KerasApplicationModel:
 
     def getModelData(self, featurize):
         sess = tf.Session()
-        with sess.as_default():
+        with sess.as_default():     # pylint: disable=not-context-manager
             K.set_learning_phase(0)
             inputImage = imageInputPlaceholder(nChannels=3)
             preprocessed = self.preprocess(inputImage)

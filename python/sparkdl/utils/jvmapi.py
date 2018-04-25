@@ -27,7 +27,7 @@ logger = logging.getLogger('sparkdl')
 
 def _curr_sql_ctx(sqlCtx=None):
     _sql_ctx = sqlCtx if sqlCtx is not None else SQLContext._instantiatedContext
-    logger.info("Spark SQL Context = " + str(_sql_ctx))
+    logger.info("Spark SQL Context = %s", _sql_ctx)
     return _sql_ctx
 
 

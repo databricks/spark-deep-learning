@@ -34,6 +34,7 @@ import sparkdl.utils.keras_model as kmutil
 __all__ = ['KerasImageFileEstimator']
 
 
+# pylint: disable=too-few-public-methods
 class _ThreadSafeIterator(object):
     """
     Utility iterator class used by KerasImageFileEstimator.fitMultiple to serve models in a thread
@@ -263,7 +264,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
                      existence of a sufficiently large (and writable) file system, users are
                      advised to not train too many models in a single Spark job.
         """
-        [self._validateParams(pm) for pm in paramMaps]
+        _ = [self._validateParams(pm) for pm in paramMaps]
 
         def _get_tunable_name_value_map(param_map, tunable):
             """takes a dictionary {`Param` -> value} and a list [`Param`], select keys that are
