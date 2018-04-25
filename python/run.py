@@ -6,7 +6,6 @@ This script can be used to run all things dev. Environment setup, Style-checks, 
 from __future__ import print_function
 
 import argh
-from argh import arg
 import subprocess
 import argcomplete
 import sys
@@ -28,79 +27,63 @@ def call_subprocess(process, keyword_args, trail_args):
     subprocess.call([process, ] + opts + list(trail_args))
 
 
-def add_all_args(all_args, split_on="\n"):
-    """decorator with arguments to split a string containing all argh (--argument-strings) and
-    decorate a function with all those"""
-    def decorator(func):
-        """decorator with all_args"""
-        for a in set(all_args.split(split_on)):
-            if len(a) and a != "--help":
-                func = arg(a)(func)
-        return func
-    return decorator
+@argh.arg("args", help="""list of files,packages or modules. if nothing is specified,
+default value is sparkdl""")
+def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", confidence=None, disable=None,
+           enable=None, errors_only=None, evaluation=None, extension_pkg_whitelist=None,
+           full_documentation=None, generate_rcfile=None, help_msg=None, ignore=None,
+           ignore_patterns=None, init_hook=None, jobs=None, list_conf_levels=None,
+           list_msgs=None, load_plugins=None, long_help=None, msg_template=None,
+           output_format=None, persistent=None, py3k=None, score=None, suggestion_mode=None,
+           version=None, *args):
+    """
+    Wraps `pylint` and provides defaults. Trailing arguments are a list of files, packages or
+    modules. if nothing is specified, default value is ./python/sparkdl
+    """
+    if not args:
+        args = ("sparkdl", )
+    kwargs = {k: v for k, v in locals().items() if k != "args" and v}
+    return call_subprocess("pylint", keyword_args=kwargs, trail_args=args)
 
 
-# list of commands that can be run
-
-# this is the list of arguments pylint can take and can be generated using the following command
-# pylint -h | egrep -o '\-\-[0-9a-z\-]+' | sort | uniq
-__pylint_flags = """
---confidence
---disable
---enable
---errors-only
---evaluation
---extension-pkg-whitelist
---full-documentation
---generate-rcfile
---help
---help-msg
---ignore
---ignore-patterns
---init-hook
---jobs
---list-conf-levels
---list-msgs
---load-plugins
---long-help
---msg-template
---output-format
---persistent
---py3k
---rcfile
---reports
---score
---suggestion-mode
---version
-"""
-
-
-@arg("--rcfile", default="./python/.pylint/accepted.rc")
-@arg("--reports", default="y")
-@add_all_args(__pylint_flags)
-def pylint(*args, **kwargs):
-    """calls pylint with a limited set of keywords. run `pylint --help` for more details."""
-    call_subprocess("pylint", keyword_args=kwargs, trail_args=args)
-
-
-@add_all_args("")
-def prospector(*args, **kwargs):
-    """calls prospector with a limited set of keywords. run `prospector --help` for more details."""
+def prospector(pylint_config_file="./python/.pylint/accepted.rc",
+               profile_path="./python/.prospector.yaml",
+               strictness="medium",
+               *args):
+    """
+    Wraps `prospector` and provides defaults. Run `prospector --help` for more details. Trailing
+    arguments are a list of files, packages or modules. if nothing is specified,
+    default value is ./python/sparkdl
+    """
+    if not args:
+        args = ("./python/sparkdl", )
+    kwargs = {k: v for k, v in locals().items() if k != "args" and v}
     call_subprocess("prospector", keyword_args=kwargs, trail_args=args)
 
 
-@add_all_args("")
+def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recursive=False, *args):
+    """Wraps `yapf` and provides some defaults. Run `yapf --help` for more details."""
+    if in_place:
+        args = ("-i",) + args
+    if recursive:
+        args = ("-r",) + args
+    call_subprocess("yapf", keyword_args={"style": style}, trail_args=args)
+
+
 def unittest(*args, **kwargs):
-    """calls unittest with a limited set of keywords. run `python -m unittest --help` for more
-    details."""
+    """
+    Wraps `python -m unittest` and provides defaults. Run `python -m unittest --help` for more
+    details.
+    """
     kwargs["m"] = "unittest"
     call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
-@add_all_args("")
 def nose(*args, **kwargs):
-    """calls nosettest with a limited set of keywords. run `python -m nose --help` for more
-    details."""
+    """
+    Wraps `python -m nose` and provides defaults. Run `python -m nose --help` for more
+    details.
+    """
     kwargs["m"] = "nose"
     call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
@@ -109,10 +92,9 @@ def envsetup(default=False, interactive=False, missing_only=False, completion=Fa
     """
     Prints out shell commands that can be used in terminal to setup the environment.
 
-    This tool inspects the current environment, adds default values, and/or interactively asks
-    user for values and prints all or the missing variables that need to be set.
-
-    You can source the setup as follows:
+    This tool inspects the current environment, and/or adds default values, and/or interactively
+    asks user for values and prints all or the missing variables that need to be set. It can also
+    provide completion for this script. You can source the setup as follows:
 
     ```
     python/run.py envsetup -d -c > ./python/.setup.sh && source ./python/.setup.sh
@@ -121,6 +103,7 @@ def envsetup(default=False, interactive=False, missing_only=False, completion=Fa
     :param default: if default values should be set in this script or not
     :param interactive: if user should be prompted for values or not
     :param missing_only: if only missing variable should be printed
+    :param completion: if auto complete code should be printed
     :param verbose: if user should be guided or not
     """
     env_str = "#!/bin/bash\n"
@@ -187,7 +170,7 @@ def envsetup(default=False, interactive=False, missing_only=False, completion=Fa
 
 
 parser = argh.ArghParser()
-args = parser.add_commands([pylint, prospector, unittest, nose, envsetup])
+parser.add_commands([pylint, prospector, yapf, unittest, nose, envsetup])
 
 if __name__ == '__main__':
     parser.dispatch()
