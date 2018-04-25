@@ -91,10 +91,13 @@ script:
                   coverage test coverageReport"
   # run python style checks
   - docker exec -t ubuntu-test bash -c "
-      source $HOME/miniconda/bin/activate test-environment;
       cd $HOME/spark-deep-learning;
+      source $HOME/miniconda/bin/activate test-environment;
       export SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD;
-      python/run.py envsetup -m > ./python/.setup.sh && cat ./python/.setup.sh  && source ./python/.setup.sh && ./python/run.py pylint"
+      python/run.py envsetup -m -d > ./python/.setup.sh;
+      cat ./python/.setup.sh;
+      source ./python/.setup.sh;
+      python/run.py pylint"
   # run the python tests
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
