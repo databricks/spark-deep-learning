@@ -93,7 +93,7 @@ script:
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
       cd $HOME/spark-deep-learning;
-      SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD ./python/run.py pylint --rcfile=./python/.pylint/suggested.rc"
+      SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD ./python/run.py pylint"
   # run the python tests
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
