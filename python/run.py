@@ -33,7 +33,7 @@ def call_subprocess(process, keyword_args, trail_args):
     opts = ["-{}{}".format(k.replace("_", "-"), keyword_args[k]) for k in single_char_options]
     opts += ["--{}={}".format(k.replace("_", "-"), keyword_args[k]) for k in multiple_char_options]
     print("calling subprocess: {}".format([process, ] + opts + list(trail_args)))
-    subprocess.call([process, ] + opts + list(trail_args))
+    return subprocess.call([process, ] + opts + list(trail_args))
 
 
 @argh.arg("args", help="""list of files,packages or modules. if nothing is specified,
@@ -69,7 +69,7 @@ def prospector(pylint_config_file="./python/.pylint/accepted.rc",
         args = ("./python/sparkdl", )
     kwargs = {k: v for k, v in locals().items() if k != "args" and v}
     kwargs["m"] = "prospector"
-    call_subprocess("python", keyword_args=kwargs, trail_args=args)
+    return call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
 def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recursive=False, *args):
@@ -78,7 +78,7 @@ def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recurs
         args = ("-i",) + args
     if recursive:
         args = ("-r",) + args
-    call_subprocess("python", keyword_args={"m": "yapf", "style": style}, trail_args=args)
+    return call_subprocess("python", keyword_args={"m": "yapf", "style": style}, trail_args=args)
 
 
 def envsetup(default=False, interactive=False, missing_only=False, completion=False, verbose=False):
@@ -159,10 +159,13 @@ def envsetup(default=False, interactive=False, missing_only=False, completion=Fa
     export PYTHONPATH=$PYTHONPATH:$SPARK_HOME/python:$LIBS:.
     """
     print(env_str)
+    return 0
 
 
 parser = argh.ArghParser()
 parser.add_commands([pylint, prospector, yapf, envsetup])
 
 if __name__ == '__main__':
-    parser.dispatch()
+    dispatch_code = parser.dispatch(output_file=None)
+    # argh.dispatch formats the returns of functions as strings
+    exit(int(dispatch_code))
