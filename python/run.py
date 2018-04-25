@@ -41,7 +41,7 @@ def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", confidence=None, 
     modules. if nothing is specified, default value is ./python/sparkdl
     """
     if not args:
-        args = ("sparkdl", )
+        args = ("./python/sparkdl", )
     kwargs = {k: v for k, v in locals().items() if k != "args" and v}
     return call_subprocess("pylint", keyword_args=kwargs, trail_args=args)
 
@@ -68,24 +68,6 @@ def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recurs
     if recursive:
         args = ("-r",) + args
     call_subprocess("yapf", keyword_args={"style": style}, trail_args=args)
-
-
-def unittest(*args, **kwargs):
-    """
-    Wraps `python -m unittest` and provides defaults. Run `python -m unittest --help` for more
-    details.
-    """
-    kwargs["m"] = "unittest"
-    call_subprocess("python", keyword_args=kwargs, trail_args=args)
-
-
-def nose(*args, **kwargs):
-    """
-    Wraps `python -m nose` and provides defaults. Run `python -m nose --help` for more
-    details.
-    """
-    kwargs["m"] = "nose"
-    call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
 def envsetup(default=False, interactive=False, missing_only=False, completion=False, verbose=False):
@@ -170,7 +152,7 @@ def envsetup(default=False, interactive=False, missing_only=False, completion=Fa
 
 
 parser = argh.ArghParser()
-parser.add_commands([pylint, prospector, yapf, unittest, nose, envsetup])
+parser.add_commands([pylint, prospector, yapf, envsetup])
 
 if __name__ == '__main__':
     parser.dispatch()
