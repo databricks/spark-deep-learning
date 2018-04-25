@@ -52,7 +52,8 @@ def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", confidence=None, 
     if not args:
         args = ("./python/sparkdl", )
     kwargs = {k: v for k, v in locals().items() if k != "args" and v}
-    return call_subprocess("pylint", keyword_args=kwargs, trail_args=args)
+    kwargs["m"] = "pylint"
+    return call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
 def prospector(pylint_config_file="./python/.pylint/accepted.rc",
@@ -67,7 +68,8 @@ def prospector(pylint_config_file="./python/.pylint/accepted.rc",
     if not args:
         args = ("./python/sparkdl", )
     kwargs = {k: v for k, v in locals().items() if k != "args" and v}
-    call_subprocess("prospector", keyword_args=kwargs, trail_args=args)
+    kwargs["m"] = "prospector"
+    call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
 def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recursive=False, *args):
@@ -76,7 +78,7 @@ def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recurs
         args = ("-i",) + args
     if recursive:
         args = ("-r",) + args
-    call_subprocess("yapf", keyword_args={"style": style}, trail_args=args)
+    call_subprocess("python", keyword_args={"m": "yapf", "style": style}, trail_args=args)
 
 
 def envsetup(default=False, interactive=False, missing_only=False, completion=False, verbose=False):
