@@ -70,6 +70,7 @@ install:
  # Activate conda environment ad install required packages
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
+      pip install --user -r $HOME/spark-deep-learning/python/dev-requirements.txt;
       pip install --user -r $HOME/spark-deep-learning/python/requirements.txt;"
 
 script:
@@ -88,7 +89,11 @@ script:
       ./build/sbt -Dspark.version=$SPARK_VERSION
                   -Dscala.version=$SCALA_VERSION
                   coverage test coverageReport"
-
+  # run python style checks
+  - docker exec -t ubuntu-test bash -c "
+      source $HOME/miniconda/bin/activate test-environment;
+      cd $HOME/spark-deep-learning;
+      SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD ./python/run.py pylint --rcfile=./python/.pylint/suggested.rc"
   # run the python tests
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;

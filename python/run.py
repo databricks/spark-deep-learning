@@ -5,11 +5,20 @@ This script can be used to run all things dev. Environment setup, Style-checks, 
 
 from __future__ import print_function
 
-import argh
-import subprocess
-import argcomplete
-import sys
 import os
+import subprocess
+import sys
+
+import argcomplete
+import argh
+
+import pylint
+import prospector
+import yapf
+
+
+DIR = os.path.dirname(os.path.realpath(__file__))   # path of directory this file resides in
+HOME = os.getenv('HOME', '')    # HOME environment variable
 
 
 def print_if(cond, *args):
@@ -91,8 +100,7 @@ def envsetup(default=False, interactive=False, missing_only=False, completion=Fa
     env_str = "#!/bin/bash\n"
 
     default_env = {'PYSPARK_PYTHON': 'python', 'SPARK_VERSION': '2.3.0',
-                   'SPARK_HOME': os.path.join(os.getenv('HOME', ''),
-                                              'bin/spark-2.3.0-bin-hadoop2.7/'),
+                   'SPARK_HOME': os.path.join(HOME, 'bin/spark-2.3.0-bin-hadoop2.7/'),
                    'SCALA_VERSION': '2.11.8'}
     env = {k: os.environ.get(k, None) for k in default_env.keys()}
     given_vars = [k for k, v in env.items() if v]
@@ -127,7 +135,7 @@ def envsetup(default=False, interactive=False, missing_only=False, completion=Fa
     env_str += """
     # The current directory of the script.
     export DIR={}
-    """.format(os.path.dirname(os.path.realpath(__file__)))
+    """.format(DIR)
 
     env_str += """
     LIBS=""
