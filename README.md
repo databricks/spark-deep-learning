@@ -71,7 +71,7 @@ You can also post bug reports and feature requests in Github issues.
 
 
 ## Releases
-- [1.0.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.0.0) release: Spark 2.3.0 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0 & Keras 2.1.5 required.
+- [1.0.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.0.0) release: Spark 2.3.0 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0 required.
     1. Using the definition of images from Spark 2.3.0. The new definition uses the BGR channel ordering 
        for 3-channel images instead of the RGB ordering used in this project before the change. 
     2. Persistence for DeepImageFeaturizer (both Python and Scala).
@@ -267,7 +267,15 @@ For applying Keras models in a distributed manner using Spark, [`KerasImageFileT
 
 The difference in the API from `TFImageTransformer` above stems from the fact that usual Keras workflows have very specific ways to load and resize images that are not part of the TensorFlow Graph.
 
-To use `TFImageTransformer`, we first need to have a Keras model stored as a file too.
+To use the transformer, we first need to have a Keras model stored as a file.  We can just save the Keras built-in InceptionV3 model instead of training one.
+
+
+```python
+from keras.applications import InceptionV3
+
+model = InceptionV3(weights="imagenet")
+model.save('/tmp/model-full.h5')
+```
 
 Now on the prediction side:
 
