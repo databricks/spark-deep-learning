@@ -38,16 +38,11 @@ def call_subprocess(process, keyword_args, trail_args):
 
 @argh.arg("args", help="""list of files,packages or modules. if nothing is specified,
 default value is sparkdl""")
-def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", confidence=None, disable=None,
-           enable=None, errors_only=None, evaluation=None, extension_pkg_whitelist=None,
-           full_documentation=None, generate_rcfile=None, help_msg=None, ignore=None,
-           ignore_patterns=None, init_hook=None, jobs=None, list_conf_levels=None,
-           list_msgs=None, load_plugins=None, long_help=None, msg_template=None,
-           output_format=None, persistent=None, py3k=None, score=None, suggestion_mode=None,
-           version=None, *args):
+def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", *args):
     """
-    Wraps `pylint` and provides defaults. Trailing arguments are a list of files, packages or
-    modules. if nothing is specified, default value is ./python/sparkdl
+    Wraps `pylint` and provides defaults. Run `prospector --help` for more details. Trailing
+    arguments are a list of files, packages or modules. if nothing is specified, default value is
+    ./python/sparkdl
     """
     if not args:
         args = ("./python/sparkdl", )
@@ -59,8 +54,8 @@ def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", confidence=None, 
 def prospector(without_tool="pylint", *args):
     """
     Wraps `prospector` and provides defaults. Run `prospector --help` for more details. Trailing
-    arguments are a list of files, packages or modules. if nothing is specified,
-    default value is ./python/sparkdl
+    arguments are a list of files, packages or modules. if nothing is specified, default value is
+    ./python/sparkdl
     """
     if not args:
         args = ("./python/sparkdl", )
