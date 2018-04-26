@@ -129,6 +129,7 @@ disable=print-statement,
         dict-values-not-iterating,
         unused-argument, too-many-arguments,
         no-member,
+        old-style-class,
         missing-docstring,
         no-init,
         protected-access,
@@ -229,7 +230,7 @@ ignore-docstrings=yes
 ignore-imports=no
 
 # Minimum lines number of a similarity.
-min-similarity-lines=4
+min-similarity-lines=8
 
 
 [TYPECHECK]
