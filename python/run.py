@@ -56,10 +56,7 @@ def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", confidence=None, 
     return call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
-def prospector(pylint_config_file="./python/.pylint/accepted.rc",
-               profile_path="./python/.prospector.yaml",
-               strictness="medium",
-               *args):
+def prospector(without_tool="pylint", *args):
     """
     Wraps `prospector` and provides defaults. Run `prospector --help` for more details. Trailing
     arguments are a list of files, packages or modules. if nothing is specified,

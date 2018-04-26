@@ -97,6 +97,11 @@ script:
       python/run.py envsetup -m -d > ./python/.setup.sh;
       cat ./python/.setup.sh;
       source ./python/.setup.sh;
+      echo run prospector for generating suggestions;
+      python/run.py prospector;
+      echo run pylint for generating suggestions;
+      python/run.py pylint --rcfile ./python/.pylint/suggested.rc;
+      echo run pylint for ensuring accpetability;
       python/run.py pylint"
   # run the python tests
   - docker exec -t ubuntu-test bash -c "
