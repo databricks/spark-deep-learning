@@ -17,6 +17,7 @@ Deep Learning Pipelines provides high-level APIs for scalable deep learning in P
 - [Quick user guide](#quick-user-guide)
   - [Working with images in Spark](#working-with-images-in-spark)
   - [Transfer learning](#transfer-learning)
+  - [Distributed hyperparameter tuning](#distributed-hyperparameter-tuning)
   - [Applying deep learning models at scale](#applying-deep-learning-models-at-scale)
   - [Deploying models as SQL functions](#deploying-models-as-sql-functions)
 - [License](#license)
@@ -41,7 +42,7 @@ For an overview of the library, see the Databricks [blog post](https://databrick
 
 The library is in its early days, and we welcome everyone's feedback and contribution.
 
-Maintainers: Bago Amirbekian, Joseph Bradley, Sue Ann Hong, Tim Hunter, Siddharth Murching, Tomas Nykodym
+Maintainers: Bago Amirbekian, Joseph Bradley, Yogesh Garg, Sue Ann Hong, Tim Hunter, Siddharth Murching, Tomas Nykodym, Lu Wang
 
 
 ## Building and running unit tests
@@ -52,12 +53,12 @@ To run the Python unit tests, run the `run-tests.sh` script from the `python/` d
 
 ```bash
 # Be sure to run build/sbt assembly before running the Python tests
-sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.1.1-bin-hadoop2.7 PYSPARK_PYTHON=python2 SCALA_VERSION=2.11.8 SPARK_VERSION=2.1.1 ./python/run-tests.sh
+sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.3.0-bin-hadoop2.7 PYSPARK_PYTHON=python3 SCALA_VERSION=2.11.8 SPARK_VERSION=2.3.0 ./python/run-tests.sh
 ```
 
 ## Spark version compatibility
 
-Spark 2.2.0 and Python 3.6 are recommended for working with the latest code. See the [travis config](https://github.com/databricks/spark-deep-learning/blob/master/.travis.yml) for the regularly-tested combinations.
+To work with the latest code, Spark 2.3.0 is required and Python 3.6 & Scala 2.11 are recommended . See the [travis config](https://github.com/databricks/spark-deep-learning/blob/master/.travis.yml) for the regularly-tested combinations.
 
 Compatibility requirements for each release are listed in the [Releases](#releases) section.
 
@@ -70,13 +71,10 @@ You can also post bug reports and feature requests in Github issues.
 
 
 ## Releases
-<!--
-TODO: might want to add TensorFlow compatibility information.
-- 1.0.0 release: Spark 2.3 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.5.0+ required.
-    1. Using the definition of images from Spark 2.3. The new definition uses the BGR channel ordering 
+- [1.0.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.0.0) release: Spark 2.3.0 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0 required.
+    1. Using the definition of images from Spark 2.3.0. The new definition uses the BGR channel ordering 
        for 3-channel images instead of the RGB ordering used in this project before the change. 
     2. Persistence for DeepImageFeaturizer (both Python and Scala).
--->
 - [0.3.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.3.0) release: Spark 2.2.0, Python 3.6 & Scala 2.11 recommended. TensorFlow 1.4.1- required.
     1. KerasTransformer & TFTransformer for large-scale batch inference on non-image (tensor) data.
     2. Scala API for transfer learning (`DeepImageFeaturizer`). InceptionV3 is supported.
@@ -94,7 +92,7 @@ Deep Learning Pipelines provides a suite of tools around working with and proces
 
 -   [Working with images in Spark](#working-with-images-in-spark) : natively in Spark DataFrames
 -   [Transfer learning](#transfer-learning) : a super quick way to leverage deep learning
--   Distributed hyper-parameter tuning : via Spark MLlib Pipelines (coming soon)
+-   [Distributed hyperparameter tuning](#distributed-hyperparameter-tuning) : via Spark MLlib Pipelines
 -   [Applying deep learning models at scale - to images](#applying-deep-learning-models-at-scale) : apply your own or known popular models to make predictions or transform them into features
 -   [Applying deep learning models at scale - to tensors](#applying-deep-learning-models-at-scale-to-tensors) : of up to 2 dimensions
 -   [Deploying models as SQL functions](#deploying-models-as-sql-functions) : empower everyone by making deep learning available in SQL.
@@ -102,12 +100,12 @@ Deep Learning Pipelines provides a suite of tools around working with and proces
 To try running the examples below, check out the Databricks notebook in the [Databricks docs for Deep Learning Pipelines](https://docs.databricks.com/applications/deep-learning/deep-learning-pipelines.html), which works with the latest release of Deep Learning Pipelines. Here are some Databricks notebooks compatible with earlier releases:
 [0.1.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html),
 [0.2.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/1674891575666800/3983381308530741/latest.html),
-[0.3.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/4856334613426202/3381529530484660/4079725938146156/latest.html).
-
+[0.3.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/4856334613426202/3381529530484660/4079725938146156/latest.html),
+[1.0.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/6026450283250196/3874201704285756/7409402632610251/latest.html).
 
 ### Working with images in Spark
 
-The first step to applying deep learning on images is the ability to load the images. Spark and Deep Learning Pipelines include utility functions that can load millions of images into a Spark DataFrame and decode them automatically in a distributed fashion, allowing manipulation at scale.
+The first step to apply deep learning on images is the ability to load the images. Spark and Deep Learning Pipelines include utility functions that can load millions of images into a Spark DataFrame and decode them automatically in a distributed fashion, allowing manipulation at scale.
 
 Using Spark's ImageSchema
 
@@ -154,6 +152,64 @@ predictionAndLabels = df.select("prediction", "label")
 evaluator = MulticlassClassificationEvaluator(metricName="accuracy")
 print("Training set accuracy = " + str(evaluator.evaluate(predictionAndLabels)))
 ```
+
+
+### Distributed hyperparameter tuning
+
+Getting the best results in deep learning requires experimenting with different values for training parameters, an important step called hyperparameter tuning. Since Deep Learning Pipelines enables exposing deep learning training as a step in Spark’s machine learning pipelines, users can rely on the hyperparameter tuning infrastructure already built into Spark MLlib.
+
+##### For Keras users
+To perform hyperparameter tuning with a Keras Model, `KerasImageFileEstimator` can be used to build an Estimator and use MLlib’s tooling for tuning the hyperparameters (e.g. CrossValidator). `KerasImageFileEstimator` works with image URI columns (not ImageSchema columns) in order to allow for custom image loading and processing functions often used with keras.
+
+To build the estimator with `KerasImageFileEstimator`, we need to have a Keras model stored as a file. The model could be Keras built-in model or user trained model.
+
+```python
+from keras.applications import InceptionV3
+
+model = InceptionV3(weights="imagenet")
+model.save('/tmp/model-full.h5')
+```
+We also need to create an image loading function that reads the image data from a URI, preprocesses them, and returns the numerical tensor in the keras Model input format.
+Then, we can create a KerasImageFileEstimator that takes our saved model file.
+```python
+import PIL.Image
+import numpy as np
+from keras.applications.imagenet_utils import preprocess_input
+from sparkdl.estimators.keras_image_file_estimator import KerasImageFileEstimator
+
+def load_image_from_uri(local_uri):
+  img = (PIL.Image.open(local_uri).convert('RGB').resize((299, 299), PIL.Image.ANTIALIAS))
+  img_arr = np.array(img).astype(np.float32)
+  img_tnsr = preprocess_input(img_arr[np.newaxis, :])
+  return img_tnsr
+
+estimator = KerasImageFileEstimator( inputCol="uri",
+                                     outputCol="prediction",
+                                     labelCol="one_hot_label",
+                                     imageLoader=load_image_from_uri,
+                                     kerasOptimizer='adam',
+                                     kerasLoss='categorical_crossentropy',
+                                     modelFile='/tmp/model-full-tmp.h5' # local file path for model
+                                   ) 
+```
+We can use it for hyperparameter tuning by doing a grid search using `CrossValidataor`.
+
+```python
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
+from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
+
+paramGrid = (
+  ParamGridBuilder()
+  .addGrid(estimator.kerasFitParams, [{"batch_size": 32, "verbose": 0},
+                                      {"batch_size": 64, "verbose": 0}])
+  .build()
+)
+bc = BinaryClassificationEvaluator(rawPredictionCol="prediction", labelCol="label" )
+cv = CrossValidator(estimator=estimator, estimatorParamMaps=paramGrid, evaluator=bc, numFolds=2)
+
+cvModel = cv.fit(train_df)
+```
+
 
 ### Applying deep learning models at scale
 
@@ -211,7 +267,7 @@ For applying Keras models in a distributed manner using Spark, [`KerasImageFileT
 
 The difference in the API from `TFImageTransformer` above stems from the fact that usual Keras workflows have very specific ways to load and resize images that are not part of the TensorFlow Graph.
 
-To use the transformer, we first need to have a Keras model stored as a file. For this notebook we'll just save the Keras built-in InceptionV3 model instead of training one.
+To use the transformer, we first need to have a Keras model stored as a file.  We can just save the Keras built-in InceptionV3 model instead of training one.
 
 
 ```python
