@@ -225,7 +225,7 @@ class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol,
             localLabels = []
             for row in rows:
                 try:
-                    _keras_label = row[label_col].array
+                    _keras_label = row[label_col].toArray()
                 except ValueError:
                     raise ValueError("Cannot extract encoded label array")
                 localLabels.append(_keras_label)
