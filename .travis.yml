@@ -19,25 +19,26 @@ env:
     - SPARK_VERSION=2.3.0
     - SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7"
     - SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-2.3.0/spark-2.3.0-bin-hadoop2.7.tgz"
+    - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD
     - RUN_ONLY_LIGHT_TESTS=True
   matrix:
-    - PYTHON_VERSION=2.7.13 RUN_SUITE=pylint
-    - PYTHON_VERSION=3.5.1 RUN_SUITE=pylint
-    - PYTHON_VERSION=3.6.2 RUN_SUITE=pylint
-    - PYTHON_VERSION=2.7.13 RUN_SUITE=pylint-suggested
-    - PYTHON_VERSION=3.6.2 RUN_SUITE=pylint-suggested
-    - PYTHON_VERSION=2.7.13 RUN_SUITE=prospector
-    - PYTHON_VERSION=3.6.2 RUN_SUITE=prospector
-    - PYTHON_VERSION=2.7.13 RUN_SUITE=python-tests
-    - PYTHON_VERSION=3.6.2 RUN_SUITE=python-tests
-    - PYTHON_VERSION=3.6.2 RUN_SUITE=scala-tests
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=scala-tests
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=python-tests
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint
+    - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=python-tests
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint-suggested
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=prospector
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint-suggested
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=prospector
 
 matrix:
-  allow_failure:
-    - PYTHON_VERSION=2.7.13 RUN_SUITE=pylint-suggested
-    - PYTHON_VERSION=3.6.2 RUN_SUITE=pylint-suggested
-    - PYTHON_VERSION=2.7.13 RUN_SUITE=prospector
-    - PYTHON_VERSION=3.6.2 RUN_SUITE=prospector
+  allow_failures:
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint-suggested
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint-suggested
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=prospector
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=prospector
 
 before_install:
   - ./bin/download_travis_dependencies.sh
@@ -57,6 +58,8 @@ before_install:
                -e SCALA_VERSION
                -e PYTHON_VERSION
                -e PYSPARK_PYTHON
+               -e SPARK_HOME
+               -e RUN_ONLY_LIGHT_TESTS
                -e CONDA_URL
                -d --name ubuntu-test -v $HOME ubuntu:16.04 tail -f /dev/null
   - docker ps
@@ -97,10 +100,9 @@ script:
       ./dev/run.py assembly"
   # run python style and test suites
   - docker exec -t ubuntu-test bash -c "
-      cd $HOME/spark-deep-learning;
       source $HOME/miniconda/bin/activate test-environment;
-      export SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD;
-      ./dev/run.py $RUN_SUITE"
+      cd $HOME/spark-deep-learning;
+      ./dev/run.py $TEST_SUITE"
 
 after_success:
   # Unfortunately we need to install coverage here even though it's been installed via pip in the virual env.

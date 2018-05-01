@@ -24,7 +24,7 @@ HOME = os.getenv('HOME', '')    # HOME environment variable
 
 
 def _list_files_with_extension(dir_name, ext):
-    return [f for f in os.listdir(dir_name) if f.endswith(ext)]
+    return [os.path.join(dir_name, f) for f in os.listdir(dir_name) if f.endswith(ext)]
 
 
 def _get_configured_env(_required_env):
@@ -47,13 +47,13 @@ def _get_configured_env(_required_env):
     configured_env["JAR_PATH"] = jar_path
 
     python_paths = [
-        os.getenv("PYTHON_PATH", ""),
+        os.getenv("PYTHONPATH", ""),
         os.path.join(PROJECT_DIR, "python"),
         _list_files_with_extension(assembly_path, ".jar")[-1],
         os.path.join(spark_home, "python"),
         configured_env["LIBS"]
     ]
-    configured_env["PYTHON_PATH"] = ":".join(python_paths)
+    configured_env["PYTHONPATH"] = ":".join(python_paths)
 
     return configured_env
 
@@ -75,7 +75,6 @@ def call_subprocess(process, keyword_args, trail_args):
     opts = ["-{}{}".format(k.replace("_", "-"), keyword_args[k]) for k in single_char_options]
     opts += ["--{}={}".format(k.replace("_", "-"), keyword_args[k]) for k in multiple_char_options]
     print("calling subprocess: {}".format([process, ] + opts + list(trail_args)))
-    configure_env()
     return subprocess.call([process, ] + opts + list(trail_args))
 
 
@@ -89,6 +88,7 @@ def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", persistent="n", *
         args = ("./python/sparkdl", )
     kwargs = {k: v for k, v in locals().items() if k != "args" and v}
     kwargs["m"] = "pylint"
+    configure_env()
     return call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
@@ -107,6 +107,7 @@ def prospector(without_tool="pylint", output_format="pylint", *args):
         args = ("./python/sparkdl", )
     kwargs = {k: v for k, v in locals().items() if k != "args" and v}
     kwargs["m"] = "prospector"
+    configure_env()
     return call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
@@ -116,6 +117,7 @@ def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recurs
         args = ("-i",) + args
     if recursive:
         args = ("-r",) + args
+    configure_env()
     return call_subprocess("python", keyword_args={"m": "yapf", "style": style}, trail_args=args)
 
 
@@ -134,32 +136,7 @@ def print_if(cond, *args):
         print(*args)
 
 
-def _env2shellcode(env):
-    # Dict[str, str] -> str
-    return "\n".join("export {}={}".format(k, v) for k, v in env.items())
-
-
-def envsetup(default=False, interactive=False, missing_only=False, override=False, configure=False,
-             auto_completion=False, verbose=False):
-    """
-    Prints out shell commands that can be used in terminal to setup the environment.
-
-    This tool inspects the current environment, and/or adds default values, and/or interactively
-    asks user for values and prints all or the missing variables that need to be set. It can also
-    provide completion for this script. You can source the setup as follows:
-
-    ```
-    python/run.py envsetup -d -c > ./python/.setup.sh && source ./python/.setup.sh
-    ```
-
-    :param default: if default values should be set in this script or not
-    :param interactive: if user should be prompted for values or not
-    :param missing_only: if only missing variable should be printed
-    :param override: if current environment variables should be overridden
-    :param configure: if configuration should be printed or not
-    :param auto_completion: if auto complete code should be printed
-    :param verbose: if user should be guided or not
-    """
+def _get_required_env(default=False, interactive=False, override=False, verbose=False):
     default_env = {'PYSPARK_PYTHON': 'python',
                    'SPARK_VERSION': '2.3.0',
                    'SPARK_HOME': os.path.join(HOME, 'bin/spark-2.3.0-bin-hadoop2.7/'),
@@ -197,6 +174,38 @@ def envsetup(default=False, interactive=False, missing_only=False, override=Fals
             print_if(default and verbose, 'if left blank, default values will be used')
             missing_env = {k: _safe_input_prompt(k, v) for k, v in missing_env.items()}
 
+    return given_env, missing_env
+
+
+def _env2shellcode(env):
+    # Dict[str, str] -> str
+    return "\n".join("export {}={}".format(k, v) for k, v in env.items())
+
+
+def env_setup(default=False, interactive=False, missing_only=False, override=False, configure=False,
+             auto_completion=False, verbose=False):
+    """
+    Prints out shell commands that can be used in terminal to setup the environment.
+
+    This tool inspects the current environment, and/or adds default values, and/or interactively
+    asks user for values and prints all or the missing variables that need to be set. It can also
+    provide completion for this script. You can source the setup as follows:
+
+    ```
+    python/run.py envsetup -d -c > ./python/.setup.sh && source ./python/.setup.sh
+    ```
+
+    :param default: if default values should be set in this script or not
+    :param interactive: if user should be prompted for values or not
+    :param missing_only: if only missing variable should be printed
+    :param override: if current environment variables should be overridden
+    :param configure: if configuration should be printed or not
+    :param auto_completion: if auto complete code should be printed
+    :param verbose: if user should be guided or not
+    """
+    given_env, missing_env = _get_required_env(
+        default=default, interactive=interactive, override=override, verbose=verbose)
+
     # print according to options
     output_env = {}
     output_env.update(missing_env)
@@ -227,10 +236,12 @@ def python_tests(*args):
 
 def sbt(*args):
     """Wrapper for build/sbt"""
-    envsetup()
+    required_env, _ = _get_required_env()
+    assert(not _)
+
     kwargs = (
-        "-Dspark.version=" + os.getenv("SPARK_VERSION"),
-        "-Dscala.version=" + os.getenv("SCALA_VERSION"),
+        "-Dspark.version=" + required_env.get("SPARK_VERSION"),
+        "-Dscala.version=" + required_env.get("SCALA_VERSION"),
     )
     return call_subprocess("./build/sbt", keyword_args={}, trail_args=kwargs + args)
 
@@ -246,7 +257,7 @@ def scala_tests():
 
 
 parser = argh.ArghParser()
-parser.add_commands([pylint, prospector, yapf, envsetup, python_tests, pylint_suggested,
+parser.add_commands([pylint, prospector, yapf, env_setup, python_tests, pylint_suggested,
                      scala_tests, assembly, sbt])
 
 if __name__ == '__main__':
