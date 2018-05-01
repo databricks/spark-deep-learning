@@ -28,17 +28,6 @@ env:
     - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
     - PYTHON_VERSION=2.7.13 TEST_SUITE=python-tests
     - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
-    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint-suggested
-    - PYTHON_VERSION=3.6.2 TEST_SUITE=prospector
-    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint-suggested
-    - PYTHON_VERSION=2.7.13 TEST_SUITE=prospector
-
-matrix:
-  allow_failures:
-    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint-suggested
-    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint-suggested
-    - PYTHON_VERSION=2.7.13 TEST_SUITE=prospector
-    - PYTHON_VERSION=3.6.2 TEST_SUITE=prospector
 
 before_install:
   - ./bin/download_travis_dependencies.sh
