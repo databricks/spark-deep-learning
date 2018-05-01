@@ -28,8 +28,9 @@ env:
     - PYTHON_VERSION=3.6.2 RUN_SUITE=pylint-suggested
     - PYTHON_VERSION=2.7.13 RUN_SUITE=prospector
     - PYTHON_VERSION=3.6.2 RUN_SUITE=prospector
-    - PYTHON_VERSION=2.7.13 RUN_SUITE=tests
-    - PYTHON_VERSION=3.6.2 RUN_SUITE=tests
+    - PYTHON_VERSION=2.7.13 RUN_SUITE=python-tests
+    - PYTHON_VERSION=3.6.2 RUN_SUITE=python-tests
+    - PYTHON_VERSION=3.6.2 RUN_SUITE=scala-tests
 
 matrix:
   allow_failure:
@@ -93,22 +94,13 @@ script:
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
       cd $HOME/spark-deep-learning;
-      ./build/sbt -Dspark.version=$SPARK_VERSION
-                  -Dscala.version=$SCALA_VERSION
-                  \"set test in assembly := {}\"
-                  assembly"
-  # build coverage
-  - docker exec -t ubuntu-test bash -c "
-      cd $HOME/spark-deep-learning;
-      ./build/sbt -Dspark.version=$SPARK_VERSION
-                  -Dscala.version=$SCALA_VERSION
-                  coverage test coverageReport"
+      ./dev/run.py assembly"
   # run python style and test suites
   - docker exec -t ubuntu-test bash -c "
       cd $HOME/spark-deep-learning;
       source $HOME/miniconda/bin/activate test-environment;
       export SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD;
-      python/run.py $RUN_SUITE"
+      ./dev/run.py $RUN_SUITE"
 
 after_success:
   # Unfortunately we need to install coverage here even though it's been installed via pip in the virual env.
