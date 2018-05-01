@@ -26,6 +26,7 @@ from keras.applications.imagenet_utils import preprocess_input
 from keras.layers import Activation, Dense, Flatten
 from keras.models import Sequential
 import numpy as np
+import six
 
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 import pyspark.ml.linalg as spla
@@ -74,7 +75,8 @@ class KerasEstimatorsTest(SparkDLTestCase):
         image_uri_df = self.session.createDataFrame(local_rows)
         return image_uri_df
 
-    def _get_model(self, label_cardinality):
+    @staticmethod
+    def _get_model(label_cardinality):
         # We need a small model so that machines with limited resources can run it
         model = Sequential()
         model.add(Flatten(input_shape=(299, 299, 3)))
@@ -112,19 +114,19 @@ class KerasEstimatorsTest(SparkDLTestCase):
 
         # should raise an error to define required parameters
         # assuming at least one param without default value
-        self.assertRaisesRegex(ValueError, 'defined', kifest._validateParams, {})
+        six.assertRaisesRegex(self, ValueError, 'defined', kifest._validateParams, {})
         kifest.setParams(imageLoader=_load_image_from_uri, inputCol='c1', labelCol='c2')
         kifest.setParams(modelFile='/path/to/file.ext')
 
         # should raise an error to define or tune parameters
         # assuming at least one tunable param without default value
-        self.assertRaisesRegex(ValueError, 'tuned', kifest._validateParams, {})
+        six.assertRaisesRegex(self, ValueError, 'tuned', kifest._validateParams, {})
         kifest.setParams(kerasOptimizer='adam', kerasLoss='mse', kerasFitParams={})
         kifest.setParams(outputCol='c3', outputMode='vector')
 
         # should raise an error to not override
-        self.assertRaisesRegex(
-            ValueError, 'not tuned', kifest._validateParams, {kifest.imageLoader: None})
+        six.assertRaisesRegex(
+            self, ValueError, 'not tuned', kifest._validateParams, {kifest.imageLoader: None})
 
         # should pass test on supplying all parameters
         self.assertTrue(kifest._validateParams({}))
@@ -186,12 +188,12 @@ class KerasEstimatorsTest(SparkDLTestCase):
             .build()
         )
 
-        bc = BinaryClassificationEvaluator(
+        evaluator = BinaryClassificationEvaluator(
             rawPredictionCol=self.output_col, labelCol=self.one_hot_label_col)
-        cv = CrossValidator(
-            estimator=estimator, estimatorParamMaps=paramGrid, evaluator=bc, numFolds=2)
+        validator = CrossValidator(
+            estimator=estimator, estimatorParamMaps=paramGrid, evaluator=evaluator, numFolds=2)
 
-        transformer = cv.fit(image_uri_df)
+        transformer = validator.fit(image_uri_df)
         self.assertIsInstance(transformer.bestModel, KerasImageFileTransformer,
                               "best model should be an instance of KerasImageFileTransformer")
         self.assertIn('batch_size', transformer.bestModel.getKerasFitParams(),
