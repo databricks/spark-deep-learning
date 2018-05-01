@@ -8,17 +8,18 @@ from __future__ import print_function
 import os
 import subprocess
 import sys
-import six
 
 import argcomplete
 import argh
+import six
 
 import pylint as _pylint
 import prospector as _prospector
 import yapf as _yapf
 
 
-DIR = os.path.dirname(os.path.realpath(__file__))   # path of directory this file resides in
+# path of directory this file resides in
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 HOME = os.getenv('HOME', '')    # HOME environment variable
 
 
@@ -35,19 +36,19 @@ def _get_configured_env(_required_env):
     if not scala_version:
         raise ValueError("set SCALA_VERSION environment variable to configure environment")
 
-    configured_env = {"DIR": DIR}
+    configured_env = {}
 
     spark_lib_path = os.path.join(spark_home, "python/lib")
     configured_env["LIBS"] = ":".join(_list_files_with_extension(spark_lib_path, ".zip"))
 
     scala_version_major_minor = ".".join(scala_version.split(".")[0:2])
-    assembly_path = os.path.join(DIR, "../target/scala-" + scala_version_major_minor)
+    assembly_path = os.path.join(PROJECT_DIR, "target/scala-" + scala_version_major_minor)
     jar_path = ":".join(_list_files_with_extension(assembly_path, ".jar"))
     configured_env["JAR_PATH"] = jar_path
 
     python_paths = [
         os.getenv("PYTHON_PATH", ""),
-        DIR,
+        os.path.join(PROJECT_DIR, "python"),
         _list_files_with_extension(assembly_path, ".jar")[-1],
         os.path.join(spark_home, "python"),
         configured_env["LIBS"]
@@ -116,11 +117,6 @@ def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recurs
     if recursive:
         args = ("-r",) + args
     return call_subprocess("python", keyword_args={"m": "yapf", "style": style}, trail_args=args)
-
-
-def tests(*args):
-    """Wrapper for run-tests.sh"""
-    return call_subprocess("./python/run-tests.sh", keyword_args={}, trail_args=args)
 
 
 def _safe_input_prompt(k, default):
@@ -224,8 +220,34 @@ def envsetup(default=False, interactive=False, missing_only=False, override=Fals
     return 0
 
 
+def python_tests(*args):
+    """Wrapper for python/run-tests.sh"""
+    return call_subprocess("./python/run-tests.sh", keyword_args={}, trail_args=args)
+
+
+def sbt(*args):
+    """Wrapper for build/sbt"""
+    envsetup()
+    kwargs = (
+        "-Dspark.version=" + os.getenv("SPARK_VERSION"),
+        "-Dscala.version=" + os.getenv("SCALA_VERSION"),
+    )
+    return call_subprocess("./build/sbt", keyword_args={}, trail_args=kwargs + args)
+
+
+def assembly():
+    """Wrapper for build/sbt assembly"""
+    return sbt("set test in assembly := {}", "assembly")
+
+
+def scala_tests():
+    """Wrapper for build/sbt coverage test coverageReport"""
+    return sbt("coverage", "test", "coverageReport")
+
+
 parser = argh.ArghParser()
-parser.add_commands([pylint, prospector, yapf, envsetup, tests, pylint_suggested])
+parser.add_commands([pylint, prospector, yapf, envsetup, python_tests, pylint_suggested,
+                     scala_tests, assembly, sbt])
 
 if __name__ == '__main__':
     dispatch_result = parser.dispatch(output_file=None)
