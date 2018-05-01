@@ -19,10 +19,24 @@ env:
     - SPARK_VERSION=2.3.0
     - SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7"
     - SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-2.3.0/spark-2.3.0-bin-hadoop2.7.tgz"
+    - RUN_ONLY_LIGHT_TESTS=True
   matrix:
-    - PYTHON_VERSION=2.7.13
-    - PYTHON_VERSION=3.5.1
-    - PYTHON_VERSION=3.6.2
+    - PYTHON_VERSION=2.7.13 RUN_SUITE=pylint
+    - PYTHON_VERSION=3.5.1 RUN_SUITE=pylint
+    - PYTHON_VERSION=3.6.2 RUN_SUITE=pylint
+    - PYTHON_VERSION=2.7.13 RUN_SUITE=pylint-suggested
+    - PYTHON_VERSION=3.6.2 RUN_SUITE=pylint-suggested
+    - PYTHON_VERSION=2.7.13 RUN_SUITE=prospector
+    - PYTHON_VERSION=3.6.2 RUN_SUITE=prospector
+    - PYTHON_VERSION=2.7.13 RUN_SUITE=tests
+    - PYTHON_VERSION=3.6.2 RUN_SUITE=tests
+
+matrix:
+  allow_failure:
+    - PYTHON_VERSION=2.7.13 RUN_SUITE=pylint-suggested
+    - PYTHON_VERSION=3.6.2 RUN_SUITE=pylint-suggested
+    - PYTHON_VERSION=2.7.13 RUN_SUITE=prospector
+    - PYTHON_VERSION=3.6.2 RUN_SUITE=prospector
 
 before_install:
   - ./bin/download_travis_dependencies.sh
@@ -89,25 +103,12 @@ script:
       ./build/sbt -Dspark.version=$SPARK_VERSION
                   -Dscala.version=$SCALA_VERSION
                   coverage test coverageReport"
-  # run python style checks
+  # run python style and test suites
   - docker exec -t ubuntu-test bash -c "
       cd $HOME/spark-deep-learning;
       source $HOME/miniconda/bin/activate test-environment;
       export SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD;
-      python/run.py envsetup -m -d > ./python/.setup.sh;
-      cat ./python/.setup.sh;
-      source ./python/.setup.sh;
-      echo run prospector for generating suggestions;
-      python/run.py prospector;
-      echo run pylint for generating suggestions;
-      python/run.py pylint --rcfile ./python/.pylint/suggested.rc;
-      echo run pylint for ensuring accpetability;
-      python/run.py pylint"
-  # run the python tests
-  - docker exec -t ubuntu-test bash -c "
-      source $HOME/miniconda/bin/activate test-environment;
-      cd $HOME/spark-deep-learning;
-      SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD RUN_ONLY_LIGHT_TESTS=True ./python/run-tests.sh;"
+      python/run.py $RUN_SUITE"
 
 after_success:
   # Unfortunately we need to install coverage here even though it's been installed via pip in the virual env.

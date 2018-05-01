@@ -78,7 +78,7 @@ def call_subprocess(process, keyword_args, trail_args):
     return subprocess.call([process, ] + opts + list(trail_args))
 
 
-def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", *args):
+def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", persistent="n", *args):
     """
     Wraps `pylint` and provides defaults. Run `prospector --help` for more details. Trailing
     arguments are a list of files, packages or modules. if nothing is specified, default value is
@@ -91,7 +91,12 @@ def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", *args):
     return call_subprocess("python", keyword_args=kwargs, trail_args=args)
 
 
-def prospector(without_tool="pylint", *args):
+def pylint_suggested(*args):
+    """Wrapper for pylint that is used to generate suggestions"""
+    return pylint(rcfile="./python/.pylint/suggested.rc", reports="n", persistent="n", *args)
+
+
+def prospector(without_tool="pylint", output_format="pylint", *args):
     """
     Wraps `prospector` and provides defaults. Run `prospector --help` for more details. Trailing
     arguments are a list of files, packages or modules. if nothing is specified, default value is
@@ -113,6 +118,11 @@ def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recurs
     return call_subprocess("python", keyword_args={"m": "yapf", "style": style}, trail_args=args)
 
 
+def tests(*args):
+    """Wrapper for run-tests.sh"""
+    return call_subprocess("./python/run-tests.sh", keyword_args={}, trail_args=args)
+
+
 def _safe_input_prompt(k, default):
     try:
         current = input("{}=".format(k))
@@ -126,13 +136,6 @@ def _safe_input_prompt(k, default):
 def print_if(cond, *args):
     if cond:
         print(*args)
-
-
-# def __get_required_env(default=False, interactive=False, override=False, verbose=False):
-#     """Returns dictionaries with environment variables that were already set and were setup
-#     during this function call using defaults or interactively"""
-#
-#     return given_env, missing_env
 
 
 def _env2shellcode(env):
@@ -222,7 +225,7 @@ def envsetup(default=False, interactive=False, missing_only=False, override=Fals
 
 
 parser = argh.ArghParser()
-parser.add_commands([pylint, prospector, yapf, envsetup])
+parser.add_commands([pylint, prospector, yapf, envsetup, tests, pylint_suggested])
 
 if __name__ == '__main__':
     dispatch_result = parser.dispatch(output_file=None)
