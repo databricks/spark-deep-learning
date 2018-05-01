@@ -85,7 +85,7 @@ install:
  # Activate conda environment ad install required packages
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
-      pip install --user -r $HOME/spark-deep-learning/python/dev-requirements.txt;
+      pip install --user -r $HOME/spark-deep-learning/dev/dev-requirements.txt;
       pip install --user -r $HOME/spark-deep-learning/python/requirements.txt;"
 
 script:
