@@ -16,14 +16,12 @@
 
 import logging
 
-from sparkdl.graph.builder import GraphFunction, IsolatedSession
-from sparkdl.graph.pieces import buildSpImageConverter, buildFlattener
-from sparkdl.graph.tensorframes_udf import makeGraphUDF
-from sparkdl.utils import jvmapi as JVMAPI
-
-import sparkdl.image.imageIO as imageIO
-
 from pyspark.ml.image import ImageSchema
+from sparkdl.graph.builder import GraphFunction, IsolatedSession
+from sparkdl.graph.pieces import buildFlattener, buildSpImageConverter
+from sparkdl.graph.tensorframes_udf import makeGraphUDF
+import sparkdl.image.imageIO as imageIO
+from sparkdl.utils import jvmapi as JVMAPI
 
 logger = logging.getLogger('sparkdl')
 
@@ -80,7 +78,8 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
     a (struct) column encoded in [sparkdl.image.imageIO.imageSchema].
     The output will be a single (struct) column containing the resulting tensor data.
 
-    :param udf_name: str, name of the UserDefinedFunction. If the name exists, it will be overwritten.
+    :param udf_name: str, name of the UserDefinedFunction. If the name exists, it will be
+    overwritten.
     :param keras_model_or_file_path: str or KerasModel,
                                      either a path to the HDF5 Keras model file
                                      or an actual loaded Keras model
@@ -134,6 +133,7 @@ def _serialize_and_reload_with(preprocessor):
                          (image_file_path => image_tensor)
     :return: the UDF preprocessor implementation
     """
+
     def udf_impl(spimg):
         import numpy as np
         from tempfile import NamedTemporaryFile

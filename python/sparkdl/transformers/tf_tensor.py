@@ -16,16 +16,17 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 import tensorflow as tf
+# pylint: disable=no-name-in-module
 from tensorflow.python.tools import optimize_for_inference_lib as infr_opt
-import tensorframes as tfs
+# pylint: enable=no-name-in-module
+import tensorframes as tfs  # pylint: disable=import-error
 
 from pyspark.ml import Transformer
 from pyspark.sql.types import DoubleType
 
-from sparkdl.graph.builder import GraphFunction
 import sparkdl.graph.utils as tfx
-from sparkdl.param import (keyword_only, HasInputMapping, HasOutputMapping,
-                           HasTFInputGraph, HasTFHParams)
+from sparkdl.param import keyword_only, HasInputMapping, HasOutputMapping, HasTFInputGraph, \
+    HasTFHParams
 
 __all__ = ['TFTransformer']
 
@@ -89,12 +90,12 @@ class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping,
                                                placeholder_types)
 
     def _transform(self, dataset):
-        if len([field for field in dataset.schema if field.dataType == DoubleType()]) > 0:
-            logger.warn("Detected DoubleType columns in dataframe passed to transform(). In "
-                        "Deep Learning Pipelines 1.0 and above, DoubleType columns can only be "
-                        "fed to input tensors of type tf.float64. To feed dataframe data to "
-                        "tensors of other types (e.g. tf.float32, tf.int32, tf.int64), use the "
-                        "corresponding Spark SQL data types (FloatType, IntegerType, LongType).")
+        if any([field.dataType == DoubleType() for field in dataset.schema]):
+            logger.warning("Detected DoubleType columns in dataframe passed to transform(). In "
+                           "Deep Learning Pipelines 1.0 and above, DoubleType columns can only be "
+                           "fed to input tensors of type tf.float64. To feed dataframe data to "
+                           "tensors of other types (e.g. tf.float32, tf.int32, tf.int64), use the "
+                           "corresponding Spark SQL data types (FloatType, IntegerType, LongType).")
 
         graph_def = self._optimize_for_inference()
         input_mapping = self.getInputMapping()

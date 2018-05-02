@@ -15,8 +15,8 @@
 #
 
 import logging
-import six
 
+import six
 import tensorflow as tf
 
 logger = logging.getLogger('sparkdl')
@@ -74,7 +74,7 @@ def get_op(tfobj_or_name, graph):
     if not isinstance(name, six.string_types):
         raise TypeError('invalid op request for [type {}] {}'.format(type(name), name))
     _op_name = op_name(name, graph=None)
-    op = graph.get_operation_by_name(_op_name)
+    op = graph.get_operation_by_name(_op_name)  # pylint: disable=invalid-name
     err_msg = 'cannot locate op {} in the current graph, got [type {}] {}'
     assert isinstance(op, tf.Operation), err_msg.format(_op_name, type(op), op)
     return op
@@ -190,9 +190,8 @@ def validated_input(tfobj_or_name, graph):
     """
     graph = validated_graph(graph)
     name = op_name(tfobj_or_name, graph)
-    op = graph.get_operation_by_name(name)
-    assert 'Placeholder' == op.type, \
-        ('input must be Placeholder, but get', op.type)
+    op = graph.get_operation_by_name(name)  # pylint: disable=invalid-name
+    assert 'Placeholder' == op.type, ('input must be Placeholder, but get', op.type)
     return name
 
 
@@ -223,7 +222,7 @@ def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
         sess.close()
 
     if return_graph:
-        g = tf.Graph()
+        g = tf.Graph()  # pylint: disable=invalid-name
         with g.as_default():
             tf.import_graph_def(gdef_frozen, name='')
         return g
