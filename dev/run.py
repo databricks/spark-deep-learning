@@ -23,6 +23,15 @@ PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 HOME = os.getenv('HOME', '')    # HOME environment variable
 
 
+def call_subprocess(cmd, add_env={}, verbose=True):
+    """Wrapper function for subprocess.call that prints additional environment and command run"""
+    print_if(verbose and add_env, "updating environment...\n" + _env2shellcode(add_env))
+    print_if(verbose and cmd, "running command...\n" + " ".join(cmd))
+    env = os.environ.copy()
+    env.update(add_env)
+    return subprocess.call(cmd, env=env)
+
+
 def _list_files_with_extension(dir_name, ext):
     return [os.path.join(dir_name, f) for f in os.listdir(dir_name) if f.endswith(ext)]
 
@@ -58,26 +67,6 @@ def _get_configured_env(_required_env):
     return configured_env
 
 
-def configure_env():
-    current_env = dict(os.environ)
-    configured_env = _get_configured_env(current_env)
-    for k, v in configured_env.items():
-        if six.PY2:
-            os.environ[k] = v
-        else:
-            os.environ.putenv(k, v)
-
-
-def call_subprocess(process, keyword_args, trail_args):
-    """wrapper function to format kwargs into bash arguments, print and then make the call"""
-    single_char_options = [k for k, v in keyword_args.items() if v and len(k) == 1]
-    multiple_char_options = [k for k, v in keyword_args.items() if v and len(k) > 1]
-    opts = ["-{}{}".format(k.replace("_", "-"), keyword_args[k]) for k in single_char_options]
-    opts += ["--{}={}".format(k.replace("_", "-"), keyword_args[k]) for k in multiple_char_options]
-    print("calling subprocess: {}".format([process, ] + opts + list(trail_args)))
-    return subprocess.call([process, ] + opts + list(trail_args))
-
-
 def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", persistent="n", *args):
     """
     Wraps `pylint` and provides defaults. Run `prospector --help` for more details. Trailing
@@ -86,10 +75,9 @@ def pylint(rcfile="./python/.pylint/accepted.rc", reports="y", persistent="n", *
     """
     if not args:
         args = ("./python/sparkdl", )
-    kwargs = {k: v for k, v in locals().items() if k != "args" and v}
-    kwargs["m"] = "pylint"
-    configure_env()
-    return call_subprocess("python", keyword_args=kwargs, trail_args=args)
+    cmd = ("python", "-mpylint", "--rcfile=" + rcfile, "--reports=" + reports, "--persistent=" +
+           persistent)
+    return call_subprocess(cmd + args, add_env=_get_configured_env(dict(os.environ)))
 
 
 def pylint_suggested(*args):
@@ -105,10 +93,9 @@ def prospector(without_tool="pylint", output_format="pylint", *args):
     """
     if not args:
         args = ("./python/sparkdl", )
-    kwargs = {k: v for k, v in locals().items() if k != "args" and v}
-    kwargs["m"] = "prospector"
-    configure_env()
-    return call_subprocess("python", keyword_args=kwargs, trail_args=args)
+    cmd = ("python", "-mprospector", "--without-tool=" + without_tool, "--output-format=" +
+           output_format)
+    return call_subprocess(cmd + args, add_env=_get_configured_env(dict(os.environ)))
 
 
 def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recursive=False, *args):
@@ -117,8 +104,8 @@ def yapf(style="{based_on_style=pep8, COLUMN_LIMIT=100}", in_place=False, recurs
         args = ("-i",) + args
     if recursive:
         args = ("-r",) + args
-    configure_env()
-    return call_subprocess("python", keyword_args={"m": "yapf", "style": style}, trail_args=args)
+    cmd = ("python", "-myapf", "--style=" + style)
+    return call_subprocess(cmd + args, add_env=_get_configured_env(dict(os.environ)))
 
 
 def _safe_input_prompt(k, default):
@@ -231,19 +218,16 @@ def env_setup(default=False, interactive=False, missing_only=False, override=Fal
 
 def python_tests(*args):
     """Wrapper for python/run-tests.sh"""
-    return call_subprocess("./python/run-tests.sh", keyword_args={}, trail_args=args)
+    return call_subprocess(("./python/run-tests.sh",) + args)
 
 
 def sbt(*args):
     """Wrapper for build/sbt"""
-    required_env, _ = _get_required_env()
-    assert(not _)
-
-    kwargs = (
-        "-Dspark.version=" + required_env.get("SPARK_VERSION"),
-        "-Dscala.version=" + required_env.get("SCALA_VERSION"),
-    )
-    return call_subprocess("./build/sbt", keyword_args={}, trail_args=kwargs + args)
+    required_env, missing_env = _get_required_env()
+    assert(not missing_env)
+    cmd = ("./build/sbt", "-Dspark.version=" + required_env.get("SPARK_VERSION"),
+           "-Dscala.version=" + required_env.get("SCALA_VERSION"))
+    call_subprocess(cmd + args)
 
 
 def assembly():

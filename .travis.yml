@@ -25,6 +25,7 @@ env:
     - PYTHON_VERSION=3.6.2 TEST_SUITE=scala-tests
     - PYTHON_VERSION=3.6.2 TEST_SUITE=python-tests
     - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint
+    - PYTHON_VERSION=3.5.1 TEST_SUITE=python-tests
     - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
     - PYTHON_VERSION=2.7.13 TEST_SUITE=python-tests
     - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
