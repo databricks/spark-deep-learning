@@ -26,6 +26,7 @@ from keras.applications.imagenet_utils import preprocess_input
 from keras.layers import Activation, Dense, Flatten
 from keras.models import Sequential
 import numpy as np
+import six
 
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 import pyspark.ml.linalg as spla
@@ -52,17 +53,20 @@ def _load_image_from_uri(local_uri):
 
 class KerasEstimatorsTest(SparkDLTestCase):
 
-    def _create_train_image_uris_and_labels(self, repeat_factor=1, cardinality=100):
+    def _create_train_image_uris_and_labels(self, repeat_factor=1, cardinality=100, dense=True):
         image_uris = getSampleImagePaths() * repeat_factor
         # Create image categorical labels (integer IDs)
         local_rows = []
         for uri in image_uris:
             label = np.random.randint(low=0, high=cardinality, size=1)[0]
-            label_inds = np.zeros(cardinality)
-            label_inds[label] = 1.0
-            label_inds = label_inds.ravel()
-            assert label_inds.shape[0] == cardinality, label_inds.shape
-            one_hot_vec = spla.Vectors.dense(label_inds.tolist())
+            if dense:
+                label_inds = np.zeros(cardinality)
+                label_inds[label] = 1.0
+                label_inds = label_inds.ravel()
+                assert label_inds.shape[0] == cardinality, label_inds.shape
+                one_hot_vec = spla.Vectors.dense(label_inds.tolist())
+            else:   # sparse
+                one_hot_vec = spla.Vectors.sparse(cardinality, {label: 1})
             _row_struct = {self.input_col: uri, self.one_hot_col: one_hot_vec,
                            self.one_hot_label_col: float(label)}
             row = sptyp.Row(**_row_struct)
@@ -71,7 +75,8 @@ class KerasEstimatorsTest(SparkDLTestCase):
         image_uri_df = self.session.createDataFrame(local_rows)
         return image_uri_df
 
-    def _get_model(self, label_cardinality):
+    @staticmethod
+    def _get_model(label_cardinality):
         # We need a small model so that machines with limited resources can run it
         model = Sequential()
         model.add(Flatten(input_shape=(299, 299, 3)))
@@ -109,22 +114,42 @@ class KerasEstimatorsTest(SparkDLTestCase):
 
         # should raise an error to define required parameters
         # assuming at least one param without default value
-        self.assertRaisesRegexp(ValueError, 'defined', kifest._validateParams, {})
+        six.assertRaisesRegex(self, ValueError, 'defined', kifest._validateParams, {})
         kifest.setParams(imageLoader=_load_image_from_uri, inputCol='c1', labelCol='c2')
         kifest.setParams(modelFile='/path/to/file.ext')
 
         # should raise an error to define or tune parameters
         # assuming at least one tunable param without default value
-        self.assertRaisesRegexp(ValueError, 'tuned', kifest._validateParams, {})
+        six.assertRaisesRegex(self, ValueError, 'tuned', kifest._validateParams, {})
         kifest.setParams(kerasOptimizer='adam', kerasLoss='mse', kerasFitParams={})
         kifest.setParams(outputCol='c3', outputMode='vector')
 
         # should raise an error to not override
-        self.assertRaisesRegexp(ValueError, 'not tuned', kifest._validateParams,
-                                {kifest.imageLoader: None})
+        six.assertRaisesRegex(
+            self, ValueError, 'not tuned', kifest._validateParams, {kifest.imageLoader: None})
 
         # should pass test on supplying all parameters
         self.assertTrue(kifest._validateParams({}))
+
+    def test_get_numpy_features_and_labels(self):
+        """Test that `KerasImageFileEstimator._getNumpyFeaturesAndLabels` method returns
+        the right kind of features and labels for all kinds of inputs"""
+        for cardinality in (1, 2, 4):
+            model = self._get_model(cardinality)
+            estimator = self._get_estimator(model)
+            for repeat_factor in (1, 2, 4):
+                for dense in (True, False):
+                    df = self._create_train_image_uris_and_labels(
+                        repeat_factor=repeat_factor, cardinality=cardinality, dense=dense)
+                    local_features, local_labels = estimator._getNumpyFeaturesAndLabels(df)
+                    self.assertIsInstance(local_features, np.ndarray)
+                    self.assertIsInstance(local_labels, np.ndarray)
+                    self.assertEqual(local_features.shape[0], local_labels.shape[0])
+                    for img_array in local_features:
+                        (_, _, num_channels) = img_array.shape
+                        self.assertEqual(num_channels, 3, "2 dimensional image with 3 channels")
+                    for one_hot_vector in local_labels:
+                        self.assertEqual(one_hot_vector.sum(), 1, "vector should be one hot")
 
     def test_single_training(self):
         """Test that single model fitting works well"""
@@ -140,9 +165,11 @@ class KerasEstimatorsTest(SparkDLTestCase):
 
         transformer = estimator.fit(image_uri_df)
         self.assertIsInstance(transformer, KerasImageFileTransformer, "output should be KIFT")
-        for p in map(lambda p: p.name, transformer.params):
-            self.assertEqual(transformer.getOrDefault(p), estimator.getOrDefault(p),
-                             str(transformer.getOrDefault(p)))
+        for param in transformer.params:
+            param_name = param.name
+            self.assertEqual(
+                transformer.getOrDefault(param_name), estimator.getOrDefault(param_name),
+                "Param should be equal for transformer generated from estimator: " + str(param))
 
     def test_tuning(self):
         """Test that multiple model fitting using `CrossValidator` works well"""
@@ -161,12 +188,12 @@ class KerasEstimatorsTest(SparkDLTestCase):
             .build()
         )
 
-        bc = BinaryClassificationEvaluator(rawPredictionCol=self.output_col,
-                                           labelCol=self.one_hot_label_col)
-        cv = CrossValidator(estimator=estimator, estimatorParamMaps=paramGrid, evaluator=bc,
-                            numFolds=2)
+        evaluator = BinaryClassificationEvaluator(
+            rawPredictionCol=self.output_col, labelCol=self.one_hot_label_col)
+        validator = CrossValidator(
+            estimator=estimator, estimatorParamMaps=paramGrid, evaluator=evaluator, numFolds=2)
 
-        transformer = cv.fit(image_uri_df)
+        transformer = validator.fit(image_uri_df)
         self.assertIsInstance(transformer.bestModel, KerasImageFileTransformer,
                               "best model should be an instance of KerasImageFileTransformer")
         self.assertIn('batch_size', transformer.bestModel.getKerasFitParams(),
