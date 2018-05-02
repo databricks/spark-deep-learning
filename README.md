@@ -226,9 +226,10 @@ There are many well-known deep learning models for images. If the task at hand i
 
 
 ```python
-from sparkdl import readImages, DeepImagePredictor
+from pyspark.ml.image import ImageSchema
+from sparkdl import DeepImagePredictor
 
-image_df = readImages(sample_img_dir)
+image_df = ImageSchema.readImages(sample_img_dir)
 
 predictor = DeepImagePredictor(inputCol="image", outputCol="predicted_labels", modelName="InceptionV3", decodePredictions=True, topK=10)
 predictions_df = predictor.transform(image_df)
@@ -239,7 +240,8 @@ Deep Learning Pipelines provides an MLlib Transformer that will apply the given 
 
 
 ```python
-from sparkdl import readImages, TFImageTransformer
+from pyspark.ml.image import ImageSchema
+from sparkdl import TFImageTransformer
 import sparkdl.graph.utils as tfx  # strip_and_freeze_until was moved from sparkdl.transformers to sparkdl.graph.utils in 0.2.0
 from sparkdl.transformers import utils
 import tensorflow as tf
@@ -255,7 +257,7 @@ transformer = TFImageTransformer(inputCol="image", outputCol="predictions", grap
                                  inputTensor=image_arr, outputTensor=resized_images,
                                  outputMode="image")
 
-image_df = readImages(sample_img_dir)
+image_df = ImageSchema.readImages(sample_img_dir)
 processed_image_df = transformer.transform(image_df)
 ```
 
@@ -456,9 +458,9 @@ registerKerasImageUDF("inceptionV3_udf_with_preprocessing", InceptionV3(weights=
 Once a UDF has been registered, it can be used in a SQL query, e.g.
 
 ```python
-from sparkdl import readImages
+from pyspark.ml.image import ImageSchema
 
-image_df = readImages(sample_img_dir)
+image_df = ImageSchema.readImages(sample_img_dir)
 image_df.registerTempTable("sample_images")
 ```
 
