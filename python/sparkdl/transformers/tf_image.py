@@ -123,38 +123,14 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         tensor_name = self.getOrDefault(self.outputTensor)
         return self.getGraph().get_tensor_by_name(tensor_name)
 
-    # # Returns the names of the placeholders.
-    # def _add_shapes(graph, builder, fetches):
-    #     names = [fetch.name for fetch in fetches]
-    #     shapes = [_get_shape(fetch) for fetch in fetches]
-    #     # We still need to do the placeholders, it seems their shape is not passed in when some
-    #     # dimensions are unknown
-    #     ph_names = []
-    #     ph_shapes = []
-    #     for n in graph.as_graph_def(add_shapes=True).node:
-    #         # Just the input nodes:
-    #         if not n.input:
-    #             op_name = n.name
-    #             # Simply get the default output for now, assume that the nodes have only one output
-    #             t = graph.get_tensor_by_name(op_name + ":0")
-    #             print("getting shape for op: " + str(op_name))
-    #             ph_names.append(t.name)
-    #             ph_shapes.append(_get_shape(t))
-    #     logger.info("fetches: %s %s", str(names), str(shapes))
-    #     logger.info("inputs: %s %s", str(ph_names), str(ph_shapes))
-    #     builder.shape(names + ph_names, shapes + ph_shapes)
-    #     builder.fetches(names)
-    #     # return the path, not the tensor name.
-    #     return [t_name.replace(":0", "") for t_name in ph_names]
-
     def _transform(self, dataset):
         graph = self.getGraph()
         composed_graph = self._addReshapeLayers(graph, self._getImageDtype(dataset))
-        print("image_buffer of composed_graph" +
-              str(composed_graph.get_tensor_by_name("image_buffer:0")))
+        # print("image_buffer of composed_graph" +
+        #       str(composed_graph.get_tensor_by_name("image_buffer:0")))
         final_graph = self._stripGraph(composed_graph)
-        print("image_buffer of final_graph" +
-              str(final_graph.get_tensor_by_name("image_buffer:0")))
+        # print("image_buffer of final_graph" +
+        #       str(final_graph.get_tensor_by_name("image_buffer:0")))
         with final_graph.as_default():  # pylint: disable=not-context-manager
             image = dataset[self.getInputCol()]
             image_df_exploded = (dataset
