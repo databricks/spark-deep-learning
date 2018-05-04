@@ -123,10 +123,38 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
         tensor_name = self.getOrDefault(self.outputTensor)
         return self.getGraph().get_tensor_by_name(tensor_name)
 
+    # # Returns the names of the placeholders.
+    # def _add_shapes(graph, builder, fetches):
+    #     names = [fetch.name for fetch in fetches]
+    #     shapes = [_get_shape(fetch) for fetch in fetches]
+    #     # We still need to do the placeholders, it seems their shape is not passed in when some
+    #     # dimensions are unknown
+    #     ph_names = []
+    #     ph_shapes = []
+    #     for n in graph.as_graph_def(add_shapes=True).node:
+    #         # Just the input nodes:
+    #         if not n.input:
+    #             op_name = n.name
+    #             # Simply get the default output for now, assume that the nodes have only one output
+    #             t = graph.get_tensor_by_name(op_name + ":0")
+    #             print("getting shape for op: " + str(op_name))
+    #             ph_names.append(t.name)
+    #             ph_shapes.append(_get_shape(t))
+    #     logger.info("fetches: %s %s", str(names), str(shapes))
+    #     logger.info("inputs: %s %s", str(ph_names), str(ph_shapes))
+    #     builder.shape(names + ph_names, shapes + ph_shapes)
+    #     builder.fetches(names)
+    #     # return the path, not the tensor name.
+    #     return [t_name.replace(":0", "") for t_name in ph_names]
+
     def _transform(self, dataset):
         graph = self.getGraph()
         composed_graph = self._addReshapeLayers(graph, self._getImageDtype(dataset))
+        print("image_buffer of composed_graph" +
+              str(composed_graph.get_tensor_by_name("image_buffer:0")))
         final_graph = self._stripGraph(composed_graph)
+        print("image_buffer of final_graph" +
+              str(final_graph.get_tensor_by_name("image_buffer:0")))
         with final_graph.as_default():  # pylint: disable=not-context-manager
             image = dataset[self.getInputCol()]
             image_df_exploded = (dataset
@@ -138,16 +166,16 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
 
             final_output_name = self._getFinalOutputTensorName()
             output_tensor = final_graph.get_tensor_by_name(final_output_name)
-            final_df = (
-                tfs.map_rows([output_tensor], image_df_exploded,
-                             feed_dict={
-                                 "height": "__sdl_image_height",
-                                 "width": "__sdl_image_width",
-                                 "num_channels": "__sdl_image_nchannels",
-                                 "image_buffer": "__sdl_image_data"})
-                .drop("__sdl_image_height", "__sdl_image_width", "__sdl_image_nchannels",
-                      "__sdl_image_data")
-            )   # yapf: disable
+            feed_dict = {
+                "height": "__sdl_image_height",
+                "width": "__sdl_image_width",
+                "num_channels": "__sdl_image_nchannels",
+                "image_buffer": "__sdl_image_data"
+            }
+            drop_rows = ("__sdl_image_height", "__sdl_image_width", "__sdl_image_nchannels",
+                         "__sdl_image_data")
+            _final_df_1 = tfs.map_rows([output_tensor], image_df_exploded, feed_dict=feed_dict)
+            final_df = _final_df_1.drop(*drop_rows)
 
             tfs_output_name = tfx.op_name(output_tensor, final_graph)
             original_output_name = self._getOriginalOutputTensorName()
@@ -183,18 +211,20 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
             image_buffer = tf.placeholder(tf.string, [], name="image_buffer")
             # Note: the shape argument is required for tensorframes as it uses a
             # slightly older version of tensorflow.
-            shape_tensor = tf.stack([height, width, num_channels], axis=0)
-            shape = tf.reshape(shape_tensor, shape=(3, ), name='shape')
             if dtype == "uint8":
                 image_uint8 = tf.decode_raw(image_buffer, tf.uint8, name="decode_raw")
                 image_float = tf.to_float(image_uint8)
             else:
                 assert dtype == "float32", "Unsupported dtype for image: %s" % dtype
                 image_float = tf.decode_raw(image_buffer, tf.float32, name="decode_raw")
+            shape_tensor = tf.stack([height, width, num_channels], axis=0)
+            shape = tf.reshape(shape_tensor, shape=(3, ), name='shape')
             image_reshaped = tf.reshape(image_float, shape, name="reshaped")
             image_reshaped = imageIO.fixColorChannelOrdering(self.channelOrder, image_reshaped)
             image_reshaped_expanded = tf.expand_dims(image_reshaped, 0, name="expanded")
+            print("show me the size of image_reshaped_expanded: ", image_reshaped_expanded)
 
+            print("show me the size of image_reshaped_expanded: ", height)
             # Add on the original graph
             tf.import_graph_def(
                 gdef,
