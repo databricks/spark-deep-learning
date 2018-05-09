@@ -52,7 +52,8 @@ class KerasImageFileTransformerExamplesTest(SparkDLTestCase, ImageNetOutputCompa
         model_path = image_utils.prepInceptionV3KerasModelFile("inceptionV3.h5")
         transformer = KerasImageFileTransformer(
             inputCol=input_col, outputCol=output_col, modelFile=model_path,
-            imageLoader=image_utils.loadAndPreprocessKerasInceptionV3, outputMode="vector")
+            imageLoader=image_utils.loadAndPreprocessKerasInceptionV3, outputMode="vector",
+            outputMapping={'preds': 'preds'})
 
         uri_df = image_utils.getSampleImagePathsDF(self.sql, input_col)
         final_df = transformer.transform(uri_df)
