@@ -15,7 +15,7 @@
 
 from pyspark.ml import Transformer
 from sparkdl.param import CanLoadImage, HasInputCol, HasKerasModel, HasOutputCol, HasOutputMode, \
-    keyword_only
+    keyword_only, HasOutputMapping
 from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.transformers.tf_image import TFImageTransformer
 
@@ -23,7 +23,7 @@ from sparkdl.transformers.tf_image import TFImageTransformer
 
 
 class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
-                                CanLoadImage, HasKerasModel, HasOutputMode):
+                                CanLoadImage, HasKerasModel, HasOutputMode, HasOutputMapping):
     """
     Applies the Tensorflow-backed Keras model (specified by a file name) to
     images (specified by the URI in the inputCol column) in the DataFrame.
@@ -34,7 +34,7 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
     """
     @keyword_only
     def __init__(self, inputCol=None, outputCol=None, modelFile=None, imageLoader=None,
-                 outputMode="vector"):
+                 outputMode="vector", outputMapping=None):
         """
         __init__(self, inputCol=None, outputCol=None, modelFile=None, imageLoader=None,
                  outputMode="vector")
@@ -47,7 +47,7 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
 
     @keyword_only
     def setParams(self, inputCol=None, outputCol=None, modelFile=None, imageLoader=None,
-                  outputMode="vector"):
+                  outputMode="vector", outputMapping=None):
         """
         setParams(self, inputCol=None, outputCol=None, modelFile=None, imageLoader=None,
                   outputMode="vector")
@@ -65,5 +65,6 @@ class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
                                              outputCol=self.getOutputCol(), graph=graph,
                                              inputTensor=inputTensorName,
                                              outputTensor=outputTensorName,
-                                             outputMode=self.getOrDefault(self.outputMode))
+                                             outputMode=self.getOrDefault(self.outputMode),
+                                             outputMapping=self.getOrDefault(self.outputMapping))
             return transformer.transform(image_df).drop(self._loadedImageCol())
