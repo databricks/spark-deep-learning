@@ -19,27 +19,13 @@ to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being
 private APIs.
 """
 
-from sparkdl.image.image import ImageSchema
-from pyspark.ml.param import Param, Params, TypeConverters
+from pyspark.ml.image import ImageSchema
+from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
-from sparkdl.image.imageIO import imageArrayToStruct
-from sparkdl.image.imageIO import _reverseChannels
-from sparkdl.param import SparkDLTypeConverters
+from sparkdl.image.imageIO import _reverseChannels, imageArrayToStruct
+from sparkdl.param.converters import SparkDLTypeConverters
 
 OUTPUT_MODES = ["vector", "image", "sql"]
-
-
-class HasInputImageNodeName(Params):
-    # TODO: docs
-    inputImageNodeName = Param(Params._dummy(), "inputImageNodeName",
-                               "name of the graph element/node corresponding to the input",
-                               typeConverter=TypeConverters.toString)
-
-    def setInputImageNodeName(self, value):
-        return self._set(inputImageNodeName=value)
-
-    def getInputImageNodeName(self):
-        return self.getOrDefault(self.inputImageNodeName)
 
 
 class CanLoadImage(Params):
@@ -51,7 +37,8 @@ class CanLoadImage(Params):
     This parameter allows users to specify such an image loading function.
     When using inside a pipeline stage, calling this function on an input DataFrame
     will load each image from the image URI column, encode the image in
-    our :py:obj:`~sparkdl.imageIO.imageSchema` format and store it in the :py:meth:`~_loadedImageCol` column.
+    our :py:obj:`~sparkdl.imageIO.imageSchema` format and store it in the
+    :py:meth:`~_loadedImageCol` column.
 
     Below is an example ``image_loader`` function to load Xception https://arxiv.org/abs/1610.02357
     compatible images.
@@ -71,10 +58,13 @@ class CanLoadImage(Params):
             return img_tnsr
     """
 
-    imageLoader = Param(Params._dummy(), "imageLoader",
-                        "Function containing the logic for loading and pre-processing images. " +
-                        "The function should take in a URI string and return a 4-d numpy.array " +
-                        "with shape (batch_size (1), height, width, num_channels). Expected to return result with color channels in RGB order.")
+    imageLoader = Param(
+        Params._dummy(),
+        "imageLoader",
+        """Function containing the logic for loading and pre-processing images. The function
+        should take in a URI string and return a 4-d numpy.array with shape (batch_size (1),
+        height, width, num_channels). Expected to return result with color channels in RGB
+        order.""")
 
     def setImageLoader(self, value):
         return self._set(imageLoader=value)
@@ -82,7 +72,7 @@ class CanLoadImage(Params):
     def getImageLoader(self):
         return self.getOrDefault(self.imageLoader)
 
-    def _loadedImageCol(self):
+    def _loadedImageCol(self):  # pylint: disable=no-self-use
         return "__sdl_img"
 
     def loadImagesInternal(self, dataframe, inputCol):
@@ -105,11 +95,16 @@ class CanLoadImage(Params):
 
 class HasOutputMode(Params):
     # TODO: docs
-    outputMode = Param(Params._dummy(), "outputMode",
-                       "How the output column should be formatted. 'vector' for a 1-d MLlib " +
-                       "Vector of floats. 'image' to format the output to work with the image " +
-                       "tools in this package.",
-                       typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(OUTPUT_MODES))
+    outputMode = Param(
+        Params._dummy(),
+        "outputMode",
+        """How the output column should be formatted. 'vector' for a 1-d MLlib Vector of floats.
+        'image' to format the output to work with the image tools in this package.""",
+        typeConverter=SparkDLTypeConverters.buildSupportedItemConverter(OUTPUT_MODES))
+
+    def __init__(self):
+        super(HasOutputMode, self).__init__()
+        self._setDefault(outputMode="vector")
 
     def setOutputMode(self, value):
         return self._set(outputMode=value)

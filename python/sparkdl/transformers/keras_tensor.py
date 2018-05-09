@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from sparkdl.param import keyword_only, HasKerasModel, HasInputCol, HasOutputCol
-
 from pyspark.ml import Transformer
-
-from sparkdl.transformers.keras_utils import KSessionWrap
 from sparkdl.graph.input import TFInputGraph
+from sparkdl.param import HasInputCol, HasKerasModel, HasOutputCol, keyword_only
+from sparkdl.transformers.keras_utils import KSessionWrap
 from .tf_tensor import TFTransformer
+
+# pylint: disable=duplicate-code
 
 
 class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):

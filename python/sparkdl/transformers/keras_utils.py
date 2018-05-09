@@ -17,7 +17,8 @@ import keras.backend as K
 import tensorflow as tf
 
 
-class KSessionWrap():
+# pylint: disable=too-few-public-methods
+class KSessionWrap:
     """
     Runs operations in Keras in an isolated manner: the current graph and the current session
     are not modified by anything done in this block:
@@ -30,11 +31,13 @@ class KSessionWrap():
         self.requested_graph = graph
 
     def __enter__(self):
+        # pylint: disable=attribute-defined-outside-init
         self.old_session = K.get_session()
-        self.g = self.requested_graph or tf.Graph()
+        self.g = self.requested_graph or tf.Graph()     # pylint: disable=invalid-name
         self.current_session = tf.Session(graph=self.g)
+        # pylint: enable=attribute-defined-outside-init
         K.set_session(self.current_session)
-        return (self.current_session, self.g)
+        return self.current_session, self.g
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Restore the previous session

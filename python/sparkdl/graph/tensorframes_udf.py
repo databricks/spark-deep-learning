@@ -16,7 +16,7 @@
 
 import logging
 
-import tensorframes as tfs
+import tensorframes as tfs  # pylint: disable=import-error
 
 import sparkdl.graph.utils as tfx
 from sparkdl.utils import jvmapi as JVMAPI
@@ -85,6 +85,8 @@ def makeGraphUDF(graph, udf_name, fetches, feeds_to_fields_map=None, blocked=Fal
     placeholder_names = []
     placeholder_shapes = []
     for node in graph.as_graph_def(add_shapes=True).node:
+        # pylint: disable=len-as-condition
+        # todo: refactor if not(node.input) and ...
         if len(node.input) == 0 and str(node.op) == 'Placeholder':
             tnsr_name = tfx.tensor_name(node.name, graph)
             tnsr = graph.get_tensor_by_name(tnsr_name)

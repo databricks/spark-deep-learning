@@ -25,13 +25,13 @@ def imageInputPlaceholder(nChannels=None):
                           name=IMAGE_INPUT_PLACEHOLDER_NAME)
 
 
-class ImageNetConstants:
+class ImageNetConstants:    # pylint: disable=too-few-public-methods
     NUM_CLASSES = 1000
 
 # InceptionV3 is used in a lot of tests, so we'll make this shortcut available
 # For other networks, see the keras_applications module.
 
 
-class InceptionV3Constants:
+class InceptionV3Constants:     # pylint: disable=too-few-public-methods
     INPUT_SHAPE = (299, 299)
     NUM_OUTPUT_FEATURES = 131072

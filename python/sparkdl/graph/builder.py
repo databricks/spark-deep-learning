@@ -16,11 +16,11 @@
 import logging
 import os
 import shutil
-import six
 from tempfile import mkdtemp
 
 import keras.backend as K
 from keras.models import Model as KerasModel, load_model
+import six
 import tensorflow as tf
 
 import sparkdl.graph.utils as tfx
@@ -83,15 +83,16 @@ class IsolatedSession(object):
 
         :param inputs: list, graph elements representing the inputs
         :param outputs: list, graph elements representing the outputs
-        :param strip_and_freeze: bool, should we remove unused part of the graph and freee its values
+        :param strip_and_freeze: bool, should we remove unused part of the graph and freeze its
+        values
         """
         if strip_and_freeze:
             gdef = tfx.strip_and_freeze_until(outputs, self.graph, self.sess)
         else:
             gdef = self.graph.as_graph_def(add_shapes=True)
-        return GraphFunction(graph_def=gdef,
-                             input_names=[tfx.validated_input(elem, self.graph) for elem in inputs],
-                             output_names=[tfx.validated_output(elem, self.graph) for elem in outputs])
+        input_names = [tfx.validated_input(elem, self.graph) for elem in inputs]
+        output_names = [tfx.validated_output(elem, self.graph) for elem in outputs]
+        return GraphFunction(graph_def=gdef, input_names=input_names, output_names=output_names)
 
     def importGraphFunction(self, gfn, input_map=None, prefix="GFN-IMPORT", **gdef_kargs):
         """
@@ -100,9 +101,11 @@ class IsolatedSession(object):
 
         .. _a link: https://www.tensorflow.org/api_docs/python/tf/import_graph_def
 
-        :param gfn: GraphFunction, an object representing a TensorFlow graph and its inputs and outputs
+        :param gfn: GraphFunction, an object representing a TensorFlow graph and its inputs and
+        outputs
         :param input_map: dict, mapping from input names to existing graph elements
-        :param prefix: str, the scope for all the variables in the :py:class:`GraphFunction` elements
+        :param prefix: str, the scope for all the variables in the :py:class:`GraphFunction`
+        elements
 
                        .. _a link: https://www.tensorflow.org/programmers_guide/variable_scope
 
@@ -119,13 +122,11 @@ class IsolatedSession(object):
         input_names = gfn.input_names
         output_names = gfn.output_names
         scope_name = prefix
-        if prefix is not None:
+        if prefix:
             scope_name = prefix.strip()
-            if len(scope_name) > 0:
-                output_names = [
-                    scope_name + '/' + op_name for op_name in gfn.output_names]
-                input_names = [
-                    scope_name + '/' + op_name for op_name in gfn.input_names]
+            if scope_name:
+                output_names = [scope_name + '/' + op_name for op_name in gfn.output_names]
+                input_names = [scope_name + '/' + op_name for op_name in gfn.input_names]
 
         # When importing, provide the original output op names
         tf.import_graph_def(gfn.graph_def,
@@ -142,7 +143,8 @@ class GraphFunction(object):
     """
     Represent a TensorFlow graph with its GraphDef, input and output operation names.
 
-    :param graph_def: GraphDef, a static ProtocolBuffer object holding informations of a TensorFlow graph
+    :param graph_def: GraphDef, a static ProtocolBuffer object holding information of a
+    TensorFlow graph
     :param input_names: names to the input graph elements (must be of Placeholder type)
     :param output_names: names to the output graph elements
     """
@@ -179,7 +181,8 @@ class GraphFunction(object):
         """
         Build a GraphFunction from a Keras model
 
-        :param model_or_file_path: KerasModel or str, either a Keras model or the file path name to one
+        :param model_or_file_path: KerasModel or str, either a Keras model or the file path name
+        to one
         """
         if isinstance(model_or_file_path, KerasModel):
             model = model_or_file_path
@@ -214,7 +217,7 @@ class GraphFunction(object):
         :param functions: a list of tuples (scope name, GraphFunction object).
         """
         assert len(functions) >= 1, ("must provide at least one function", functions)
-        if 1 == len(functions):
+        if len(functions) == 1:
             return functions[0]
         # Check against each intermediary layer input output function pairs
         for (scope_in, gfn_in), (scope_out, gfn_out) in zip(functions[:-1], functions[1:]):
@@ -252,7 +255,8 @@ class GraphFunction(object):
 
             for idx, (scope, gfn) in enumerate(functions):
                 # Give a scope to each function to avoid name conflict
-                if scope is None or len(scope.strip()) == 0:
+                if scope is None or len(scope.strip()) == 0:    # pylint: disable=len-as-condition
+                    # TODO: refactor above and test: if not (scope and scope.strip())
                     scope = 'GFN-BLK-{}'.format(idx)
                 _msg = 'merge: stage {}, scope {}'.format(idx, scope)
                 logger.info(_msg)

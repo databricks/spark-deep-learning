@@ -77,7 +77,7 @@ class TFInputGraph(object):
                        inference, i.e. the variables are converted to constants and operations like
                        BatchNormalization_ are converted to be independent of input batch.
 
-                       .. _BatchNormalization: https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
+   .. _BatchNormalization: https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
 
     :param input_tensor_name_from_signature: dict, signature key names mapped to tensor names.
                                              Please see the example above.

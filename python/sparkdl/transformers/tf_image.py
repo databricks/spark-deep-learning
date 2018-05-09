@@ -15,10 +15,11 @@
 
 import numpy as np
 import tensorflow as tf
-import tensorframes as tfs
+import tensorframes as tfs  # pylint: disable=import-error
 
 from pyspark import Row
 from pyspark.ml import Transformer
+from pyspark.ml.image import ImageSchema
 from pyspark.ml.param import Param, Params
 from pyspark.sql.functions import udf
 
@@ -28,8 +29,6 @@ from sparkdl.param import (
     keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters, HasOutputMode, HasOutputMapping)
 import sparkdl.transformers.utils as utils
 import sparkdl.utils.jvmapi as JVMAPI
-
-from sparkdl.image.image import ImageSchema
 
 
 __all__ = ['TFImageTransformer']
@@ -58,17 +57,26 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
               since a new session is created inside this transformer.
     """
 
-    graph = Param(Params._dummy(), "graph", "A TensorFlow computation graph",
-                  typeConverter=SparkDLTypeConverters.toTFGraph)
-    inputTensor = Param(Params._dummy(), "inputTensor",
-                        "A TensorFlow tensor object or name representing the input image",
-                        typeConverter=SparkDLTypeConverters.toTFTensorName)
-    outputTensor = Param(Params._dummy(), "outputTensor",
-                         "A TensorFlow tensor object or name representing the output",
-                         typeConverter=SparkDLTypeConverters.toTFTensorName)
-    channelOrder = Param(Params._dummy(), "channelOrder",
-                         "Strign specifying the expected color channel order, can be one of L,RGB,BGR",
-                         typeConverter=SparkDLTypeConverters.toChannelOrder)
+    graph = Param(
+        Params._dummy(),
+        "graph",
+        "A TensorFlow computation graph",
+        typeConverter=SparkDLTypeConverters.toTFGraph)
+    inputTensor = Param(
+        Params._dummy(),
+        "inputTensor",
+        "A TensorFlow tensor object or name representing the input image",
+        typeConverter=SparkDLTypeConverters.toTFTensorName)
+    outputTensor = Param(
+        Params._dummy(),
+        "outputTensor",
+        "A TensorFlow tensor object or name representing the output",
+        typeConverter=SparkDLTypeConverters.toTFTensorName)
+    channelOrder = Param(
+        Params._dummy(),
+        "channelOrder",
+        "Strign specifying the expected color channel order, can be one of L,RGB,BGR",
+        typeConverter=SparkDLTypeConverters.toChannelOrder)
 
     @keyword_only
     def __init__(self, channelOrder, inputCol=None, outputCol=None, graph=None,
@@ -76,13 +84,14 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
                  outputMapping=None, outputMode="vector"):
         """
         __init__(self, channelOrder, inputCol=None, outputCol=None, graph=None,
-                 inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
-                 outputMode="vector")
-          :param: channelOrder: specify the ordering of the color channel, can be one of RGB, BGR, L (grayscale)
+                 inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None, outputMode="vector")
+          :param: channelOrder: specify the ordering of the color channel, can be one of RGB,
+          BGR, L (grayscale)
         """
         super(TFImageTransformer, self).__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
+        self._setDefault(inputTensor=IMAGE_INPUT_TENSOR_NAME)
         self.channelOrder = channelOrder
 
     @keyword_only
@@ -90,12 +99,9 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
                   inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None, outputMapping=None,
                   outputMode="vector"):
         """
-        setParams(self, inputCol=None, outputCol=None, graph=None,
-                  inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None,
-                  outputMode="vector")
+        setParams(self, channelOrder=None, inputCol=None, outputCol=None, graph=None,
+                  inputTensor=IMAGE_INPUT_TENSOR_NAME, outputTensor=None, outputMode="vector")
         """
-        self._setDefault(inputTensor=IMAGE_INPUT_TENSOR_NAME)
-        self._setDefault(outputMode="vector")
         kwargs = self._input_kwargs
         return self._set(**kwargs)
 
@@ -123,14 +129,14 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
         graph = self.getGraph()
         composed_graph = self._addReshapeLayers(graph, self._getImageDtype(dataset))
         final_graph = self._stripGraph(composed_graph)
-        with final_graph.as_default():
+        with final_graph.as_default():  # pylint: disable=not-context-manager
             image = dataset[self.getInputCol()]
             image_df_exploded = (dataset
                                  .withColumn("__sdl_image_height", image.height)
                                  .withColumn("__sdl_image_width", image.width)
                                  .withColumn("__sdl_image_nchannels", image.nChannels)
                                  .withColumn("__sdl_image_data", image.data)
-                                 )
+                                )  # yapf: disable
 
             #final_output_name = self._getFinalOutputTensorName()
             output_mapping = self.getOutputMapping()
@@ -147,7 +153,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
                                  "image_buffer": "__sdl_image_data"})
                 .drop("__sdl_image_height", "__sdl_image_width", "__sdl_image_nchannels",
                       "__sdl_image_data")
-            )
+            )   # yapf: disable
 
             output_mode = self.getOrDefault(self.outputMode)
             if output_mode == "sql":
@@ -202,8 +208,8 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
             image_buffer = tf.placeholder(tf.string, [], name="image_buffer")
             # Note: the shape argument is required for tensorframes as it uses a
             # slightly older version of tensorflow.
-            shape = tf.reshape(tf.stack([height, width, num_channels], axis=0), shape=(3,),
-                               name='shape')
+            shape_tensor = tf.stack([height, width, num_channels], axis=0)
+            shape = tf.reshape(shape_tensor, shape=(3, ), name='shape')
             if dtype == "uint8":
                 image_uint8 = tf.decode_raw(image_buffer, tf.uint8, name="decode_raw")
                 image_float = tf.to_float(image_uint8)
@@ -257,18 +263,23 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
             mode = imageIO.imageTypeByName('CV_32FC%d' % orig_image.nChannels)
             data = bytearray(np.array(numeric_data).astype(np.float32).tobytes())
             nChannels = orig_image.nChannels
-            return Row(origin="", mode=mode.ord, height=height,
-                       width=width, nChannels=nChannels, data=data)
+            return Row(
+                origin="",
+                mode=mode.ord,
+                height=height,
+                width=width,
+                nChannels=nChannels,
+                data=data)
+
         to_image_udf = udf(to_image, ImageSchema.imageSchema['image'].dataType)
-        resDf = df.withColumn(self.getOutputCol(), to_image_udf(
-            df[self.getInputCol()], df[tfs_output_col]))
+        resDf = df.withColumn(self.getOutputCol(),
+                              to_image_udf(df[self.getInputCol()], df[tfs_output_col]))
         return resDf.drop(tfs_output_col)
 
     def _convertOutputToVector(self, df, tfs_output_col):
         """
         Converts the output python list to MLlib Vector.
         """
-        return (
-            df.withColumn(self.getOutputCol(), JVMAPI.listToMLlibVectorUDF(df[tfs_output_col]))
-              .drop(tfs_output_col)
-        )
+        return df\
+            .withColumn(self.getOutputCol(), JVMAPI.listToMLlibVectorUDF(df[tfs_output_col]))\
+            .drop(tfs_output_col)
