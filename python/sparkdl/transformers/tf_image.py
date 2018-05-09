@@ -199,8 +199,8 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
         gdef = tf_graph.as_graph_def(add_shapes=True)
         output_mapping = self.getOutputMapping()
         output_op_names = [tfx.op_name(n) for (n, _) in output_mapping]
-        g = tf.Graph()
-        with g.as_default():
+        local_graph = tf.Graph()
+        with local_graph.as_default():
             # Flat image data -> image dimensions
             height = tf.placeholder(tf.int32, [], name="height")
             width = tf.placeholder(tf.int32, [], name="width")
@@ -228,10 +228,10 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
             # Flatten the output for tensorframes
             for (tnsr_name, out_name) in output_mapping:
                 output_tn_name = USER_GRAPH_NAMESPACE + '/' + tnsr_name
-                output_tn = g.get_tensor_by_name(output_tn_name)
+                output_tn = local_graph.get_tensor_by_name(output_tn_name)
                 _ = tf.reshape(output_tn[0],  # batch-size = 1,
                                shape=[-1], name=out_name)
-        return g
+        return local_graph
 
     # Sometimes the tf graph contains a bunch of stuff that doesn't lead to the
     # output. TensorFrames does not like that, so we strip out the parts that
@@ -239,10 +239,10 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
     def _stripGraph(self, tf_graph):
         output_op_names = [tfx.op_name(n) for (n, _) in self.getOutputMapping()]
         gdef = tfx.strip_and_freeze_until(output_op_names, tf_graph)
-        g = tf.Graph()
-        with g.as_default():
+        local_graph = tf.Graph()
+        with local_graph.as_default():
             tf.import_graph_def(gdef, name='')
-        return g
+        return local_graph
 
     def _getOriginalOutputTensorName(self):
         return USER_GRAPH_NAMESPACE + '/' + self.getOutputTensor().name
