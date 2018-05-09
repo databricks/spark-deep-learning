@@ -19,10 +19,16 @@ env:
     - SPARK_VERSION=2.3.0
     - SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7"
     - SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-2.3.0/spark-2.3.0-bin-hadoop2.7.tgz"
+    - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD
+    - RUN_ONLY_LIGHT_TESTS=True
   matrix:
-    - PYTHON_VERSION=2.7.13
-    - PYTHON_VERSION=3.5.1
-    - PYTHON_VERSION=3.6.2
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=scala-tests
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=python-tests
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint
+    - PYTHON_VERSION=3.5.1 TEST_SUITE=python-tests
+    - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=python-tests
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
 
 before_install:
   - ./bin/download_travis_dependencies.sh
@@ -42,6 +48,8 @@ before_install:
                -e SCALA_VERSION
                -e PYTHON_VERSION
                -e PYSPARK_PYTHON
+               -e SPARK_HOME
+               -e RUN_ONLY_LIGHT_TESTS
                -e CONDA_URL
                -d --name ubuntu-test -v $HOME ubuntu:16.04 tail -f /dev/null
   - docker ps
@@ -70,6 +78,7 @@ install:
  # Activate conda environment ad install required packages
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
+      pip install --user -r $HOME/spark-deep-learning/dev/dev-requirements.txt;
       pip install --user -r $HOME/spark-deep-learning/python/requirements.txt;"
 
 script:
@@ -78,22 +87,12 @@ script:
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
       cd $HOME/spark-deep-learning;
-      ./build/sbt -Dspark.version=$SPARK_VERSION
-                  -Dscala.version=$SCALA_VERSION
-                  \"set test in assembly := {}\"
-                  assembly"
-  # build coverage
-  - docker exec -t ubuntu-test bash -c "
-      cd $HOME/spark-deep-learning;
-      ./build/sbt -Dspark.version=$SPARK_VERSION
-                  -Dscala.version=$SCALA_VERSION
-                  coverage test coverageReport"
-
-  # run the python tests
+      ./dev/run.py assembly"
+  # run python style and test suites
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
       cd $HOME/spark-deep-learning;
-      SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD RUN_ONLY_LIGHT_TESTS=True ./python/run-tests.sh;"
+      ./dev/run.py $TEST_SUITE"
 
 after_success:
   # Unfortunately we need to install coverage here even though it's been installed via pip in the virual env.
