@@ -195,6 +195,11 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
             image_reshaped = imageIO.fixColorChannelOrdering(self.channelOrder, image_reshaped)
             image_reshaped_expanded = tf.expand_dims(image_reshaped, 0, name="expanded")
 
+            # shapes are evaluated lazily if TF_C_API_GRAPH_CONSTRUCTION is not set to 0
+            # see first point in other changes of tensorflow 1.8 release notes
+            # https://github.com/tensorflow/tensorflow/releases/tag/v1.8.0-rc0
+            _ = image_reshaped_expanded.shape
+
             # Add on the original graph
             tf.import_graph_def(
                 gdef,
