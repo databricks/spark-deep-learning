@@ -23,11 +23,11 @@ env:
     - RUN_ONLY_LIGHT_TESTS=True
   matrix:
     - PYTHON_VERSION=3.6.2 TEST_SUITE=scala-tests
-    - PYTHON_VERSION=3.6.2 TEST_SUITE=python-tests
+    - PYTHON_VERSION=3.6.2 TEST_SUITE="python-tests python/tests/transformers/tf_image_test.py"
     - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint
-    - PYTHON_VERSION=3.5.1 TEST_SUITE=python-tests
+    - PYTHON_VERSION=3.5.1 TEST_SUITE="python-tests python/tests/transformers/tf_image_test.py"
     - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
-    - PYTHON_VERSION=2.7.13 TEST_SUITE=python-tests
+    - PYTHON_VERSION=2.7.13 TEST_SUITE="python-tests python/tests/transformers/tf_image_test.py"
     - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
 
 before_install:
