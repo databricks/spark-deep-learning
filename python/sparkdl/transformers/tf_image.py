@@ -198,9 +198,9 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
             image_reshaped = tf.reshape(image_float, shape, name="reshaped")
             image_reshaped = imageIO.fixColorChannelOrdering(self.channelOrder, image_reshaped)
             image_reshaped_expanded = tf.expand_dims(image_reshaped, 0, name="expanded")
-            print("show me the size of image_reshaped_expanded: ", image_reshaped_expanded)
+            # print("show me the size of image_reshaped_expanded: ", image_reshaped_expanded)
 
-            print("show me the size of image_reshaped_expanded: ", height)
+            # print("show me the size of image_reshaped_expanded: ", height)
             # Add on the original graph
             tf.import_graph_def(
                 gdef,
