@@ -85,6 +85,9 @@ You can also post bug reports and feature requests in Github issues.
     3. Added Xception, Resnet50 models to DeepImageFeaturizer & DeepImagePredictor.
 - 0.1.0 Alpha release: Spark 2.1.1 & Python 2.7 recommended.
 
+## Downloads and installation
+
+Deep Learning Pipelines is published as a Spark Package.  Visit the [Spark Package page](https://spark-packages.org/package/databricks/spark-deep-learning) to download releases and find instructions for use with spark-shell, SBT, and Maven.
 
 ## Quick user guide
 
