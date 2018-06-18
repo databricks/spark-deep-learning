@@ -266,3 +266,19 @@ class DeepImageFeaturizerPersistenceTest(SparkDLTempDirTestCase):
                          "Loaded DeepImageFeaturizer instance default params (%s) did not match "
                          % str(transformer1._defaultParamMap) +
                          "original defaults (%s)" % str(transformer0._defaultParamMap))
+
+    def test_inception_in_pipeline(self):
+        transformer0 = DeepImageFeaturizer(inputCol='image', modelName="InceptionV3",
+                                           outputCol="features0", scaleHint="SCALE_FAST")
+        pipeline0 = Pipeline(stages=[transformer0])
+        dst_path = os.path.join(self.tempdir, "featurizerInPipeline")
+        pipeline0.save(dst_path)
+        pipeline1 = Pipeline.load(dst_path)
+        self.assertEqual(len(pipeline1.getStages()), 1)
+        transformer1 = pipeline1.getStages()[0]
+        self.assertEqual(transformer0.uid, transformer1.uid)
+        self.assertEqual(type(transformer0.uid), type(transformer1.uid))
+        self.assertEqual(transformer0._paramMap, transformer1._paramMap,
+                         "Loaded DeepImageFeaturizer instance params (%s) did not match "
+                         % str(transformer1._paramMap) +
+                         "original values (%s)" % str(transformer0._paramMap))
