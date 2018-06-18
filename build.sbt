@@ -1,6 +1,8 @@
 // Your sbt build file. Guides on how to write one can be found at
 // http://www.scala-sbt.org/0.13/docs/index.html
 
+import ReleaseTransformations._
+
 val sparkVer = sys.props.getOrElse("spark.version", "2.3.0")
 val sparkBranch = sparkVer.substring(0, 3)
 val defaultScalaVer = sparkBranch match {
@@ -20,7 +22,7 @@ scalaVersion := scalaVer
 spName := "databricks/spark-deep-learning"
 
 // Don't forget to set the version
-version := s"1.0.0-spark$sparkBranch"
+version := (version in ThisBuild).value + s"-spark$sparkBranch"
 
 // All Spark Packages need a license
 licenses := Seq("Apache-2.0" -> url("http://opensource.org/licenses/Apache-2.0"))
@@ -83,3 +85,13 @@ concurrentRestrictions in Global := Seq(
 autoAPIMappings := true
 
 coverageHighlighting := false
+
+// We only use sbt-release to update version numbers for now.
+releaseProcess := Seq[ReleaseStep](
+  inquireVersions,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+  setNextVersion,
+  commitNextVersion
+)
