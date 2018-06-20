@@ -21,7 +21,7 @@ from pyspark import SparkContext
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.ml.util import JavaMLReadable, JavaMLWritable, JavaMLReader
-from pyspark.ml.wrapper import JavaTransformer
+from pyspark.ml.wrapper import JavaModel, JavaParams, JavaTransformer
 from pyspark.sql.functions import udf
 from pyspark.sql.types import ArrayType, FloatType, StringType, StructField, StructType
 
