@@ -128,4 +128,19 @@ class DeepImageFeaturizerSuite extends FunSuite with TestSparkContext with Defau
       .setOutputCol("myOutput")
     testDefaultReadWrite(featurizer)
   }
+
+  test("DeepImageFeaturizer accepts nullable") {
+    val nullableImageSchema = StructType(
+      data.schema("image").dataType.asInstanceOf[StructType]
+        .fields.map(_.copy(nullable = true)))
+    val nullableSchema = StructType(StructField("image", nullableImageSchema, true) :: Nil)
+    println(nullableSchema)
+    val featurizer = new DeepImageFeaturizer()
+      .setModelName("_test")
+      .setInputCol("image")
+      .setOutputCol("features")
+    withClue("featurizer should accept nullable schemas") {
+      featurizer.transformSchema(nullableSchema)
+    }
+  }
 }
