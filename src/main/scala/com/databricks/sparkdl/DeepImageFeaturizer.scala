@@ -25,12 +25,11 @@ import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.{DefaultParamsReadable, DefaultParamsWritable, Identifiable}
 import org.apache.spark.sql.functions.{col, udf}
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{DataTypeShim, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.tensorflow.framework.GraphDef
 import org.tensorframes.impl.DebugRowOps
 import org.tensorframes.{Shape, ShapeDescription}
-
 
 
 class DeepImageFeaturizer(override val uid: String) extends Transformer with DefaultParamsWritable {
@@ -65,7 +64,7 @@ class DeepImageFeaturizer(override val uid: String) extends Transformer with Def
     val fieldIndex = schema.fieldIndex(inputColumnName)
     val colType = schema.fields(fieldIndex).dataType
     require(
-      colType == ImageSchema.columnSchema,
+      DataTypeShim.equalsIgnoreNullability(colType, ImageSchema.columnSchema),
       s"inputCol must be an image column with schema ImageSchema.columnSchema, got ${colType}"
     )
   }
