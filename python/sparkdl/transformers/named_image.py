@@ -21,7 +21,7 @@ from pyspark import SparkContext
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.ml.util import JavaMLReadable, JavaMLWritable, JavaMLReader
-from pyspark.ml.wrapper import JavaTransformer
+from pyspark.ml.wrapper import JavaModel, JavaParams, JavaTransformer
 from pyspark.sql.functions import udf
 from pyspark.sql.types import ArrayType, FloatType, StringType, StructField, StructType
 
@@ -159,6 +159,46 @@ class _DeepImageFeaturizerReader(JavaMLReader):
     @classmethod
     def _java_loader_class(cls, clazz):
         return "com.databricks.sparkdl.DeepImageFeaturizer"
+
+    @staticmethod
+    def _from_java(java_stage):
+        """
+        Given a Java object, create and return a Python wrapper of it.
+        Used for ML persistence.
+
+        This is overridden since the MLlib-native version does not handle conversion
+        between Scala and Python package names for anything outside of org.apache.spark / pyspark.
+        """
+        def __get_class(clazz):
+            """
+            Loads Python class from its name.
+            """
+            parts = clazz.split('.')
+            module = ".".join(parts[:-1])
+            m = __import__(module)
+            for comp in parts[1:]:
+                m = getattr(m, comp)
+            return m
+        stage_name = java_stage.getClass().getName().replace("com.databricks.sparkdl", "sparkdl")
+        # Generate a default new instance from the stage_name class.
+        py_type = __get_class(stage_name)
+        if issubclass(py_type, JavaParams):
+            # Load information from java_stage to the instance.
+            py_stage = py_type()
+            py_stage._java_obj = java_stage
+
+            # SPARK-10931: Temporary fix so that persisted models would own params from Estimator
+            if issubclass(py_type, JavaModel):
+                py_stage._create_params_from_java()
+
+            py_stage._resetUid(java_stage.uid())
+            py_stage._transfer_params_from_java()
+        elif hasattr(py_type, "_from_java"):
+            py_stage = py_type._from_java(java_stage)
+        else:
+            raise NotImplementedError("This Java stage cannot be loaded into Python currently: %r"
+                                      % stage_name)
+        return py_stage
 
 
 class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
