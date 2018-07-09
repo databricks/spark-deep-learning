@@ -63,7 +63,8 @@ install:
       apt-get install -y curl openjdk-8-jdk bzip2"
 
   # Copy the current dir into the docker container
-  - docker cp `pwd` ubuntu-test:$HOME/
+  - docker exec -t ubuntu-test bash -c "mkdir -p $TRAVIS_BUILD_DIR"
+  - docker cp `pwd`/. ubuntu-test:$TRAVIS_BUILD_DIR
 
   # Download and set up miniconda
   - docker exec -t ubuntu-test bash -c "
