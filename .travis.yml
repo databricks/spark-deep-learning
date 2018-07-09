@@ -63,7 +63,8 @@ install:
       apt-get install -y curl openjdk-8-jdk bzip2"
 
   # Copy the current dir into the docker container
-  - docker cp `pwd` ubuntu-test:$HOME/
+  - docker exec -t ubuntu-test bash -c "mkdir -p $TRAVIS_BUILD_DIR"
+  - docker cp `pwd`/. ubuntu-test:$TRAVIS_BUILD_DIR
 
   # Download and set up miniconda
   - docker exec -t ubuntu-test bash -c "
@@ -78,20 +79,20 @@ install:
  # Activate conda environment ad install required packages
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
-      pip install --user -r $HOME/spark-deep-learning/dev/dev-requirements.txt;
-      pip install --user -r $HOME/spark-deep-learning/python/requirements.txt;"
+      pip install --user -r $TRAVIS_BUILD_DIR/dev/dev-requirements.txt;
+      pip install --user -r $TRAVIS_BUILD_DIR/python/requirements.txt;"
 
 script:
   - docker cp $HOME/.cache ubuntu-test:$HOME/
   # build assembly
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
-      cd $HOME/spark-deep-learning;
+      cd $TRAVIS_BUILD_DIR;
       ./dev/run.py assembly"
   # run python style and test suites
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
-      cd $HOME/spark-deep-learning;
+      cd $TRAVIS_BUILD_DIR;
       ./dev/run.py $TEST_SUITE"
 
 after_success:
@@ -100,5 +101,5 @@ after_success:
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
       $HOME/miniconda/bin/conda install -c anaconda coverage;
-      cd $HOME/spark-deep-learning;
+      cd $TRAVIS_BUILD_DIR;
       bash <(curl -s https://codecov.io/bash)"
