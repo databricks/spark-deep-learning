@@ -16,11 +16,14 @@ cache:
 env:
   global:
     - SCALA_VERSION=2.11.8
-    - SPARK_VERSION=2.3.0
+    - SPARK_VERSION=2.3.1
     - SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7"
-    - SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-2.3.0/spark-2.3.0-bin-hadoop2.7.tgz"
+    - SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-2.3.1/spark-2.3.1-bin-hadoop2.7.tgz"
     - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD
     - RUN_ONLY_LIGHT_TESTS=True
+    # TODO: This is a temp fix in order to pass tests.
+    # We should update implementation to allow graph construction via C API.
+    - TF_C_API_GRAPH_CONSTRUCTION=0
   matrix:
     - PYTHON_VERSION=3.6.2 TEST_SUITE=scala-tests
     - PYTHON_VERSION=3.6.2 TEST_SUITE=python-tests
@@ -50,6 +53,7 @@ before_install:
                -e PYSPARK_PYTHON
                -e SPARK_HOME
                -e RUN_ONLY_LIGHT_TESTS
+               -e TF_C_API_GRAPH_CONSTRUCTION
                -e CONDA_URL
                -d --name ubuntu-test -v $HOME ubuntu:16.04 tail -f /dev/null
   - docker ps

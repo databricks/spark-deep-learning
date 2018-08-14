@@ -3,12 +3,9 @@
 
 import ReleaseTransformations._
 
-val sparkVer = sys.props.getOrElse("spark.version", "2.3.0")
+val sparkVer = sys.props.getOrElse("spark.version", "2.3.1")
 val sparkBranch = sparkVer.substring(0, 3)
 val defaultScalaVer = sparkBranch match {
-  case "2.0" => "2.11.8"
-  case "2.1" => "2.11.8"
-  case "2.2" => "2.11.8"
   case "2.3" => "2.11.8"
   case _ => throw new IllegalArgumentException(s"Unsupported Spark version: $sparkVer.")
 }
@@ -40,11 +37,8 @@ sparkComponents ++= Seq("mllib-local", "mllib", "sql")
 spDependencies += s"databricks/tensorframes:0.4.0-s_${scalaMajorVersion}"
 
 
-// These versions are ancient, but they cross-compile around scala 2.10 and 2.11.
-// Update them when dropping support for scala 2.10
 libraryDependencies ++= Seq(
-  // These versions are ancient, but they cross-compile around scala 2.10 and 2.11.
-  // Update them when dropping support for scala 2.10
+  // Update to scala-logging 3.9.0 after we update TensorFrames.
   "com.typesafe.scala-logging" %% "scala-logging-api" % "2.1.2",
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
   // Matching scalatest versions from TensorFrames
