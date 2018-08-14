@@ -1,11 +1,11 @@
 # This file should list any python package dependencies.
 coverage>=4.4.1
 h5py>=2.7.0
-keras==2.1.5 # NOTE: this package has only been tested with keras 2.1.5 and may not work with other releases
+keras==2.2.2 # NOTE: this package has only been tested with keras 2.2.2
 nose>=1.3.7  # for testing
 parameterized>=0.6.1 # for testing
 pillow>=4.1.1,<4.2
 pygments>=2.2.0
-tensorflow==1.6.0
+tensorflow==1.10.0 # NOTE: this package has only been tested with tensorflow 0.10.0
 pandas>=0.19.1
 six>=1.10.0
