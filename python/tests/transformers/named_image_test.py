@@ -123,7 +123,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             tfPredict = sess.run(outputTensor, {inputTensor: imageArray})
 
         self.assertEqual(kerasPredict.shape, tfPredict.shape)
-        np.testing.assert_array_almost_equal(kerasPredict, tfPredict)
+        np.testing.assert_array_almost_equal(kerasPredict, tfPredict, decimal=5)
 
     def _rowWithImage(self, img):
         row = imageIO.imageArrayToStruct(img.astype('uint8'))
