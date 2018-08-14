@@ -81,12 +81,12 @@ def gen_model(name, license, model, model_file, version=VERSION, featurize=True)
     with tf.Session(graph=g2) as session:
         tf.import_graph_def(gdef, name='')
         filename = "sparkdl-%s_%s.pb" % (name, version)
-        print 'writing out ', filename
+        print('writing out ', filename)
         tf.train.write_graph(g2.as_graph_def(), logdir="./", name=filename, as_text=False)
         with open("./" + filename, "r") as f:
             h = sha256(f.read()).digest()
             base64_hash = b64encode(h)
-            print 'h', base64_hash
+            print('h', base64_hash)
     model_file.write(indent(
         scala_template % {
             "license": license,
@@ -229,11 +229,11 @@ if __name__ == '__main__':
         f.write(models_scala_header)
         for name, modelConstructor in sorted(
                 keras_applications.KERAS_APPLICATION_MODELS.items(), key=lambda x: x[0]):
-            print 'generating model', name
+            print('generating model', name)
             if not name in licenses:
                 raise KeyError("Missing license for model '%s'" % name )
             g = gen_model(license = licenses[name],name=name, model=modelConstructor(), model_file=f)
-            print 'placeholders', [x for x in g._nodes_by_id.values() if x.type == 'Placeholder']
+            print('placeholders', [x for x in g._nodes_by_id.values() if x.type == 'Placeholder'])
         f.write(
             "\n  val _supportedModels = Set[NamedImageModel](TestNet," +
             ",".join(
