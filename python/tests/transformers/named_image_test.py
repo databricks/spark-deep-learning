@@ -69,8 +69,9 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
     name = None
     # Allow subclasses to force number of partitions - a hack to avoid OOM issues
     numPartitionsOverride = None
-    featurizerCompareDigitsExact = 6
+    featurizerCompareDigitsExact = 5
     featurizerCompareDigitsCosine = 1
+    poolingMethod = None
 
     @classmethod
     def getSampleImageList(cls):
@@ -93,7 +94,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         cls.preppedImage = preppedImage
         cls.kerasPredict = cls.appModel._testKerasModel(
             include_top=True).predict(preppedImage, batch_size=1)
-        cls.kerasFeatures = cls.appModel._testKerasModel(include_top=False).predict(preppedImage)
+        cls.kerasFeatures = cls.appModel._testKerasModel(include_top=False, pooling=cls.poolingMethod).predict(preppedImage)
 
         cls.imageDF = getSampleImageDF().limit(5)
         if(cls.numPartitionsOverride):

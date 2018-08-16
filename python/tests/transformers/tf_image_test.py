@@ -175,4 +175,4 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                                                      image_df)
         self.compareClassSets(tf_topK, transformer_topK)
         self.compareClassOrderings(tf_topK, transformer_topK)
-        self.compareArrays(tf_values, transformer_values, decimal=6)
+        self.compareArrays(tf_values, transformer_values, decimal=5)

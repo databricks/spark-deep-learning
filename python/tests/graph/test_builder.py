@@ -130,4 +130,4 @@ class GraphFunctionWithIsolatedSessionTest(SparkDLTestCase):
             feeds, fetches = issn.importGraphFunction(gfn, prefix="InceptionV3")
             preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_iv3_input})
 
-        self.assertTrue(np.all(preds_tgt == preds_ref))
+            np.testing.assert_array_almost_equal(preds_tgt, preds_ref, decimal=5)

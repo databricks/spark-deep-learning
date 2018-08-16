@@ -20,3 +20,4 @@ class NamedImageTransformerResNet50Test(NamedImageTransformerBaseTestCase):
 
     __test__ = True
     name = "ResNet50"
+    poolingMethod = 'avg'

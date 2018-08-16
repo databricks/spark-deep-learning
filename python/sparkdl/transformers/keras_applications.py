@@ -130,7 +130,7 @@ class KerasApplicationModel:
         return self.preprocess(inputImage)
 
     @abstractmethod
-    def _testKerasModel(self, include_top):
+    def _testKerasModel(self, include_top, pooling=None):
         """
         For testing only. The keras model object to compare to.
         """
@@ -169,8 +169,8 @@ class InceptionV3Model(KerasApplicationModel):
     def inputShape(self):
         return InceptionV3Constants.INPUT_SHAPE
 
-    def _testKerasModel(self, include_top):
-        return inception_v3.InceptionV3(weights="imagenet", include_top=include_top)
+    def _testKerasModel(self, include_top, pooling=None):
+        return inception_v3.InceptionV3(weights="imagenet", include_top=include_top, pooling=pooling)
 
 
 class XceptionModel(KerasApplicationModel):
@@ -187,8 +187,8 @@ class XceptionModel(KerasApplicationModel):
     def inputShape(self):
         return (299, 299)
 
-    def _testKerasModel(self, include_top):
-        return xception.Xception(weights="imagenet", include_top=include_top)
+    def _testKerasModel(self, include_top, pooling=None):
+        return xception.Xception(weights="imagenet", include_top=include_top, pooling=pooling)
 
 
 class ResNet50Model(KerasApplicationModel):
@@ -227,8 +227,8 @@ class ResNet50Model(KerasApplicationModel):
     def inputShape(self):
         return (224, 224)
 
-    def _testKerasModel(self, include_top):
-        return resnet50.ResNet50(weights="imagenet", include_top=include_top)
+    def _testKerasModel(self, include_top, pooling=None):
+        return resnet50.ResNet50(weights="imagenet", include_top=include_top, pooling=pooling)
 
 
 class VGG16Model(KerasApplicationModel):
@@ -253,8 +253,8 @@ class VGG16Model(KerasApplicationModel):
     def inputShape(self):
         return (224, 224)
 
-    def _testKerasModel(self, include_top):
-        return vgg16.VGG16(weights="imagenet", include_top=include_top)
+    def _testKerasModel(self, include_top, pooling=None):
+        return vgg16.VGG16(weights="imagenet", include_top=include_top, pooling=pooling)
 
 
 class VGG19Model(KerasApplicationModel):
@@ -279,8 +279,8 @@ class VGG19Model(KerasApplicationModel):
     def inputShape(self):
         return (224, 224)
 
-    def _testKerasModel(self, include_top):
-        return vgg19.VGG19(weights="imagenet", include_top=include_top)
+    def _testKerasModel(self, include_top, pooling=None):
+        return vgg19.VGG19(weights="imagenet", include_top=include_top, pooling=pooling)
 
 
 def _imagenet_preprocess_input(x, input_shape):
