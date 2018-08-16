@@ -31,6 +31,9 @@ import sparkdl.transformers.keras_applications as keras_apps
 from sparkdl.param import keyword_only, HasInputCol, HasOutputCol, SparkDLTypeConverters
 from sparkdl.transformers.tf_image import TFImageTransformer
 
+
+# If this list of supported models is expanded, update the list in the README
+# section for DeepImageFeaturizer.
 SUPPORTED_MODELS = ["InceptionV3", "Xception", "ResNet50", "VGG16", "VGG19"]
 
 

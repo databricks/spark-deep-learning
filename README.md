@@ -85,6 +85,9 @@ You can also post bug reports and feature requests in Github issues.
     3. Added Xception, Resnet50 models to DeepImageFeaturizer & DeepImagePredictor.
 - 0.1.0 Alpha release: Spark 2.1.1 & Python 2.7 recommended.
 
+## Downloads and installation
+
+Deep Learning Pipelines is published as a Spark Package.  Visit the [Spark Package page](https://spark-packages.org/package/databricks/spark-deep-learning) to download releases and find instructions for use with spark-shell, SBT, and Maven.
 
 ## Quick user guide
 
@@ -153,6 +156,13 @@ evaluator = MulticlassClassificationEvaluator(metricName="accuracy")
 print("Training set accuracy = " + str(evaluator.evaluate(predictionAndLabels)))
 ```
 
+`DeepImageFeaturizer` supports the following models from Keras:
+
+* InceptionV3
+* Xception
+* ResNet50
+* VGG16
+* VGG19
 
 ### Distributed hyperparameter tuning
 
@@ -234,6 +244,8 @@ image_df = ImageSchema.readImages(sample_img_dir)
 predictor = DeepImagePredictor(inputCol="image", outputCol="predicted_labels", modelName="InceptionV3", decodePredictions=True, topK=10)
 predictions_df = predictor.transform(image_df)
 ```
+
+`DeepImagePredictor` supports the same set of models from Keras as `DeepImageFeaturizer`.  (See above.)
 
 ##### For TensorFlow users
 Deep Learning Pipelines provides an MLlib Transformer that will apply the given TensorFlow Graph to a DataFrame containing a column of images (e.g. loaded using the utilities described in the previous section). Here is a very simple example of how a TensorFlow Graph can be used with the Transformer. In practice, the TensorFlow Graph will likely be restored from files before calling `TFImageTransformer`.
