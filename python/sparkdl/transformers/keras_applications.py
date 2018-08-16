@@ -170,7 +170,9 @@ class InceptionV3Model(KerasApplicationModel):
         return InceptionV3Constants.INPUT_SHAPE
 
     def _testKerasModel(self, include_top, pooling=None):
-        return inception_v3.InceptionV3(weights="imagenet", include_top=include_top, pooling=pooling)
+        return inception_v3.InceptionV3(weights="imagenet",
+                                        include_top=include_top,
+                                        pooling=pooling)
 
 
 class XceptionModel(KerasApplicationModel):
@@ -188,7 +190,9 @@ class XceptionModel(KerasApplicationModel):
         return (299, 299)
 
     def _testKerasModel(self, include_top, pooling=None):
-        return xception.Xception(weights="imagenet", include_top=include_top, pooling=pooling)
+        return xception.Xception(weights="imagenet",
+                                 include_top=include_top,
+                                 pooling=pooling)
 
 
 class ResNet50Model(KerasApplicationModel):
