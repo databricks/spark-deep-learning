@@ -7,9 +7,8 @@ mkdir -p $HOME/.cache/spark-versions
 filename="$HOME/.cache/spark-versions/$SPARK_BUILD.tgz"
 if ! [ -f $filename ]; then
 	echo "Downloading file..."
-	echo `which curl`
-	curl "$SPARK_BUILD_URL" > $filename
-	echo "Content of directory:"
-	ls -la $HOME/.cache/spark-versions/*
-	tar xvf $filename --directory $HOME/.cache/spark-versions > /dev/null
+	wget "$SPARK_BUILD_URL" -O $filename
+	echo "[Debug] Following should list a valid spark binary"
+	ls -larth $HOME/.cache/spark-versions/*
+	tar -xvzf $filename --directory $HOME/.cache/spark-versions > /dev/null
 fi
