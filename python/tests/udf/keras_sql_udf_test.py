@@ -61,7 +61,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
             model = Sequential()
             model.add(Flatten(input_shape=(640, 480, 3)))
             model.add(Dense(64, activation='relu'))
-            model.add(Dense(units=10, activation='softmax'))
+            model.add(Dense(10, activation='softmax'))
             # Initialize the variables
             init_op = tf.global_variables_initializer()
             issn.run(init_op)
