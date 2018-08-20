@@ -18,20 +18,20 @@ env:
     - SCALA_VERSION=2.11.8
     - SPARK_VERSION=2.3.1
     - SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7"
-    - SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-2.3.1/spark-2.3.1-bin-hadoop2.7.tgz"
+    - SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop2.7.tgz"
     - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD
     - RUN_ONLY_LIGHT_TESTS=True
     # TODO: This is a temp fix in order to pass tests.
     # We should update implementation to allow graph construction via C API.
     - TF_C_API_GRAPH_CONSTRUCTION=0
   matrix:
-    # - PYTHON_VERSION=3.6.2 TEST_SUITE=scala-tests
-    # - PYTHON_VERSION=3.6.2 TEST_SUITE=python-tests
-    # - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint
-    # - PYTHON_VERSION=3.5.1 TEST_SUITE=python-tests
-    # - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=scala-tests
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=python-tests
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint
+    - PYTHON_VERSION=3.5.1 TEST_SUITE=python-tests
+    - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
     - PYTHON_VERSION=2.7.13 TEST_SUITE=python-tests
-    # - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
 
 before_install:
   - ./bin/download_travis_dependencies.sh
