@@ -60,10 +60,8 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         with IsolatedSession(using_keras=True) as issn:
             model = Sequential()
             model.add(Flatten(input_shape=(640, 480, 3)))
-            # model.add(Dense(units=64))
-            # model.add(Activation('relu'))
-            # model.add(Dense(units=10))
-            # model.add(Activation('softmax'))
+            model.add(Dense(64, activation='relu'))
+            model.add(Dense(units=10, activation='softmax'))
             # Initialize the variables
             init_op = tf.global_variables_initializer()
             issn.run(init_op)
