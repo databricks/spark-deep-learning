@@ -20,4 +20,7 @@ class NamedImageTransformerResNet50Test(NamedImageTransformerBaseTestCase):
 
     __test__ = True
     name = "ResNet50"
+    # New Keras model changed the sturecture of ResNet50, we need to add avg for to compare
+    # the result. We need to change the DeepImageFeaturizer for the new Model definition in
+    # Keras
     poolingMethod = 'avg'

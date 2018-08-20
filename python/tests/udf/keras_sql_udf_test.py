@@ -59,6 +59,7 @@ class SqlUserDefinedFunctionTest(SparkDLTestCase):
         # The leading batch size is taken care of by Keras
         with IsolatedSession(using_keras=True) as issn:
             model = Sequential()
+            # Make the test model simpler to increase the stability of travis tests
             model.add(Flatten(input_shape=(640, 480, 3)))
             # model.add(Dense(64, activation='relu'))
             model.add(Dense(16, activation='softmax'))
