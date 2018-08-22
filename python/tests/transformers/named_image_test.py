@@ -69,7 +69,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
     name = None
     # Allow subclasses to force number of partitions - a hack to avoid OOM issues
     numPartitionsOverride = None
-    featurizerCompareDigitsExact = 6
+    featurizerCompareDigitsExact = 5
     featurizerCompareDigitsCosine = 1
 
     @classmethod
@@ -123,7 +123,7 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             tfPredict = sess.run(outputTensor, {inputTensor: imageArray})
 
         self.assertEqual(kerasPredict.shape, tfPredict.shape)
-        np.testing.assert_array_almost_equal(kerasPredict, tfPredict)
+        np.testing.assert_array_almost_equal(kerasPredict, tfPredict, decimal=5)
 
     def _rowWithImage(self, img):
         row = imageIO.imageArrayToStruct(img.astype('uint8'))
