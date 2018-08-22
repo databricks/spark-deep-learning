@@ -42,7 +42,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.scala-logging" %% "scala-logging-api" % "2.1.2",
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
   // Matching scalatest versions from TensorFrames
-  "org.scalactic" %% "scalactic" % "3.0.0",
+  "org.scalactic" %% "scalactic" % "3.0.0" % "test",
   "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 )
 
