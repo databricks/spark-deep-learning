@@ -66,6 +66,6 @@ class KerasImageFileTransformerExamplesTest(SparkDLTestCase, ImageNetOutputCompa
 
         self.compareClassSets(ktopK, ttopK)
         self.compareClassOrderings(ktopK, ttopK)
-        self.compareArrays(kvals, tvals, decimal=6)
+        self.compareArrays(kvals, tvals, decimal=5)
 
     # TODO: test a workflow with ImageDataGenerator and see if it fits. (It might not.)
