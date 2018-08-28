@@ -123,7 +123,9 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             tfPredict = sess.run(outputTensor, {inputTensor: imageArray})
 
         self.assertEqual(kerasPredict.shape, tfPredict.shape)
-        np.testing.assert_array_almost_equal(kerasPredict, tfPredict, decimal=5)
+        np.testing.assert_array_almost_equal(kerasPredict,
+                                             tfPredict,
+                                             decimal=self.featurizerCompareDigitsExact)
 
     def _rowWithImage(self, img):
         row = imageIO.imageArrayToStruct(img.astype('uint8'))
@@ -152,7 +154,9 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         dfPredict = np.array([i.prediction for i in dfPredict])
 
         self.assertEqual(kerasPredict.shape, dfPredict.shape)
-        np.testing.assert_array_almost_equal(kerasPredict, dfPredict)
+        np.testing.assert_array_almost_equal(kerasPredict,
+                                             dfPredict,
+                                             decimal=self.featurizerCompareDigitsExact)
 
     def test_DeepImagePredictor(self):
         """
@@ -164,7 +168,9 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         fullPredict = self._sortByFileOrder(transformer.transform(self.imageDF).collect())
         fullPredict = np.array([i.prediction for i in fullPredict])
         self.assertEqual(kerasPredict.shape, fullPredict.shape)
-        np.testing.assert_array_almost_equal(kerasPredict, fullPredict, decimal=6)
+        np.testing.assert_array_almost_equal(kerasPredict,
+                                             fullPredict,
+                                             decimal=self.featurizerCompareDigitsExact)
 
     def test_prediction_decoded(self):
         """
@@ -200,7 +206,9 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
         dfFeatures = transformer.transform(imageDf).collect()
         dfFeatures = np.array([i.features for i in dfFeatures])
         kerasReshaped = self.kerasFeatures.reshape(self.kerasFeatures.shape[0], -1)
-        np.testing.assert_array_almost_equal(kerasReshaped, dfFeatures, decimal=self.featurizerCompareDigitsExact)
+        np.testing.assert_array_almost_equal(kerasReshaped,
+                                             dfFeatures,
+                                             decimal=self.featurizerCompareDigitsExact)
 
 
     def test_featurization(self):
