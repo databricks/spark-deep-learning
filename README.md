@@ -71,6 +71,12 @@ You can also post bug reports and feature requests in Github issues.
 
 
 ## Releases
+-[1.2.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.2.0) release: Spark 2.3.1, Python 3.6 & Scala 2.11 recommended. TensorFlow 1.10.0 required.
+    1. Upgrade TensorFrames version to 0.5.0
+    2. Upgrade Tensorflow version to 1.10.0 and Keras version to 2.2.2
+- [1.1.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.1.0) release: Spark 2.3.0 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0 required.
+    1. Keras_image_file_estimator support both sparse and dense vectors
+    2. upgrade TensorFrames version to 0.4.0
 - [1.0.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.0.0) release: Spark 2.3.0 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0 required.
     1. Using the definition of images from Spark 2.3.0. The new definition uses the BGR channel ordering 
        for 3-channel images instead of the RGB ordering used in this project before the change. 
@@ -104,7 +110,9 @@ To try running the examples below, check out the Databricks notebook in the [Dat
 [0.1.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html),
 [0.2.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/1674891575666800/3983381308530741/latest.html),
 [0.3.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/4856334613426202/3381529530484660/4079725938146156/latest.html),
-[1.0.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/6026450283250196/3874201704285756/7409402632610251/latest.html).
+[1.0.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/6026450283250196/3874201704285756/7409402632610251/latest.html),
+[1.1.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/6026450283250196/3874201704285756/7409402632610251/latest.html),
+[1.2.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/6026450283250196/2720471487429801/7409402632610251/latest.html).
 
 ### Working with images in Spark
 
