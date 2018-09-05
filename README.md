@@ -71,25 +71,7 @@ You can also post bug reports and feature requests in Github issues.
 
 
 ## Releases
--[1.2.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.2.0) release: Spark 2.3.1, Python 3.6 & Scala 2.11 recommended. TensorFlow 1.10.0 required.
-    1. Upgrade TensorFrames version to 0.5.0
-    2. Upgrade Tensorflow version to 1.10.0 and Keras version to 2.2.2
-- [1.1.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.1.0) release: Spark 2.3.0 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0 required.
-    1. Keras_image_file_estimator support both sparse and dense vectors
-    2. upgrade TensorFrames version to 0.4.0
-- [1.0.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.0.0) release: Spark 2.3.0 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0 required.
-    1. Using the definition of images from Spark 2.3.0. The new definition uses the BGR channel ordering 
-       for 3-channel images instead of the RGB ordering used in this project before the change. 
-    2. Persistence for DeepImageFeaturizer (both Python and Scala).
-- [0.3.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.3.0) release: Spark 2.2.0, Python 3.6 & Scala 2.11 recommended. TensorFlow 1.4.1- required.
-    1. KerasTransformer & TFTransformer for large-scale batch inference on non-image (tensor) data.
-    2. Scala API for transfer learning (`DeepImageFeaturizer`). InceptionV3 is supported.
-    3. Added VGG16, VGG19 models to DeepImageFeaturizer & DeepImagePredictor (Python).
-- [0.2.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.2.0) release: Spark 2.1.1 & Python 2.7 recommended.
-    1. KerasImageFileEstimator API (train a Keras model on image files)
-    2. SQL UDF support for Keras models
-    3. Added Xception, Resnet50 models to DeepImageFeaturizer & DeepImagePredictor.
-- 0.1.0 Alpha release: Spark 2.1.1 & Python 2.7 recommended.
+Visit [Github Release Page](https://github.com/databricks/spark-deep-learning/releases) to check the release notes.
 
 ## Downloads and installation
 
