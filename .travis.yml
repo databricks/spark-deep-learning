@@ -22,13 +22,18 @@ env:
     - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD
     - RUN_ONLY_LIGHT_TESTS=True
   matrix:
+    # Run python horovod tests and style first
+    - PYTHON_VERSION=3.6.2 TEST_SUITE="python-tests python/tests/horovod/"
+    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint
+    - PYTHON_VERSION=3.5.1 TEST_SUITE="python-tests python/tests/horovod/"
+    - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
+    - PYTHON_VERSION=2.7.13 TEST_SUITE="python-tests python/tests/horovod/"
+    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
+    # Run all python tests last
     - PYTHON_VERSION=3.6.2 TEST_SUITE=scala-tests
     - PYTHON_VERSION=3.6.2 TEST_SUITE=python-tests
-    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint
     - PYTHON_VERSION=3.5.1 TEST_SUITE=python-tests
-    - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
     - PYTHON_VERSION=2.7.13 TEST_SUITE=python-tests
-    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
 
 before_install:
   - ./bin/download_travis_dependencies.sh
@@ -76,19 +81,20 @@ install:
      $HOME/miniconda/bin/conda info -a;
      $HOME/miniconda/bin/conda create -q -n test-environment python=$PYTHON_VERSION"
 
- # Activate conda environment ad install required packages
+  # Activate conda environment ad install required packages
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
       pip install --user -r $TRAVIS_BUILD_DIR/dev/dev-requirements.txt;
       pip install --user -r $TRAVIS_BUILD_DIR/python/requirements.txt;"
 
-script:
   - docker cp $HOME/.cache ubuntu-test:$HOME/
   # build assembly
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
       cd $TRAVIS_BUILD_DIR;
       ./dev/run.py assembly"
+
+script:
   # run python style and test suites
   - docker exec -t ubuntu-test bash -c "
       source $HOME/miniconda/bin/activate test-environment;
