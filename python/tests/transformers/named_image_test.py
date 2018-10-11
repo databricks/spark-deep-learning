@@ -253,7 +253,6 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             self.assertEqual(int(row.prediction), row.label)
 
 
-
 class DeepImageFeaturizerPersistenceTest(SparkDLTempDirTestCase):
     def ignore_inception(self):
         """
