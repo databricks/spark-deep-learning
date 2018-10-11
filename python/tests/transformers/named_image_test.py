@@ -253,8 +253,13 @@ class NamedImageTransformerBaseTestCase(SparkDLTestCase):
             self.assertEqual(int(row.prediction), row.label)
 
 
+
 class DeepImageFeaturizerPersistenceTest(SparkDLTempDirTestCase):
-    def test_inception(self):
+    def ignore_inception(self):
+        """
+        Ignore until Apache Spark provides full support for ML Persistence in 3rd-party Python
+        libraries.
+        """
         transformer0 = DeepImageFeaturizer(inputCol='image', modelName="InceptionV3",
                                            outputCol="features0", scaleHint="SCALE_FAST")
         dst_path = os.path.join(self.tempdir, "featurizer")
