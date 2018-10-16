@@ -20,7 +20,6 @@ import py4j
 from pyspark import SparkContext
 from pyspark.ml import Transformer
 from pyspark.ml.param import Param, Params, TypeConverters
-from pyspark.ml.util import JavaMLReadable, JavaMLWritable, JavaMLReader
 from pyspark.ml.wrapper import JavaTransformer
 from pyspark.sql.functions import udf
 from pyspark.sql.types import ArrayType, FloatType, StringType, StructField, StructType
@@ -151,17 +150,7 @@ class _LazyScaleHintConverter:  # pylint: disable=too-few-public-methods
         return self._sizeHintConverter(value)
 
 
-class _DeepImageFeaturizerReader(JavaMLReader):
-
-    def __init__(self, clazz):  # pylint: disable=useless-super-delegation
-        super(_DeepImageFeaturizerReader, self).__init__(clazz)
-
-    @classmethod
-    def _java_loader_class(cls, clazz):
-        return "com.databricks.sparkdl.DeepImageFeaturizer"
-
-
-class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
+class DeepImageFeaturizer(JavaTransformer):
     """
     Applies the model specified by its popular name, with its prediction layer(s) chopped off,
     to the image column in DataFrame. The output is a MLlib Vector so that DeepImageFeaturizer
@@ -244,22 +233,6 @@ class DeepImageFeaturizer(JavaTransformer, JavaMLReadable, JavaMLWritable):
 
     def getScaleHint(self):
         return self.getOrDefault(self.scaleHint)
-
-    @classmethod
-    def read(cls):
-        return _DeepImageFeaturizerReader(cls)
-
-    @classmethod
-    def _from_java(cls, java_stage):
-        """
-        Given a Java object, create and return a Python wrapper of it.
-        Used for ML persistence.
-        """
-        res = DeepImageFeaturizer()
-        res._java_obj = java_stage
-        res._resetUid(java_stage.uid())
-        res._transfer_params_from_java()
-        return res
 
 
 class _NamedImageTransformer(Transformer, HasInputCol, HasOutputCol):
