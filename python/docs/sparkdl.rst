@@ -8,6 +8,7 @@ Subpackages
 
     sparkdl.estimators
     sparkdl.graph
+    sparkdl.horovod
     sparkdl.image
     sparkdl.param
     sparkdl.transformers
