@@ -25,6 +25,7 @@ from sparkdl.utils import jvmapi as JVMAPI
 
 logger = logging.getLogger('sparkdl')
 
+__all__ = ['registerKerasImageUDF']
 
 def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None):
     """

@@ -28,6 +28,8 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import BinaryType, StringType, StructField, StructType
 
 
+__all__ = ['createResizeImageUDF', 'PIL_decode', 'readImagesWithCustomFn']
+
 # ImageType represents supported OpenCV types
 # fields:
 #   name - OpenCvMode
