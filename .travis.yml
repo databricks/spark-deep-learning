@@ -2,104 +2,32 @@ sudo: required
 
 dist: trusty
 
-services:
-  - docker
-
-language: python
-
-cache:
-  directories:
-    - $HOME/.ivy2
-    - $HOME/.sbt/launchers/
-    - $HOME/.cache/spark-versions
+language: minimal
 
 env:
   global:
-    - SCALA_VERSION=2.11.8
-    - SPARK_VERSION=2.3.1
-    - SPARK_BUILD="spark-${SPARK_VERSION}-bin-hadoop2.7"
-    - SPARK_BUILD_URL="https://dist.apache.org/repos/dist/release/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop2.7.tgz"
-    - SPARK_HOME=$HOME/.cache/spark-versions/$SPARK_BUILD
-    - RUN_ONLY_LIGHT_TESTS=True
+    - DOCKER_COMPOSE_VERSION=1.22.0
   matrix:
-    - PYTHON_VERSION=3.6.2 TEST_SUITE=scala-tests
-    - PYTHON_VERSION=3.6.2 TEST_SUITE=python-tests
-    - PYTHON_VERSION=3.6.2 TEST_SUITE=pylint
-    - PYTHON_VERSION=3.5.1 TEST_SUITE=python-tests
-    - PYTHON_VERSION=3.5.1 TEST_SUITE=pylint
-    - PYTHON_VERSION=2.7.13 TEST_SUITE=python-tests
-    - PYTHON_VERSION=2.7.13 TEST_SUITE=pylint
+    - PYTHON_VERSION=3.6 TEST_SUITE=pylint
+    - PYTHON_VERSION=2.7 TEST_SUITE=pylint
+    - PYTHON_VERSION=3.6 TEST_SUITE=python-tests
+    - PYTHON_VERSION=2.7 TEST_SUITE=python-tests
+    - PYTHON_VERSION=3.6 TEST_SUITE=scala-tests
+
+services:
+  - docker
 
 before_install:
-  - ./bin/download_travis_dependencies.sh
-  - ci_env=`bash <(curl -s https://codecov.io/env)`
-  - if [[ "$PYTHON_VERSION" == 2.* ]]; then
-        export CONDA_URL="repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh"
-        export PYSPARK_PYTHON=python2;
-    else
-        export CONDA_URL="repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh";
-        export PYSPARK_PYTHON=python3;
-    fi
+  # update docker compose to the specified version, https://docs.travis-ci.com/user/docker/#using-docker-compose
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
 
-  - docker run $ci_env
-               -e "JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64"
-               -e SPARK_VERSION
-               -e SPARK_BUILD
-               -e SCALA_VERSION
-               -e PYTHON_VERSION
-               -e PYSPARK_PYTHON
-               -e SPARK_HOME
-               -e RUN_ONLY_LIGHT_TESTS
-               -e CONDA_URL
-               -d --name ubuntu-test -v $HOME ubuntu:16.04 tail -f /dev/null
-  - docker ps
-
-# See this page: http://conda.pydata.org/docs/travis.html
-install:
-  # install needed ubuntu packages
-  - docker exec -t ubuntu-test bash -c "
-      apt-get update;
-      apt-get upgrade -y;
-      apt-get install -y curl openjdk-8-jdk bzip2"
-
-  # Copy the current dir into the docker container
-  - docker exec -t ubuntu-test bash -c "mkdir -p $TRAVIS_BUILD_DIR"
-  - docker cp `pwd`/. ubuntu-test:$TRAVIS_BUILD_DIR
-
-  # Download and set up miniconda
-  - docker exec -t ubuntu-test bash -c "
-     curl https://$CONDA_URL >> $HOME/miniconda.sh;
-     bash $HOME/miniconda.sh -b -p $HOME/miniconda;
-     bash $HOME/miniconda.sh -b -p $HOME/miniconda;
-     $HOME/miniconda/bin/conda config --set always_yes yes --set changeps1 no;
-     $HOME/miniconda/bin/conda update -q conda;
-     $HOME/miniconda/bin/conda info -a;
-     $HOME/miniconda/bin/conda create -q -n test-environment python=$PYTHON_VERSION"
-
- # Activate conda environment ad install required packages
-  - docker exec -t ubuntu-test bash -c "
-      source $HOME/miniconda/bin/activate test-environment;
-      pip install --user -r $TRAVIS_BUILD_DIR/dev/dev-requirements.txt;
-      pip install --user -r $TRAVIS_BUILD_DIR/python/requirements.txt;"
+install :
+  - docker-compose build --build-arg PYTHON_VERSION=$PYTHON_VERSION
+  - docker-compose up -d --scale worker=2
+  - docker-compose exec master bash -c "cd /mnt/sparkdl && build/sbt assembly"
 
 script:
-  - docker cp $HOME/.cache ubuntu-test:$HOME/
-  # build assembly
-  - docker exec -t ubuntu-test bash -c "
-      source $HOME/miniconda/bin/activate test-environment;
-      cd $TRAVIS_BUILD_DIR;
-      ./dev/run.py assembly"
-  # run python style and test suites
-  - docker exec -t ubuntu-test bash -c "
-      source $HOME/miniconda/bin/activate test-environment;
-      cd $TRAVIS_BUILD_DIR;
-      ./dev/run.py $TEST_SUITE"
-
-after_success:
-  # Unfortunately we need to install coverage here even though it's been installed via pip in the virual env.
-  # The codecov bash script executes `which coverage` and that comes up empty unless we install it directly.
-  - docker exec -t ubuntu-test bash -c "
-      source $HOME/miniconda/bin/activate test-environment;
-      $HOME/miniconda/bin/conda install -c anaconda coverage;
-      cd $TRAVIS_BUILD_DIR;
-      bash <(curl -s https://codecov.io/bash)"
+  - docker-compose exec master bash -c "cd /mnt/sparkdl && dev/run.py $TEST_SUITE"

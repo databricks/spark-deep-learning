@@ -227,7 +227,7 @@ def sbt(*args):
     assert(not missing_env)
     cmd = ("./build/sbt", "-Dspark.version=" + required_env.get("SPARK_VERSION"),
            "-Dscala.version=" + required_env.get("SCALA_VERSION"))
-    call_subprocess(cmd + args)
+    return call_subprocess(cmd + args)
 
 
 def assembly():

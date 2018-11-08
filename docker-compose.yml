@@ -1,0 +1,22 @@
+version: '3'
+services:
+  master:
+    build: .
+    hostname: master
+    environment:
+      - MASTER=spark://master:7077
+    entrypoint: bash -c "service ssh restart && spark-class org.apache.spark.deploy.master.Master -h master"
+    ports:
+    - "4040:4040" # driver UI
+    - "8080:8080" # master UI
+    volumes:
+    - .:/mnt/sparkdl
+  worker:
+    build: .
+    entrypoint: bash -c "service ssh restart && spark-class org.apache.spark.deploy.worker.Worker spark://master:7077"
+    ports:
+    - "8081-8090:8081" # worker UI
+    links:
+    - master
+    volumes:
+    - .:/mnt/sparkdl
