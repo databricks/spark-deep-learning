@@ -31,6 +31,7 @@ We provide some methods to map whatever we have as input to
 one of the four target variants.
 """
 
+__all__ = ['strip_and_freeze_until']
 
 def validated_graph(graph):
     """

@@ -19,7 +19,7 @@ from tensorflow.core.protobuf import meta_graph_pb2  # pylint: disable=no-name-i
 
 import sparkdl.graph.utils as tfx
 
-__all__ = ["TFInputGraph"]
+__all__ = ['TFInputGraph']
 
 # pylint: disable=invalid-name,wrong-spelling-in-comment,wrong-spelling-in-docstring
 

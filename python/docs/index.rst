@@ -15,19 +15,22 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   sparkdl
+    sparkdl.graph
+    sparkdl.image
+    sparkdl.transformers
+    sparkdl.udf
+    sparkdl.utils
 
-Core classes:
--------------
+Module contents
+---------------
 
-    :class:`sparkdl.OurCoolClass`
-
-    Description of OurCoolClass
+.. automodule:: sparkdl
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 
 Indices and tables
 ====================================================================================
 
-* :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
