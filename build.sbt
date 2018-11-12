@@ -95,6 +95,9 @@ includeFilter in unmanagedResources := "requirements.txt" ||
   new SimpleFileFilter(_.relativeTo(baseDirectory.value / "python")
     .exists(_.getPath.matches("sparkdl/.*\\.py"))) || "*.png" || "*.jpg" || "*.pb"
 
+// Reset mappings in spPackage to avoid including duplicate files.
+mappings in (Compile, spPackage) := (mappings in (Compile, packageBin)).value
+
 // We only use sbt-release to update version numbers for now.
 releaseProcess := Seq[ReleaseStep](
   inquireVersions,
