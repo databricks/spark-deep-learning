@@ -18,7 +18,7 @@ from __future__ import absolute_import, division, print_function
 import inspect
 import unittest
 
-from sparkdl.horovod.runner_base import HorovodRunnerBase as HorovodRunner
+from sparkdl.horovod.runner_base import HorovodRunner
 
 
 class HorovodRunnerBaseTestCase(unittest.TestCase):
