@@ -22,7 +22,7 @@ import logging
 
 from sparkdl.param import keyword_only
 
-class HorovodRunnerBase(object):
+class HorovodRunner(object):
     """
     HorovodRunner runs distributed deep learning training jobs using Horovod.
 
