@@ -26,10 +26,10 @@ class HorovodRunner(object):
     """
     HorovodRunner runs distributed deep learning training jobs using Horovod.
 
-    On Databricks Runtime for Machine Learning 5.0+, it launches the Horovod job as a distributed
-    Spark job.  It makes running Horovod easy on Databricks by managing the cluster setup and
-    integrating with Spark.  Check out Databricks documentation to view end-to-end examples and
-    performance tuning tips.
+    On Databricks Runtime 5.0 ML and above, it launches the Horovod job as a distributed Spark job.
+    It makes running Horovod easy on Databricks by managing the cluster setup and integrating with
+    Spark.
+    Check out Databricks documentation to view end-to-end examples and performance tuning tips.
 
     The open-source version only runs the job locally inside the same Python process,
     which is for local development only.
@@ -41,7 +41,7 @@ class HorovodRunner(object):
     def __init__(self, np):
         """
         :param np: number of parallel processes to use for the Horovod job.
-            This argument only takes effect on Databricks Runtime for Machine Learning 5.0+.
+            This argument only takes effect on Databricks Runtime 5.0 ML and above.
             It is ignored in the open-source version.
             Accepted values are:
 
@@ -67,7 +67,7 @@ class HorovodRunner(object):
         Runs a Horovod training job invoking main(**kwargs).
 
         The open-source version only invokes main(**kwargs) inside the same Python process.
-        On Databricks Runtime for Machine Learning 5.0+, it will launch the Horovod job based on the
+        On Databricks Runtime 5.0 ML and above, it will launch the Horovod job based on the
         documented behavior of `np`.  Both the main function and the keyword arguments are
         serialized using cloudpickle and distributed to cluster workers.
 
