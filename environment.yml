@@ -13,7 +13,7 @@ dependencies:
 - h5py=2.8.0
 - pillow=4.1.1
 - cloudpickle=0.5.2
-- tensorflow=1.10.0
+- tensorflow=1.12.0
 - keras=2.2.4
 - paramiko=2.4.1
 - wrapt=1.10.11
