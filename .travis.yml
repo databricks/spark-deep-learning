@@ -27,7 +27,7 @@ before_install:
 install :
   - docker-compose build --build-arg PYTHON_VERSION=$PYTHON_VERSION
   - docker-compose up -d --scale worker=2
-  - docker-compose exec master bash -c "cd /mnt/sparkdl && build/sbt assembly"
+  - docker-compose exec master bash -i -c "build/sbt assembly"
 
 script:
-  - docker-compose exec master bash -c "cd /mnt/sparkdl && dev/run.py $TEST_SUITE"
+  - docker-compose exec master bash -i -c "dev/run.py $TEST_SUITE"

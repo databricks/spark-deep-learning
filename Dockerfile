@@ -24,21 +24,22 @@ RUN wget --quiet https://github.com/uber/horovod/files/1596799/openmpi-3.0.0-bin
     rm -r /tmp/openmpi.tar.gz
 
 # Install Miniconda.
-RUN wget --quiet https://repo.continuum.io/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O /tmp/miniconda.sh && \
-    /bin/bash /tmp/miniconda.sh -b -p /opt/conda
-ENV PATH /opt/conda/bin:$PATH
+# Reference: https://hub.docker.com/r/continuumio/miniconda/~/dockerfile/
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
 
-# Install sparkdl dependencies.
-# Instead of activate the "sparkdl" conda env, we update env variables directly.
+# Create sparkdl conda env.
 ENV PYTHON_VERSION $PYTHON_VERSION
-ENV PATH /opt/conda/envs/sparkdl/bin:$PATH
-ENV LD_LIBRARY_PATH /opt/conda/envs/sparkdl/lib:$LD_LIBRARY_PATH
-ENV PYTHONPATH /opt/conda/envs/sparkdl/lib/python$PYTHON_VERSION/site-packages:$PYTHONPATH
 COPY ./environment.yml /tmp/environment.yml
-RUN conda create -n sparkdl python=$PYTHON_VERSION && \
-    conda env update -n sparkdl -f /tmp/environment.yml
+RUN /opt/conda/bin/conda create -n sparkdl python=$PYTHON_VERSION && \
+    /opt/conda/bin/conda env update -n sparkdl -f /tmp/environment.yml && \
+    echo "conda activate sparkdl" >> ~/.bashrc
 
 # Install Spark and update env variables.
+ENV SCALA_VERSION 2.11.8
 ENV SPARK_VERSION 2.4.0
 ENV SPARK_BUILD "spark-${SPARK_VERSION}-bin-hadoop2.7"
 ENV SPARK_BUILD_URL "https://dist.apache.org/repos/dist/release/spark/spark-2.4.0/${SPARK_BUILD}.tgz"
@@ -49,23 +50,13 @@ RUN wget --quiet $SPARK_BUILD_URL -O /tmp/spark.tgz && \
 ENV SPARK_HOME /opt/spark
 ENV PATH $SPARK_HOME/bin:$PATH
 ENV PYTHONPATH /opt/spark/python/lib/py4j-0.10.7-src.zip:/opt/spark/python/lib/pyspark.zip:$PYTHONPATH
-
-# Declare env variables to run tests.
-ENV SCALA_VERSION 2.11.8
 ENV PYSPARK_PYTHON python
-ENV RUN_ONLY_LIGHT_TESTS True
 
-# Persist important env variables to /etc/environment.
-RUN echo "SCALA_VERSION=$SCALA_VERSION" >> /etc/environment && \
-    echo "SPARK_VERSION=$SPARK_VERSION" >> /etc/environment && \
-    echo "SPARK_HOME=$SPARK_HOME" >> /etc/environment && \
-    echo "PATH=$PATH" > /etc/environment && \
-    echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment && \
-    echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /etc/environment && \
-    echo "PYSPARK_PYTHON=$PYSPARK_PYTHON" >> /etc/environment && \
-    echo "RUN_ONLY_LIGHT_TESTS=$RUN_ONLY_LIGHT_TESTS" >> /etc/environment
+# Set env variables for tests.
+ENV RUN_ONLY_LIGHT_TESTS True
 
 # The sparkdl dir will be mmounted here.
 VOLUME /mnt/sparkdl
+WORKDIR /mnt/sparkdl
 
 ENTRYPOINT service ssh restart && /bin/bash
