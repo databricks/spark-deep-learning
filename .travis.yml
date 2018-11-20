@@ -17,6 +17,10 @@ env:
 services:
   - docker
 
+cache:
+  directories:
+  - $HOME/.ivy2/
+
 before_install:
   # update docker compose to the specified version, https://docs.travis-ci.com/user/docker/#using-docker-compose
   - sudo rm /usr/local/bin/docker-compose
