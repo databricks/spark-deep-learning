@@ -20,8 +20,11 @@ from .transformers.tf_image import TFImageTransformer
 from .transformers.tf_tensor import TFTransformer
 from .transformers.utils import imageInputPlaceholder
 from .estimators.keras_image_file_estimator import KerasImageFileEstimator
+from .horovod.runner_base import HorovodRunner
 
 __all__ = [
     'TFImageTransformer', 'TFInputGraph', 'TFTransformer', 'DeepImagePredictor',
     'DeepImageFeaturizer', 'KerasImageFileTransformer', 'KerasTransformer',
-    'imageInputPlaceholder', 'KerasImageFileEstimator']
+    'imageInputPlaceholder', 'KerasImageFileEstimator',
+    'HorovodRunner'
+]

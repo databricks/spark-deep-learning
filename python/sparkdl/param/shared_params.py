@@ -17,11 +17,11 @@ Some parts are copied from pyspark.ml.param.shared and some are complementary
 to pyspark.ml.param. The copy is due to some useful pyspark fns/classes being
 private APIs.
 """
-from functools import wraps
 import textwrap
 
 import keras.backend as K
 from keras.models import load_model
+import wrapt
 
 from pyspark.ml.param import Param, Params, TypeConverters
 import sparkdl.graph.utils as tfx
@@ -36,22 +36,18 @@ from sparkdl.param.converters import SparkDLTypeConverters
 ########################################################
 
 
-def keyword_only(func):
+@wrapt.decorator
+def keyword_only(func, self, args, kwargs):
     """
     A decorator that forces keyword arguments in the wrapped method
     and saves actual input keyword arguments in `_input_kwargs`.
 
     .. note:: Should only be used to wrap a method where first arg is `self`
     """
-
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if len(args) > 0:
-            raise TypeError("Method %s forces keyword arguments." % func.__name__)
-        self._input_kwargs = kwargs
-        return func(self, **kwargs)
-
-    return wrapper
+    if len(args) > 0:
+        raise TypeError("Method %s forces keyword arguments." % func.__name__)
+    self._input_kwargs = kwargs
+    return func(**kwargs)
 
 
 class HasInputCol(Params):

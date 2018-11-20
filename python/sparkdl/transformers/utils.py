@@ -19,8 +19,12 @@ import tensorflow as tf
 
 IMAGE_INPUT_PLACEHOLDER_NAME = "sparkdl_image_input"
 
+__all__ = ['imageInputPlaceholder']
 
 def imageInputPlaceholder(nChannels=None):
+    '''
+    Inserts a TensorFlow placeholder for imput images.
+    '''
     return tf.placeholder(tf.float32, [None, None, None, nChannels],
                           name=IMAGE_INPUT_PLACEHOLDER_NAME)
 

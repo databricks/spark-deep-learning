@@ -19,7 +19,7 @@ from tensorflow.core.protobuf import meta_graph_pb2  # pylint: disable=no-name-i
 
 import sparkdl.graph.utils as tfx
 
-__all__ = ["TFInputGraph"]
+__all__ = ['TFInputGraph']
 
 # pylint: disable=invalid-name,wrong-spelling-in-comment,wrong-spelling-in-docstring
 
@@ -304,8 +304,7 @@ def _from_saved_model_impl(saved_model_dir, tag_set, signature_def_key, feed_nam
         meta_graph_def = tf.saved_model.loader.load(sess, tag_sets, saved_model_dir)
 
         if signature_def_key is not None:
-            sig_def = tf.contrib.saved_model.get_signature_def_by_key(meta_graph_def,
-                                                                      signature_def_key)
+            sig_def = meta_graph_def.signature_def[signature_def_key]
             return _build_with_sig_def(sess=sess, graph=graph, sig_def=sig_def)
         else:
             return _build_with_feeds_fetches(sess=sess, graph=graph, feed_names=feed_names,

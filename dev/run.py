@@ -125,8 +125,8 @@ def print_if(cond, *args):
 
 def _get_required_env(default=False, interactive=False, override=False, verbose=False):
     default_env = {'PYSPARK_PYTHON': 'python',
-                   'SPARK_VERSION': '2.3.0',
-                   'SPARK_HOME': os.path.join(HOME, 'bin/spark-2.3.0-bin-hadoop2.7/'),
+                   'SPARK_VERSION': '2.3.1',
+                   'SPARK_HOME': os.path.join(HOME, 'bin/spark-2.3.1-bin-hadoop2.7/'),
                    'SCALA_VERSION': '2.11.8'}
 
     if override and not (interactive or default):
@@ -227,7 +227,7 @@ def sbt(*args):
     assert(not missing_env)
     cmd = ("./build/sbt", "-Dspark.version=" + required_env.get("SPARK_VERSION"),
            "-Dscala.version=" + required_env.get("SCALA_VERSION"))
-    call_subprocess(cmd + args)
+    return call_subprocess(cmd + args)
 
 
 def assembly():

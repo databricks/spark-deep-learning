@@ -49,6 +49,8 @@ from ..transformers.image_utils import _getSampleJPEGDir, getSampleImagePathsDF
 
 
 class GraphPiecesTest(SparkDLTestCase):
+    
+    featurizerCompareDigitsExact = 5
 
     def test_spimage_converter_module(self):
         """ spimage converter module must preserve original image """
@@ -139,7 +141,9 @@ class GraphPiecesTest(SparkDLTestCase):
                 feeds, fetches = issn.importGraphFunction(gfn_bare_keras)
                 preds_tgt = issn.run(fetches[0], {feeds[0]: imgs_input})
 
-            self.assertTrue(np.all(preds_tgt == preds_ref))
+            np.testing.assert_array_almost_equal(preds_tgt,
+                                                 preds_ref,
+                                                 decimal=self.featurizerCompareDigitsExact)
 
     def test_pipeline(self):
         """ Pipeline should provide correct function composition """
@@ -169,6 +173,8 @@ class GraphPiecesTest(SparkDLTestCase):
                 # tfx.write_visualization_html(issn.graph,
                 # NamedTemporaryFile(prefix="gdef", suffix=".html").name)
 
-            self.assertTrue(np.all(preds_tgt == preds_ref))
+            np.testing.assert_array_almost_equal(preds_tgt,
+                                                 preds_ref,
+                                                 decimal=self.featurizerCompareDigitsExact)
 
 model_sizes = {'InceptionV3': (299, 299), 'Xception': (299, 299), 'ResNet50': (224, 224)}

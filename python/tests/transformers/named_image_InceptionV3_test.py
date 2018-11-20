@@ -13,11 +13,13 @@
 # limitations under the License.
 #
 
+import os
 from .named_image_test import NamedImageTransformerBaseTestCase
 
 
 class NamedImageTransformerInceptionV3Test(NamedImageTransformerBaseTestCase):
 
-    __test__ = True
+    # TODO(ML-5165) Enable these tests in a separate target
+    __test__ = os.getenv('RUN_ONLY_LIGHT_TESTS', False) != "True"
     name = "InceptionV3"
     featurizerCompareDigitsExact = 4

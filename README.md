@@ -71,19 +71,7 @@ You can also post bug reports and feature requests in Github issues.
 
 
 ## Releases
-- [1.0.0](https://github.com/databricks/spark-deep-learning/releases/tag/v1.0.0) release: Spark 2.3.0 required. Python 3.6 & Scala 2.11 recommended. TensorFlow 1.6.0 required.
-    1. Using the definition of images from Spark 2.3.0. The new definition uses the BGR channel ordering 
-       for 3-channel images instead of the RGB ordering used in this project before the change. 
-    2. Persistence for DeepImageFeaturizer (both Python and Scala).
-- [0.3.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.3.0) release: Spark 2.2.0, Python 3.6 & Scala 2.11 recommended. TensorFlow 1.4.1- required.
-    1. KerasTransformer & TFTransformer for large-scale batch inference on non-image (tensor) data.
-    2. Scala API for transfer learning (`DeepImageFeaturizer`). InceptionV3 is supported.
-    3. Added VGG16, VGG19 models to DeepImageFeaturizer & DeepImagePredictor (Python).
-- [0.2.0](https://github.com/databricks/spark-deep-learning/releases/tag/v0.2.0) release: Spark 2.1.1 & Python 2.7 recommended.
-    1. KerasImageFileEstimator API (train a Keras model on image files)
-    2. SQL UDF support for Keras models
-    3. Added Xception, Resnet50 models to DeepImageFeaturizer & DeepImagePredictor.
-- 0.1.0 Alpha release: Spark 2.1.1 & Python 2.7 recommended.
+Visit [Github Release Page](https://github.com/databricks/spark-deep-learning/releases) to check the release notes.
 
 ## Downloads and installation
 
@@ -104,7 +92,9 @@ To try running the examples below, check out the Databricks notebook in the [Dat
 [0.1.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/3647723071348946/3983381308530741/latest.html),
 [0.2.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/5669198905533692/1674891575666800/3983381308530741/latest.html),
 [0.3.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/4856334613426202/3381529530484660/4079725938146156/latest.html),
-[1.0.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/6026450283250196/3874201704285756/7409402632610251/latest.html).
+[1.0.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/6026450283250196/3874201704285756/7409402632610251/latest.html),
+[1.1.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/6026450283250196/3874201704285756/7409402632610251/latest.html),
+[1.2.0](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/6026450283250196/2720471487429801/7409402632610251/latest.html).
 
 ### Working with images in Spark
 

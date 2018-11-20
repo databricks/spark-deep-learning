@@ -3,13 +3,11 @@
 
 import ReleaseTransformations._
 
-val sparkVer = sys.props.getOrElse("spark.version", "2.3.0")
+val sparkVer = sys.props.getOrElse("spark.version", "2.4.0")
 val sparkBranch = sparkVer.substring(0, 3)
 val defaultScalaVer = sparkBranch match {
-  case "2.0" => "2.11.8"
-  case "2.1" => "2.11.8"
-  case "2.2" => "2.11.8"
   case "2.3" => "2.11.8"
+  case "2.4" => "2.11.8"
   case _ => throw new IllegalArgumentException(s"Unsupported Spark version: $sparkVer.")
 }
 val scalaVer = sys.props.getOrElse("scala.version", defaultScalaVer)
@@ -19,13 +17,18 @@ sparkVersion := sparkVer
 
 scalaVersion := scalaVer
 
+name := "spark-deep-learning"
+
 spName := "databricks/spark-deep-learning"
 
-// Don't forget to set the version
+organization := "com.databricks"
+
 version := (version in ThisBuild).value + s"-spark$sparkBranch"
 
 // All Spark Packages need a license
 licenses := Seq("Apache-2.0" -> url("http://opensource.org/licenses/Apache-2.0"))
+
+isSnapshot := version.value.contains("-SNAPSHOT")
 
 spAppendScalaVersion := true
 
@@ -37,23 +40,21 @@ sparkComponents ++= Seq("mllib-local", "mllib", "sql")
 
 // add any Spark Package dependencies using spDependencies.
 // e.g. spDependencies += "databricks/spark-avro:0.1"
-spDependencies += s"databricks/tensorframes:0.4.0-s_${scalaMajorVersion}"
+spDependencies += s"databricks/tensorframes:0.6.0-s_$scalaMajorVersion"
 
 
-// These versions are ancient, but they cross-compile around scala 2.10 and 2.11.
-// Update them when dropping support for scala 2.10
 libraryDependencies ++= Seq(
-  // These versions are ancient, but they cross-compile around scala 2.10 and 2.11.
-  // Update them when dropping support for scala 2.10
+  // Update to scala-logging 3.9.0 after we update TensorFrames.
   "com.typesafe.scala-logging" %% "scala-logging-api" % "2.1.2",
   "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2",
   // Matching scalatest versions from TensorFrames
-  "org.scalactic" %% "scalactic" % "3.0.0",
+  "org.scalactic" %% "scalactic" % "3.0.0" % "test",
   "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 )
 
 assemblyMergeStrategy in assembly := {
   case "requirements.txt" => MergeStrategy.concat
+  case "LICENSE-2.0.txt" => MergeStrategy.rename
   case x =>
     val oldStrategy = (assemblyMergeStrategy in assembly).value
     oldStrategy(x)
@@ -86,6 +87,17 @@ autoAPIMappings := true
 
 coverageHighlighting := false
 
+unmanagedResources in Compile += baseDirectory.value / "LICENSE"
+
+unmanagedResourceDirectories in Compile += baseDirectory.value / "python"
+
+includeFilter in unmanagedResources := "requirements.txt" ||
+  new SimpleFileFilter(_.relativeTo(baseDirectory.value / "python")
+    .exists(_.getPath.matches("sparkdl/.*\\.py"))) || "*.png" || "*.jpg" || "*.pb"
+
+// Reset mappings in spPackage to avoid including duplicate files.
+mappings in (Compile, spPackage) := (mappings in (Compile, packageBin)).value
+
 // We only use sbt-release to update version numbers for now.
 releaseProcess := Seq[ReleaseStep](
   inquireVersions,
@@ -95,3 +107,6 @@ releaseProcess := Seq[ReleaseStep](
   setNextVersion,
   commitNextVersion
 )
+
+// Skip tests during assembly
+test in assembly := {}

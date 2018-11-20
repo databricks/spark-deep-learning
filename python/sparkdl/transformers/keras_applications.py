@@ -188,7 +188,8 @@ class XceptionModel(KerasApplicationModel):
         return (299, 299)
 
     def _testKerasModel(self, include_top):
-        return xception.Xception(weights="imagenet", include_top=include_top)
+        return xception.Xception(weights="imagenet",
+                                 include_top=include_top)
 
 
 class ResNet50Model(KerasApplicationModel):
@@ -228,7 +229,10 @@ class ResNet50Model(KerasApplicationModel):
         return (224, 224)
 
     def _testKerasModel(self, include_top):
-        return resnet50.ResNet50(weights="imagenet", include_top=include_top)
+        # New Keras model changed the sturecture of ResNet50, we need to add avg for to compare
+        # the result. We need to change the DeepImageFeaturizer for the new Model definition in
+        # Keras
+        return resnet50.ResNet50(weights="imagenet", include_top=include_top, pooling='avg')
 
 
 class VGG16Model(KerasApplicationModel):

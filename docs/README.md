@@ -7,8 +7,6 @@ Read on to learn more about viewing documentation in plain text (i.e., markdown)
 documentation yourself. Why build it yourself? So that you have the docs that correspond to
 whichever version of Deep Learning Pipelines you currently have checked out of revision control.
 
-## Generating the Documentation HTML
-
 We include the Deep Learning Pipelines documentation as part of the source (as opposed to using a hosted wiki, such as
 the github wiki, as the definitive documentation) to enable the documentation to evolve along with
 the source code and be captured by revision control (currently git). This way the code automatically
@@ -18,23 +16,14 @@ you have checked out or downloaded.
 In this directory you will find textfiles formatted using Markdown, with an ".md" suffix. You can
 read those text files directly if you want. Start with index.md.
 
-The markdown code can be compiled to HTML using the [Jekyll tool](http://jekyllrb.com).
-`Jekyll` and a few dependencies must be installed for this to work. We recommend
-installing via the Ruby Gem dependency manager. Since the exact HTML output
-varies between versions of Jekyll and its dependencies, we list specific versions here
-in some cases (`Jekyll 3.4.3`):
+## Generating the Documentation HTML
+To generate the documentation HTML, you can run the script from the base directory:
 
-    $ sudo gem install jekyll bundler
-    $ sudo gem install jekyll-redirect-from pygments.rb
+    $ dev/build-docs.sh
 
+It compiles the site with Jekyll will create a directory called `_site` containing index.html as well as the rest of the compiled files.
 
-Then run the prepare script to setup prerequisites and generate a wrapper "jekyll" script
-	$ ./prepare -s <path_to_spark_home> -t <path_to_tensorframes_home>
-
-Execute `./jekyll build` from the `docs/` directory to compile the site. Compiling the site with Jekyll will create a directory
-called `_site` containing index.html as well as the rest of the compiled files.
-
-You can modify the default Jekyll build as follows:
+You can modify the default Jekyll build in the docs docker container as follows:
 
     # Skip generating API docs (which takes a while)
     $ SKIP_API=1 ./jekyll build
@@ -43,13 +32,9 @@ You can modify the default Jekyll build as follows:
     # Build the site with extra features used on the live page
     $ PRODUCTION=1 ./jekyll build
 
-Note that `SPARK_HOME` must be set to your local Spark installation in order to generate the docs.
-
 ## Pygments
 
-We also use pygments (http://pygments.org) for syntax highlighting in documentation markdown pages,
-so you will also need to install that (it requires Python) by running `sudo pip install Pygments`.
-
+We also use pygments (http://pygments.org) for syntax highlighting in documentation markdown pages.
 To mark a block of code in your markdown to be syntax highlighted by jekyll during the compile
 phase, use the following sytax:
 
@@ -60,8 +45,7 @@ phase, use the following sytax:
 
 ## Sphinx
 
-We use Sphinx to generate Python API docs, so you will need to install it by running
-`sudo pip install sphinx`.
+We use Sphinx to generate Python API docs.
 
 ## API Docs (Scaladoc, Sphinx)
 

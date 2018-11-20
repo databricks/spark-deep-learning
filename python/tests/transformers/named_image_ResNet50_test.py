@@ -18,5 +18,5 @@ from .named_image_test import NamedImageTransformerBaseTestCase
 
 class NamedImageTransformerResNet50Test(NamedImageTransformerBaseTestCase):
 
-    __test__ = True
+    __test__ = False  # TODO(ML-5252) update the model files and enable
     name = "ResNet50"
