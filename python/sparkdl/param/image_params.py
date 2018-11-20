@@ -25,7 +25,7 @@ from pyspark.sql.functions import udf
 from sparkdl.image.imageIO import _reverseChannels, imageArrayToStruct
 from sparkdl.param.converters import SparkDLTypeConverters
 
-OUTPUT_MODES = ["vector", "image"]
+OUTPUT_MODES = ["vector", "image", "sql"]
 
 
 class CanLoadImage(Params):

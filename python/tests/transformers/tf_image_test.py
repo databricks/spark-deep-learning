@@ -176,3 +176,39 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
         self.compareClassSets(tf_topK, transformer_topK)
         self.compareClassOrderings(tf_topK, transformer_topK)
         self.compareArrays(tf_values, transformer_values, decimal=5)
+
+    def test_prediction_vs_tensorflow_inceptionV3_sql(self):
+        output_col = "my_prediction"
+        image_df = image_utils.getSampleImageDF()
+
+        # An example of how a pre-trained keras model can be used with TFImageTransformer
+        with KSessionWrap() as (sess, g):
+            with g.as_default():
+                K.set_learning_phase(0)    # this is important but it's on the user to call it.
+                # nChannels needed for input_tensor in the InceptionV3 call below
+                image_string = utils.imageInputPlaceholder(nChannels=3)
+                resized_images = tf.image.resize_images(image_string,
+                                                        InceptionV3Constants.INPUT_SHAPE)
+                # keras expects array in RGB order, we get it from image schema in BGR =>
+                # need to flip
+                preprocessed = preprocess_input(imageIO._reverseChannels(resized_images))
+                model = InceptionV3(input_tensor=preprocessed, weights="imagenet")
+                print(model.output, "!!!!!!!!!!!!!!")
+                graph = tfx.strip_and_freeze_until([model.output], g, sess, return_graph=True)
+
+        transformer = TFImageTransformer(channelOrder='BGR', inputCol="image", outputCol=output_col, graph=graph,
+                                         inputTensor=image_string, outputTensor=model.output,
+                                         outputMode="sql",
+                                         outputMapping={model.output.name: 'my_prediction'})
+        transformed_df = transformer.transform(image_df.limit(10))
+        print("transformed_df", transformed_df)
+        self.assertDfHasCols(transformed_df, [output_col])
+        collected = transformed_df.collect()
+        transformer_values, transformer_topK = self.transformOutputToComparables(collected,
+                                                                                 output_col, lambda row: row['image']['origin'])
+
+        tf_values, tf_topK = self._executeTensorflow(graph, image_string.name, model.output.name,
+                                                     image_df)
+        self.compareClassSets(tf_topK, transformer_topK)
+        self.compareClassOrderings(tf_topK, transformer_topK)
+        self.compareArrays(tf_values, transformer_values, decimal=5)
