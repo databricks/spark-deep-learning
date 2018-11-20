@@ -92,8 +92,10 @@ unmanagedResources in Compile += baseDirectory.value / "LICENSE"
 unmanagedResourceDirectories in Compile += baseDirectory.value / "python"
 
 includeFilter in unmanagedResources := "requirements.txt" ||
-  new SimpleFileFilter(_.relativeTo(baseDirectory.value / "python")
-    .exists(_.getPath.matches("sparkdl/.*\\.py"))) || "*.png" || "*.jpg" || "*.pb"
+  new SimpleFileFilter(
+    _.relativeTo(baseDirectory.value / "python" / "sparkdl").exists(_.getPath.endsWith(".py")))
+
+unmanagedResourceDirectories in Test += baseDirectory.value / "python" / "tests"
 
 // Reset mappings in spPackage to avoid including duplicate files.
 mappings in (Compile, spPackage) := (mappings in (Compile, packageBin)).value
@@ -110,3 +112,5 @@ releaseProcess := Seq[ReleaseStep](
 
 // Skip tests during assembly
 test in assembly := {}
+
+assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
