@@ -239,7 +239,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
             # Flatten the output for tensorframes
             if output_mode == "sql":
                 output_mapping = [(_getOriginalTensorName(tnsr_name),
-                                   self._getFinalOpName(tnsr_name))
+                                   _getFinalOpName(tnsr_name))
                                   for (tnsr_name, _) in self.getOutputMapping()]
             else:
                 output_mapping = [(self._getOriginalOutputTensorName(),
@@ -256,7 +256,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
     def _stripGraph(self, tf_graph):
         output_mode = self.getOrDefault(self.outputMode)
         if output_mode == "sql":
-            final_op_names = [self._getFinalOpName(n) for (n, _) in self.getOutputMapping()]
+            final_op_names = [_getFinalOpName(n) for (n, _) in self.getOutputMapping()]
         else:
             final_op_names = [self._getFinalOutputOpName()]
         gdef = tfx.strip_and_freeze_until(final_op_names, tf_graph)
@@ -267,14 +267,9 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
 
     def _getOriginalOutputTensorName(self):
         return _getOriginalTensorName(self.getOutputTensor().name)
-        #return USER_GRAPH_NAMESPACE + '/' + self.getOutputTensor().name
 
     def _getFinalOutputTensorName(self):
         return _getFinalTensorName(self.getOutputTensor().name)
-        #return NEW_OUTPUT_PREFIX + '_' + self.getOutputTensor().name
-
-    def _getFinalOpName(self, tensor_name):
-        return tfx.op_name(_getFinalTensorName(tensor_name))
 
     def _getFinalOutputOpName(self):
         return tfx.op_name(self._getFinalOutputTensorName())
@@ -310,9 +305,15 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
             .withColumn(self.getOutputCol(), JVMAPI.listToMLlibVectorUDF(df[tfs_output_col]))\
             .drop(tfs_output_col)
 
+
 def _getOriginalTensorName(tensor_name):
     return USER_GRAPH_NAMESPACE + '/' + tensor_name
 
+
 def _getFinalTensorName(tensor_name):
     return NEW_OUTPUT_PREFIX + '_' + tensor_name
+
+
+def _getFinalOpName(tensor_name):
+    return tfx.op_name(_getFinalTensorName(tensor_name))
 
