@@ -138,11 +138,9 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
                                  .withColumn("__sdl_image_data", image.data)
                                 )  # yapf: disable
 
-            #final_output_name = self._getFinalOutputTensorName()
             output_mapping = self.getOutputMapping()
             mapping_with_tensors = [(final_graph.get_tensor_by_name(tname), col_name)
                                     for (tname, col_name) in output_mapping]
-            #output_tensor = final_graph.get_tensor_by_name(final_output_name)
             output_tensors = [t for (t, _) in mapping_with_tensors]
             tfs_df = (
                 tfs.map_rows(output_tensors, image_df_exploded,
