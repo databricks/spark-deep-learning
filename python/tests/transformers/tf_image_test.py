@@ -193,7 +193,6 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                 # need to flip
                 preprocessed = preprocess_input(imageIO._reverseChannels(resized_images))
                 model = InceptionV3(input_tensor=preprocessed, weights="imagenet")
-                print(model.output, "!!!!!!!!!!!!!!")
                 graph = tfx.strip_and_freeze_until([model.output], g, sess, return_graph=True)
 
         transformer = TFImageTransformer(channelOrder='BGR', inputCol="image", outputCol=output_col, graph=graph,
@@ -201,7 +200,6 @@ class TFImageTransformerExamplesTest(SparkDLTestCase, ImageNetOutputComparisonTe
                                          outputMode="sql",
                                          outputMapping={model.output.name: 'my_prediction'})
         transformed_df = transformer.transform(image_df.limit(10))
-        print("transformed_df", transformed_df)
         self.assertDfHasCols(transformed_df, [output_col])
         collected = transformed_df.collect()
         transformer_values, transformer_topK = self.transformOutputToComparables(collected,

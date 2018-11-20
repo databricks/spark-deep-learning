@@ -141,7 +141,8 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
             output_mode = self.getOrDefault(self.outputMode)
             if output_mode == "sql":
                 output_mapping = self.getOutputMapping()
-                final_output_names = [self._getFinalTensorName(tname) for (tname, _) in output_mapping]
+                final_output_names = [_getFinalTensorName(tname)
+                                      for (tname, _) in output_mapping]
             else:
                 final_output_names = [self._getFinalOutputTensorName()]
 
@@ -166,7 +167,7 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
                 out_df = final_df
                 output_mapping = self.getOutputMapping()
                 for tnsr_name, new_colname in output_mapping:
-                    final_tnsr_name = self._getFinalTensorName(tnsr_name)
+                    final_tnsr_name = _getFinalTensorName(tnsr_name)
                     output_tensor = final_graph.get_tensor_by_name(final_tnsr_name)
                     old_colname = tfx.op_name(output_tensor, final_graph)
                     if old_colname != new_colname:
@@ -237,11 +238,12 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
 
             # Flatten the output for tensorframes
             if output_mode == "sql":
-                output_mapping = [(self._getOriginalTensorName(tnsr_name),
+                output_mapping = [(_getOriginalTensorName(tnsr_name),
                                    self._getFinalOpName(tnsr_name))
                                   for (tnsr_name, _) in self.getOutputMapping()]
             else:
-                output_mapping = [(self._getOriginalOutputTensorName(), self._getFinalOutputOpName())]
+                output_mapping = [(self._getOriginalOutputTensorName(),
+                                   self._getFinalOutputOpName())]
 
             for (tnsr_name, out_name) in output_mapping:
                 output_node = g.get_tensor_by_name(tnsr_name)
@@ -264,21 +266,15 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
         return g
 
     def _getOriginalOutputTensorName(self):
-        return self._getOriginalTensorName(self.getOutputTensor().name)
+        return _getOriginalTensorName(self.getOutputTensor().name)
         #return USER_GRAPH_NAMESPACE + '/' + self.getOutputTensor().name
 
     def _getFinalOutputTensorName(self):
-        return self._getFinalTensorName(self.getOutputTensor().name)
+        return _getFinalTensorName(self.getOutputTensor().name)
         #return NEW_OUTPUT_PREFIX + '_' + self.getOutputTensor().name
 
-    def _getOriginalTensorName(self, tensor_name):
-        return USER_GRAPH_NAMESPACE + '/' + tensor_name
-
-    def _getFinalTensorName(self, tensor_name):
-        return NEW_OUTPUT_PREFIX + '_' + tensor_name
-
     def _getFinalOpName(self, tensor_name):
-        return tfx.op_name(self._getFinalTensorName(tensor_name))
+        return tfx.op_name(_getFinalTensorName(tensor_name))
 
     def _getFinalOutputOpName(self):
         return tfx.op_name(self._getFinalOutputTensorName())
@@ -313,3 +309,10 @@ class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode, 
         return df\
             .withColumn(self.getOutputCol(), JVMAPI.listToMLlibVectorUDF(df[tfs_output_col]))\
             .drop(tfs_output_col)
+
+def _getOriginalTensorName(tensor_name):
+    return USER_GRAPH_NAMESPACE + '/' + tensor_name
+
+def _getFinalTensorName(tensor_name):
+    return NEW_OUTPUT_PREFIX + '_' + tensor_name
+
