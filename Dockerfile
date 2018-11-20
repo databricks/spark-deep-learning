@@ -65,7 +65,7 @@ RUN echo "SCALA_VERSION=$SCALA_VERSION" >> /etc/environment && \
     echo "PYSPARK_PYTHON=$PYSPARK_PYTHON" >> /etc/environment && \
     echo "RUN_ONLY_LIGHT_TESTS=$RUN_ONLY_LIGHT_TESTS" >> /etc/environment
 
-# The sparkdl dir will be mmounted here.
+# The sparkdl dir will be mounted here.
 VOLUME /mnt/sparkdl
 
 ENTRYPOINT service ssh restart && /bin/bash
