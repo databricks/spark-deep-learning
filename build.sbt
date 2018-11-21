@@ -97,6 +97,8 @@ includeFilter in unmanagedResources := "requirements.txt" ||
 
 unmanagedResourceDirectories in Test += baseDirectory.value / "python" / "tests"
 
+includeFilter in (Test, unmanagedResources) := AllPassFilter
+
 // Reset mappings in spPackage to avoid including duplicate files.
 mappings in (Compile, spPackage) := (mappings in (Compile, packageBin)).value
 
