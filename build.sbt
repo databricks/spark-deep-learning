@@ -92,12 +92,9 @@ unmanagedResources in Compile += baseDirectory.value / "LICENSE"
 unmanagedResourceDirectories in Compile += baseDirectory.value / "python"
 
 includeFilter in unmanagedResources := "requirements.txt" ||
-  new SimpleFileFilter(
-    _.relativeTo(baseDirectory.value / "python" / "sparkdl").exists(_.getPath.endsWith(".py")))
-
-unmanagedResourceDirectories in Test += baseDirectory.value / "python" / "tests"
-
-includeFilter in (Test, unmanagedResources) := AllPassFilter
+   new SimpleFileFilter(
+     _.relativeTo(baseDirectory.value / "python")
+       .forall(_.getPath.matches("^sparkdl/.*\\.py$")))
 
 // Reset mappings in spPackage to avoid including duplicate files.
 mappings in (Compile, spPackage) := (mappings in (Compile, packageBin)).value
