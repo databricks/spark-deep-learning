@@ -316,4 +316,3 @@ def _getFinalTensorName(tensor_name):
 
 def _getFinalOpName(tensor_name):
     return tfx.op_name(_getFinalTensorName(tensor_name))
-
