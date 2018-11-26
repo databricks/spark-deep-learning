@@ -5,6 +5,7 @@ from subprocess import check_call, check_output
 
 WORKING_BRANCH = "PREP_RELEASE_%s"
 DATABRICKS_REMOTE = "git@github.com:databricks/spark-deep-learning.git"
+PUBLISH_MODES = {"local": "publishLocal", "m2": "publishM2", "spark-package": "spDist"}
 
 def prominentPrint(x):
     x = str(x)
@@ -12,7 +13,10 @@ def prominentPrint(x):
     lines = ["", "=" * n, x, "=" * n, ""]
     print("\n".join(lines))
 
-def askYesNo(prompt):
+
+def verify(prompt, interactive):
+    if not interactive:
+        return True
     response = None
     while response not in ("y", "yes", "n", "no"):
         response = input(prompt).lower()
@@ -20,22 +24,27 @@ def askYesNo(prompt):
 
 
 @click.command()
-@click.argument("release_version", type=str)
-@click.argument("next_version", type=str)
-@click.option("--local", is_flag=True)
-@click.option("--skip-tests", is_flag=True)
-def main(release_version, next_version, local, skip_tests):
+@click.argument("release-version", type=str)
+@click.argument("next-version", type=str)
+@click.option("--publish-to", default="spark-package",
+              help="Where to publish artifact, one of: %s" % list(PUBLISH_MODES.keys()))
+@click.option("--skip-tests", type=bool, default=True, show_default=True)
+@click.option("--no-prompt", is_flag=True, help="Automated mode with no user prompts.")
+def main(release_version, next_version, publish_to, skip_tests, no_prompt):
+    interactive = not no_prompt
+
     if not next_version.endswith("SNAPSHOT"):
         next_version += "-SNAPSHOT"
 
-    if not askYesNo("Publishing version: %s\n"
+    if not verify("Publishing version: %s\n"
                     "Next version will be: %s\n"
-                    "Continue? (y/n)" % (release_version, next_version)):
+                    "Continue? (y/n)" % (release_version, next_version), interactive):
         return
 
     current_branch = check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
     if current_branch != "master":
-        if not askYesNo("You're not on the master branch do you want to continue? (y/n)"):
+        if not verify("You're not on the master branch do you want to continue? (y/n)",
+                      interactive):
             return
 
     uncommitted_changes = check_output(["git", "diff", "--stat"])
@@ -62,15 +71,10 @@ def main(release_version, next_version, local, skip_tests):
     check_call(["git", "checkout", "v%s" % release_version])
 
     if not skip_tests:
-        check_call(["./build/sbt", "clean", "test"])
-
-        prominentPrint("Running python tests.")
-        check_call(["python/run-tests.sh"])
-
-    if local:
-        check_call(["./build/sbt", "publishLocal"])
-    else:
         raise NotImplementedError("TODO")
+
+    publish_target = PUBLISH_MODES[publish_to]
+    check_call(["./build/sbt", "clean", publish_target])
 
     prominentPrint("Updating local branch: %s" % current_branch)
     check_call(["git", "checkout", current_branch])
@@ -78,7 +82,7 @@ def main(release_version, next_version, local, skip_tests):
     check_call(["git", "branch", "-d", working_branch])
 
     prominentPrint("Local branch updated")
-    if askYesNo("Would you like to push local branch to databricks remote? (y/n)"):
+    if verify("Would you like to push local branch to databricks remote? (y/n)", interactive):
         check_call(["git", "push", DATABRICKS_REMOTE, current_branch])
 
 
