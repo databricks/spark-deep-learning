@@ -26,7 +26,7 @@ def verify(prompt, interactive):
 @click.command()
 @click.argument("release-version", type=str)
 @click.argument("next-version", type=str)
-@click.option("--publish-to", default="spark-package",
+@click.option("--publish-to", default="local",
               help="Where to publish artifact, one of: %s" % list(PUBLISH_MODES.keys()))
 @click.option("--no-prompt", is_flag=True, help="Automated mode with no user prompts.")
 def main(release_version, next_version, publish_to, no_prompt):
