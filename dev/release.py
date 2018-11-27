@@ -28,9 +28,8 @@ def verify(prompt, interactive):
 @click.argument("next-version", type=str)
 @click.option("--publish-to", default="spark-package",
               help="Where to publish artifact, one of: %s" % list(PUBLISH_MODES.keys()))
-@click.option("--skip-tests", type=bool, default=True, show_default=True)
 @click.option("--no-prompt", is_flag=True, help="Automated mode with no user prompts.")
-def main(release_version, next_version, publish_to, skip_tests, no_prompt):
+def main(release_version, next_version, publish_to, no_prompt):
     interactive = not no_prompt
 
     if not next_version.endswith("SNAPSHOT"):
@@ -69,9 +68,6 @@ def main(release_version, next_version, publish_to, skip_tests, no_prompt):
 
     prominentPrint("Building and testing with sbt.")
     check_call(["git", "checkout", "v%s" % release_version])
-
-    if not skip_tests:
-        raise NotImplementedError("TODO")
 
     publish_target = PUBLISH_MODES[publish_to]
     check_call(["./build/sbt", "clean", publish_target])
