@@ -2,6 +2,7 @@
 import click
 from six.moves import input
 from subprocess import check_call, check_output
+import sys
 
 WORKING_BRANCH = "PREP_RELEASE_%s"
 DATABRICKS_REMOTE = "git@github.com:databricks/spark-deep-learning.git"
@@ -32,32 +33,37 @@ def verify(prompt, interactive):
 def main(release_version, next_version, publish_to, no_prompt):
     interactive = not no_prompt
 
+    if publish_to not in PUBLISH_MODES:
+        modes = list(PUBLISH_MODES.keys())
+        print("Unknown publish target, --publish-to should be one of: %s." % modes)
+        sys.exit(1)
+
     if not next_version.endswith("SNAPSHOT"):
         next_version += "-SNAPSHOT"
 
     if not verify("Publishing version: %s\n"
                     "Next version will be: %s\n"
                     "Continue? (y/n)" % (release_version, next_version), interactive):
-        return
+        sys.exit(1)
 
     current_branch = check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
     if current_branch != "master":
         if not verify("You're not on the master branch do you want to continue? (y/n)",
                       interactive):
-            return
+            sys.exit(1)
 
     uncommitted_changes = check_output(["git", "diff", "--stat"])
     if uncommitted_changes != "":
         print(uncommitted_changes)
         print("There seem to be uncommitted changes on your current branch. Please commit or "
               "stash them and try again.")
-        return
+        sys.exit(1)
 
     working_branch = WORKING_BRANCH % release_version
     if working_branch in check_output(["git", "branch"]):
         prominentPrint(
             "Working branch %s already exists, please delete it and try again." % working_branch)
-        return
+        sys.exit(1)
 
     prominentPrint("Creating working branch for this release.")
     check_call(["git", "checkout", "-b", working_branch])
