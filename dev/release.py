@@ -8,10 +8,10 @@ import sys
 DATABRICKS_REMOTE = "git@github.com:databricks/spark-deep-learning.git"
 PUBLISH_MODES = {"local": "publishLocal", "m2": "publishM2", "spark-package-publish": "spPublish"}
 
-WORKING_BRANCH = "WORKING_BRANCH_RELEASE_%s_@%s-%s-%s"
-WORKING_DOCS_BRANCH = "WORKING_BRANCH_DOCS_%s_@%s-%s-%s"
+WORKING_BRANCH = "WORKING_BRANCH_RELEASE_%s_@%s"
+# lower case "z" puts the branch at the end of the github UI.
+WORKING_DOCS_BRANCH = "zWORKING_BRANCH_DOCS_%s_@%s"
 RELEASE_TAG = "v%s"
-DOCS_TAG = "gh-pages-v%s"
 
 
 def prominentPrint(x):
@@ -41,7 +41,7 @@ def verify(prompt, interactive):
 def main(release_version, next_version, publish_to, no_prompt, git_remote):
     interactive = not no_prompt
 
-    time = datetime.now()
+    time = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     if publish_to not in PUBLISH_MODES:
         modes = list(PUBLISH_MODES.keys())
         print("Unknown publish target, --publish-to should be one of: %s." % modes)
@@ -68,12 +68,11 @@ def main(release_version, next_version, publish_to, no_prompt, git_remote):
               "stash them and try again.")
         sys.exit(1)
 
-    working_branch = WORKING_BRANCH % (release_version, time.hour, time.minute, time.second)
-    gh_pages_branch = WORKING_DOCS_BRANCH % (release_version, time.hour, time.minute, time.second)
+    working_branch = WORKING_BRANCH % (release_version, time)
+    gh_pages_branch = WORKING_DOCS_BRANCH % (release_version, time)
 
     release_tag = RELEASE_TAG % release_version
-    docs_tag = DOCS_TAG % release_version
-    target_tags = [release_tag, docs_tag]
+    target_tags = [release_tag]
 
     existing_tags = check_output(["git", "tag"]).decode().split()
     conflict_tags = list(filter(lambda a: a in existing_tags, target_tags))
@@ -121,11 +120,10 @@ def main(release_version, next_version, publish_to, no_prompt, git_remote):
     commit_message = "Build docs for release %s." % release_version
     check_call(["git", "add", "-f", "docs/_site"])
     check_call(["git", "commit", "-m", commit_message])
-    check_call(["git", "tag", docs_tag])
-    msg = "Would you like to push %s to remote, %s, and update gh-pages branch? (y/n)"
-    msg %= (docs_tag, git_remote)
+    msg = "Would you like to push docs branch to %s and update gh-pages branch? (y/n)"
+    msg %= git_remote
     if verify(msg, interactive):
-        check_call(["git", "push", git_remote, docs_tag])
+        check_call(["git", "push", git_remote, gh_pages_branch])
         check_call(["git", "push", "-f", git_remote, gh_pages_branch+":gh-pages"])
 
     check_call(["git", "checkout", current_branch])
