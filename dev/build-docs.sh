@@ -10,4 +10,5 @@ docker build -t databricks/sparkdl-docs docs/
 build/sbt assembly
 
 # build the API docs
-docker run --rm -v "$(pwd):/mnt/sparkdl" databricks/sparkdl-docs dev/build-docs-in-docker.sh
+docker run --rm -v "$(pwd):/mnt/sparkdl" databricks/sparkdl-docs \
+    bash -i -c dev/build-docs-in-docker.sh
