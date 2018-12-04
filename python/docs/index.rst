@@ -15,11 +15,11 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-    sparkdl.graph
-    sparkdl.image
-    sparkdl.transformers
-    sparkdl.udf
-    sparkdl.utils
+   sparkdl.graph
+   sparkdl.image
+   sparkdl.transformers
+   sparkdl.udf
+   sparkdl.utils
 
 Module contents
 ---------------
