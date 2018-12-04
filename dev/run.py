@@ -5,6 +5,7 @@ This script can be used to run all things dev. Environment setup, Style-checks, 
 
 from __future__ import print_function
 
+from glob import glob
 import os
 import subprocess
 import sys
@@ -32,10 +33,6 @@ def call_subprocess(cmd, add_env={}, verbose=True):
     return subprocess.call(cmd, env=env)
 
 
-def _list_files_with_extension(dir_name, ext):
-    return [os.path.join(dir_name, f) for f in os.listdir(dir_name) if f.endswith(ext)]
-
-
 def _get_configured_env(_required_env):
     spark_home = _required_env["SPARK_HOME"]
     scala_version = _required_env["SCALA_VERSION"]
@@ -48,17 +45,17 @@ def _get_configured_env(_required_env):
     configured_env = {}
 
     spark_lib_path = os.path.join(spark_home, "python/lib")
-    configured_env["LIBS"] = ":".join(_list_files_with_extension(spark_lib_path, ".zip"))
+    configured_env["LIBS"] = ":".join(glob(spark_lib_path + "/*.zip"))
 
     scala_version_major_minor = ".".join(scala_version.split(".")[0:2])
     assembly_path = os.path.join(PROJECT_DIR, "target/scala-" + scala_version_major_minor)
-    jar_path = ":".join(_list_files_with_extension(assembly_path, ".jar"))
+    jar_path = ":".join(glob(assembly_path + "/*.jar"))
     configured_env["JAR_PATH"] = jar_path
 
     python_paths = [
         os.getenv("PYTHONPATH", ""),
         os.path.join(PROJECT_DIR, "python"),
-        _list_files_with_extension(assembly_path, ".jar")[-1],
+        glob(assembly_path + "/*assembly*.jar")[-1],
         os.path.join(spark_home, "python"),
         configured_env["LIBS"]
     ]
