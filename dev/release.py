@@ -6,7 +6,12 @@ from subprocess import check_call, check_output
 import sys
 
 DATABRICKS_REMOTE = "git@github.com:databricks/spark-deep-learning.git"
-PUBLISH_MODES = {"local": "publishLocal", "m2": "publishM2", "spark-package-publish": "spPublish"}
+PUBLISH_MODES = {
+    "local": "publishLocal",
+    "m2": "publishM2",
+    "spark-package-publish": "spPublish",
+}
+PUBLISH_DOCS_DEFAULT = True
 
 WORKING_BRANCH = "WORKING_BRANCH_RELEASE_%s_@%s"
 # lower case "z" puts the branch at the end of the github UI.
@@ -33,12 +38,14 @@ def verify(prompt, interactive):
 @click.command()
 @click.argument("release-version", type=str)
 @click.argument("next-version", type=str)
-@click.option("--publish-to", default="local",
+@click.option("--publish-to", default="local", show_default=True,
               help="Where to publish artifact, one of: %s" % list(PUBLISH_MODES.keys()))
 @click.option("--no-prompt", is_flag=True, help="Automated mode with no user prompts.")
 @click.option("--git-remote", default=DATABRICKS_REMOTE,
               help="Push current branch and docs to this git remote.")
-def main(release_version, next_version, publish_to, no_prompt, git_remote):
+@click.option("--publish-docs", type=bool, default=PUBLISH_DOCS_DEFAULT, show_default=True,
+              help="Publish docs to github-pages.")
+def main(release_version, next_version, publish_to, no_prompt, git_remote, publish_docs):
     interactive = not no_prompt
 
     time = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
@@ -110,7 +117,7 @@ def main(release_version, next_version, publish_to, no_prompt, git_remote):
 
     prominentPrint("Building release docs")
 
-    if not verify("Would you like to build release docs? (y/n)", interactive):
+    if not (publish_docs and verify("Would you like to build release docs? (y/n)", interactive)):
         # All done, exit happy
         sys.exit(0)
 
