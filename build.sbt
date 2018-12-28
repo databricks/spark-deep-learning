@@ -113,3 +113,5 @@ releaseProcess := Seq[ReleaseStep](
 test in assembly := {}
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
+
+credentials += Credentials(Path.userHome / ".spark-packages-credential")
