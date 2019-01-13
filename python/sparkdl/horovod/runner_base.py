@@ -43,6 +43,8 @@ class HorovodRunner(object):
         :param np: number of parallel processes to use for the Horovod job.
             This argument only takes effect on Databricks Runtime 5.0 ML and above.
             It is ignored in the open-source version.
+            On Databricks, each process will take an available task slot,
+            which maps to a GPU on a GPU cluster or a CPU core on a CPU cluster.
             Accepted values are:
 
             - If -1, this will spawn a subprocess on the driver node to run the Horovod job locally.
