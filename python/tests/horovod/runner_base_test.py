@@ -51,3 +51,10 @@ class HorovodRunnerBaseTestCase(unittest.TestCase):
 
         hr.run(append, value=1)
         self.assertEquals(data[0], 1)
+
+    def test_return_value(self):
+        """Test that the return value is returned to the user."""
+        hr = HorovodRunner(np=-1)
+        return_value = hr.run(lambda: 42)
+        self.assertEquals(return_value, 42)
+

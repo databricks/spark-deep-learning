@@ -79,7 +79,9 @@ class HorovodRunner(object):
             Avoid referencing large objects in the function, which might result large pickled data,
             making the job slow to start.
         :param kwargs: keyword arguments passed to the main function at invocation time.
-        :return: None
+        :return: return value of the main function.
+            With `np>=0`, this returns the value from the rank 0 process. Note that the returned
+            value should be serializable using cloudpickle.
         """
         logger = logging.getLogger("HorovodRunner")
         logger.warning(
@@ -87,4 +89,4 @@ class HorovodRunner(object):
             "It only does basic checks and invokes the main function, "
             "which is for local development only. "
             "Please use Databricks Runtime ML 5.0+ to distribute the job.")
-        main(**kwargs)
+        return main(**kwargs)
