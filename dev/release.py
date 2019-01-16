@@ -9,7 +9,7 @@ DATABRICKS_REMOTE = "git@github.com:databricks/spark-deep-learning.git"
 PUBLISH_MODES = {
     "local": "publishLocal",
     "m2": "publishM2",
-    "spark-package-publish": "spPublish",
+    "spark-package-publish": "spDist",
 }
 PUBLISH_DOCS_DEFAULT = True
 
