@@ -49,14 +49,13 @@ class HorovodRunner(object):
               Training stdout and stderr messages go to the notebook cell output.
               This is useful for debugging and we recommend testing your code under this mode first.
               However, be careful of heavy use of the Spark driver on a shared Databricks cluster.
-            - If >0, this will launch a Spark job with `np` tasks starting all together and run the
-              Horovod job on the task nodes.
-              It will wait until `np` task slots are available to launch the job.
-              If `np` is greater than the total number of task slots on the cluster,
-              the job will fail.
+            - If >0, HorovodRunner will start `np` training (mpi) tasks on the cluster. Tasks
+              will be placed either 1 per GPU on GPU clusters or 1 per spark task slot on CPU
+              clusters. HorovodRunner will wait until `np` spaces are available on the cluster to
+              start the the job.
               Training stdout and stderr messages are redirected to the stderr stream of the first
               task, which you can find in the Spark UI.
-            - If 0, this will use all task slots on the cluster to launch the job.
+            - If 0, HorovodRunner will choose an `np` to fully utilizes the cluster.
         """
         self.num_processor = np
         if self.num_processor < -1:
