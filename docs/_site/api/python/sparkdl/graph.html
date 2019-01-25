@@ -1,0 +1,389 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.graph module &#8212; pysparkdl 1.4.0 documentation</title>
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/pysparkdl.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="sparkdl-graph-module">
+<h1>sparkdl.graph module<a class="headerlink" href="#sparkdl-graph-module" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-sparkdl.graph.input">
+<span id="sparkdl-graph-input-module"></span><h2>sparkdl.graph.input module<a class="headerlink" href="#module-sparkdl.graph.input" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="sparkdl.graph.input.TFInputGraph">
+<em class="property">class </em><code class="descclassname">sparkdl.graph.input.</code><code class="descname">TFInputGraph</code><span class="sig-paren">(</span><em>graph_def</em>, <em>input_tensor_name_from_signature</em>, <em>output_tensor_name_from_signature</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/input.html#TFInputGraph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.input.TFInputGraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<blockquote>
+<div><p>An opaque object containing TensorFlow graph.
+This object can be serialized.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>We recommend constructing this object using one of the class constructor methods.</p>
+<ul class="last simple">
+<li><a class="reference internal" href="#sparkdl.graph.input.TFInputGraph.fromGraph" title="sparkdl.graph.input.TFInputGraph.fromGraph"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fromGraph()</span></code></a></li>
+<li><a class="reference internal" href="#sparkdl.graph.input.TFInputGraph.fromGraphDef" title="sparkdl.graph.input.TFInputGraph.fromGraphDef"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fromGraphDef()</span></code></a></li>
+<li><a class="reference internal" href="#sparkdl.graph.input.TFInputGraph.fromCheckpoint" title="sparkdl.graph.input.TFInputGraph.fromCheckpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fromCheckpoint()</span></code></a></li>
+<li><a class="reference internal" href="#sparkdl.graph.input.TFInputGraph.fromCheckpointWithSignature" title="sparkdl.graph.input.TFInputGraph.fromCheckpointWithSignature"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fromCheckpointWithSignature()</span></code></a></li>
+<li><a class="reference internal" href="#sparkdl.graph.input.TFInputGraph.fromSavedModel" title="sparkdl.graph.input.TFInputGraph.fromSavedModel"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fromSavedModel()</span></code></a></li>
+<li><a class="reference internal" href="#sparkdl.graph.input.TFInputGraph.fromSavedModelWithSignature" title="sparkdl.graph.input.TFInputGraph.fromSavedModelWithSignature"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fromSavedModelWithSignature()</span></code></a></li>
+</ul>
+</div>
+<p>When the graph contains serving signatures in which a set of well-known names are associated
+with their corresponding raw tensor names in the graph, we extract and store them here.
+For example, the TensorFlow saved model may contain the following structure,
+so that end users can retrieve the the input tensor via <cite>well_known_input_sig</cite> and
+the output tensor via <cite>well_known_output_sig</cite> without knowing the actual tensor names a priori.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sigdef</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;well_known_prediction_signature&#39;</span><span class="p">:</span>
+<span class="n">inputs</span> <span class="p">{</span> <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;well_known_input_sig&quot;</span>
+  <span class="n">value</span> <span class="p">{</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;tnsrIn:0&quot;</span>
+    <span class="n">dtype</span><span class="p">:</span> <span class="n">DT_DOUBLE</span>
+    <span class="n">tensor_shape</span> <span class="p">{</span> <span class="n">dim</span> <span class="p">{</span> <span class="n">size</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span> <span class="p">}</span> <span class="n">dim</span> <span class="p">{</span> <span class="n">size</span><span class="p">:</span> <span class="mi">17</span> <span class="p">}</span> <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="n">outputs</span> <span class="p">{</span> <span class="n">key</span><span class="p">:</span> <span class="s2">&quot;well_known_output_sig&quot;</span>
+  <span class="n">value</span> <span class="p">{</span>
+    <span class="n">name</span><span class="p">:</span> <span class="s2">&quot;tnsrOut:0&quot;</span>
+    <span class="n">dtype</span><span class="p">:</span> <span class="n">DT_DOUBLE</span>
+    <span class="n">tensor_shape</span> <span class="p">{</span> <span class="n">dim</span> <span class="p">{</span> <span class="n">size</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span> <span class="p">}</span> <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}}</span>
+</pre></div>
+</div>
+<p>In this case, the class will internally store the mapping from signature names to tensor names.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s1">&#39;well_known_input_sig&#39;</span><span class="p">:</span> <span class="s1">&#39;tnsrIn:0&#39;</span><span class="p">}</span>
+<span class="p">{</span><span class="s1">&#39;well_known_output_sig&#39;</span><span class="p">:</span> <span class="s1">&#39;tnsrOut:0&#39;</span><span class="p">}</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">param graph_def:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tf.GraphDef</span></code>, a serializable object containing the topology and
+computation units of the TensorFlow graph. The graph object is prepared for
+inference, i.e. the variables are converted to constants and operations like
+<a class="reference external" href="https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization">BatchNormalization</a> are converted to be independent of input batch.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">param input_tensor_name_from_signature:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">dict, signature key names mapped to tensor names.
+Please see the example above.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">param output_tensor_name_from_signature:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body">dict, signature key names mapped to tensor names
+Please see the example above.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<dl class="classmethod">
+<dt id="sparkdl.graph.input.TFInputGraph.fromCheckpoint">
+<em class="property">classmethod </em><code class="descname">fromCheckpoint</code><span class="sig-paren">(</span><em>checkpoint_dir</em>, <em>feed_names</em>, <em>fetch_names</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/input.html#TFInputGraph.fromCheckpoint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.input.TFInputGraph.fromCheckpoint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a TFInputGraph object from a checkpoint, ignore the embedded
+signature_def, if there is any.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>checkpoint_dir</strong> – str, name of the directory containing the TensorFlow graph
+training checkpoint.</li>
+<li><strong>feed_names</strong> – list, names of the input tensors.</li>
+<li><strong>fetch_names</strong> – list, names of the output tensors.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="sparkdl.graph.input.TFInputGraph.fromCheckpointWithSignature">
+<em class="property">classmethod </em><code class="descname">fromCheckpointWithSignature</code><span class="sig-paren">(</span><em>checkpoint_dir</em>, <em>signature_def_key</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/input.html#TFInputGraph.fromCheckpointWithSignature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.input.TFInputGraph.fromCheckpointWithSignature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a TFInputGraph object from a checkpoint, using the embedded
+signature_def. Throw an error if we cannot find an entry with the <cite>signature_def_key</cite>
+inside the <cite>signature_def</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>checkpoint_dir</strong> – str, name of the directory containing the TensorFlow graph
+training checkpoint.</li>
+<li><strong>signature_def_key</strong> – str, key (name) of the signature_def to use. It should be in
+the list of <cite>signature_def</cite> structures saved with the checkpoint.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="sparkdl.graph.input.TFInputGraph.fromGraph">
+<em class="property">classmethod </em><code class="descname">fromGraph</code><span class="sig-paren">(</span><em>graph</em>, <em>sess</em>, <em>feed_names</em>, <em>fetch_names</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/input.html#TFInputGraph.fromGraph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.input.TFInputGraph.fromGraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a TFInputGraph from a in memory <cite>tf.Graph</cite> object.
+The graph might contain variables that are maintained in the provided session.
+Thus we need an active session in which the graph’s variables are initialized or
+restored. We do not close the session. As a result, this constructor can be used
+inside a standard TensorFlow session context.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">sess</span><span class="p">:</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">import_my_tensorflow_graph</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+    <span class="nb">input</span> <span class="o">=</span> <span class="n">TFInputGraph</span><span class="o">.</span><span class="n">fromGraph</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>graph</strong> – a <code class="xref py py-class docutils literal notranslate"><span class="pre">tf.Graph</span></code> object containing the topology and computation units of
+the TensorFlow graph.</li>
+<li><strong>feed_names</strong> – list, names of the input tensors.</li>
+<li><strong>fetch_names</strong> – list, names of the output tensors.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="sparkdl.graph.input.TFInputGraph.fromGraphDef">
+<em class="property">classmethod </em><code class="descname">fromGraphDef</code><span class="sig-paren">(</span><em>graph_def</em>, <em>feed_names</em>, <em>fetch_names</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/input.html#TFInputGraph.fromGraphDef"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.input.TFInputGraph.fromGraphDef" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a TFInputGraph from a tf.GraphDef object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>graph_def</strong> – <code class="xref py py-class docutils literal notranslate"><span class="pre">tf.GraphDef</span></code>, a serializable object containing the topology and
+computation units of the TensorFlow graph.</li>
+<li><strong>feed_names</strong> – list, names of the input tensors.</li>
+<li><strong>fetch_names</strong> – list, names of the output tensors.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="sparkdl.graph.input.TFInputGraph.fromSavedModel">
+<em class="property">classmethod </em><code class="descname">fromSavedModel</code><span class="sig-paren">(</span><em>saved_model_dir</em>, <em>tag_set</em>, <em>feed_names</em>, <em>fetch_names</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/input.html#TFInputGraph.fromSavedModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.input.TFInputGraph.fromSavedModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a TFInputGraph object from a saved model (<cite>tf.SavedModel</cite>) directory.
+Ignore the the embedded signature_def, if there is any.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>saved_model_dir</strong> – str, name of the directory containing the TensorFlow graph
+training checkpoint.</li>
+<li><strong>tag_set</strong> – str, name of the graph stored in this meta_graph of the saved model
+that we are interested in using.</li>
+<li><strong>feed_names</strong> – list, names of the input tensors.</li>
+<li><strong>fetch_names</strong> – list, names of the output tensors.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="sparkdl.graph.input.TFInputGraph.fromSavedModelWithSignature">
+<em class="property">classmethod </em><code class="descname">fromSavedModelWithSignature</code><span class="sig-paren">(</span><em>saved_model_dir</em>, <em>tag_set</em>, <em>signature_def_key</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/input.html#TFInputGraph.fromSavedModelWithSignature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.input.TFInputGraph.fromSavedModelWithSignature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a TFInputGraph object from a saved model (<cite>tf.SavedModel</cite>) directory,
+using the embedded signature_def. Throw error if we cannot find an entry with
+the <cite>signature_def_key</cite> inside the <cite>signature_def</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>saved_model_dir</strong> – str, name of the directory containing the TensorFlow graph
+training checkpoint.</li>
+<li><strong>tag_set</strong> – str, name of the graph stored in this meta_graph of the saved model
+that we are interested in using.</li>
+<li><strong>signature_def_key</strong> – str, key (name) of the signature_def to use. It should be in
+the list of <cite>signature_def</cite> structures saved with the
+TensorFlow <cite>SavedModel</cite>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.graph.input.TFInputGraph.translateInputMapping">
+<code class="descname">translateInputMapping</code><span class="sig-paren">(</span><em>input_mapping</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/input.html#TFInputGraph.translateInputMapping"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.input.TFInputGraph.translateInputMapping" title="Permalink to this definition">¶</a></dt>
+<dd><p>When the meta_graph contains signature_def, we expect users to provide
+input and output mapping with respect to the tensor reference keys
+embedded in the <cite>signature_def</cite>.</p>
+<p>This function translates the input_mapping into the canonical format,
+which maps input DataFrame column names to tensor names.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>input_mapping</strong> – dict, DataFrame column name to tensor reference names
+defined in the signature_def key.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="sparkdl.graph.input.TFInputGraph.translateOutputMapping">
+<code class="descname">translateOutputMapping</code><span class="sig-paren">(</span><em>output_mapping</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/input.html#TFInputGraph.translateOutputMapping"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.input.TFInputGraph.translateOutputMapping" title="Permalink to this definition">¶</a></dt>
+<dd><p>When the meta_graph contains signature_def, we expect users to provide
+input and output mapping with respect to the tensor reference keys
+embedded in the <cite>signature_def</cite>.</p>
+<p>This function translates the output_mapping into the canonical format,
+which maps tensor names into input DataFrame column names.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>output_mapping</strong> – dict, tensor reference names defined in the signature_def keys
+into the output DataFrame column names.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-sparkdl.graph.utils">
+<span id="sparkdl-graph-utils-module"></span><h2>sparkdl.graph.utils module<a class="headerlink" href="#module-sparkdl.graph.utils" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="sparkdl.graph.utils.strip_and_freeze_until">
+<code class="descclassname">sparkdl.graph.utils.</code><code class="descname">strip_and_freeze_until</code><span class="sig-paren">(</span><em>fetches</em>, <em>graph</em>, <em>sess=None</em>, <em>return_graph=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/sparkdl/graph/utils.html#strip_and_freeze_until"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.graph.utils.strip_and_freeze_until" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a static view of the graph by</p>
+<ul class="simple">
+<li>Converting all variables into constants</li>
+<li>Removing graph elements not reachacble to <cite>fetches</cite></li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>graph</strong> – tf.Graph, the graph to be frozen</li>
+<li><strong>fetches</strong> – list, graph elements representing the outputs of the graph</li>
+<li><strong>return_graph</strong> – bool, if set True, return the graph function object</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">GraphDef, the GraphDef object with cleanup procedure applied</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">sparkdl.graph module</a><ul>
+<li><a class="reference internal" href="#module-sparkdl.graph.input">sparkdl.graph.input module</a></li>
+<li><a class="reference internal" href="#module-sparkdl.graph.utils">sparkdl.graph.utils module</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/sparkdl/graph.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+ 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.2.
+    </div>
+  </body>
+</html>
