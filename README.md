@@ -53,7 +53,7 @@ To run the Python unit tests, run the `run-tests.sh` script from the `python/` d
 
 ```bash
 # Be sure to run build/sbt assembly before running the Python tests
-sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.3.0-bin-hadoop2.7 PYSPARK_PYTHON=python3 SCALA_VERSION=2.11.8 SPARK_VERSION=2.3.0 ./python/run-tests.sh
+sparkdl$ SPARK_HOME=/usr/local/lib/spark-2.3.0-bin-hadoop2.7 PYSPARK_PYTHON=python3 SCALA_VERSION=2.11.12 SPARK_VERSION=2.3.0 ./python/run-tests.sh
 ```
 
 ## Spark version compatibility

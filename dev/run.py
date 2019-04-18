@@ -122,9 +122,9 @@ def print_if(cond, *args):
 
 def _get_required_env(default=False, interactive=False, override=False, verbose=False):
     default_env = {'PYSPARK_PYTHON': 'python',
-                   'SPARK_VERSION': '2.3.1',
-                   'SPARK_HOME': os.path.join(HOME, 'bin/spark-2.3.1-bin-hadoop2.7/'),
-                   'SCALA_VERSION': '2.11.8'}
+                   'SPARK_VERSION': '2.4.1',
+                   'SPARK_HOME': os.path.join(HOME, 'bin/spark-2.4.1-bin-hadoop2.7/'),
+                   'SCALA_VERSION': '2.11.12'}
 
     if override and not (interactive or default):
         raise ValueError("override mode requires to use default or interactive mode")
