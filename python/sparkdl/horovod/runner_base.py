@@ -58,8 +58,8 @@ class HorovodRunner(object):
               If `np` is greater than the total number of task slots on the cluster,
               the job will fail. As of  Databricks Runtime 5.4 ML, training stdout and stderr
               messages go to the notebook cell output. In the event that the cell output is
-              truncated and must be truncated, full logs are available in stderr stream of task 0
-              under the 2nd spark job started by HorovodRunner, which you can find in the Spark UI.
+              truncated, full logs are available in stderr stream of task 0 under the 2nd spark
+              job started by HorovodRunner, which you can find in the Spark UI.
             - If 0, this will use all task slots on the cluster to launch the job.
         """
         self.num_processor = np
