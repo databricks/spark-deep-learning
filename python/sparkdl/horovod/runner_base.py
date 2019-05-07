@@ -48,16 +48,18 @@ class HorovodRunner(object):
             Accepted values are:
 
             - If -1, this will spawn a subprocess on the driver node to run the Horovod job locally.
-              Training stdout and stderr messages go to the notebook cell output.
-              This is useful for debugging and we recommend testing your code under this mode first.
-              However, be careful of heavy use of the Spark driver on a shared Databricks cluster.
+              Training stdout and stderr messages go to the notebook cell output, and are also
+              available in driver logs in case the cell output is truncated. This is useful for
+              debugging and we recommend testing your code under this mode first. However, be
+              careful of heavy use of the Spark driver on a shared Databricks cluster.
             - If >0, this will launch a Spark job with `np` tasks starting all together and run the
               Horovod job on the task nodes.
               It will wait until `np` task slots are available to launch the job.
               If `np` is greater than the total number of task slots on the cluster,
-              the job will fail.
-              Training stdout and stderr messages are redirected to the stderr stream of the first
-              task, which you can find in the Spark UI.
+              the job will fail. As of  Databricks Runtime 5.4 ML, training stdout and stderr
+              messages go to the notebook cell output. In the event that the cell output is
+              truncated, full logs are available in stderr stream of task 0 under the 2nd spark
+              job started by HorovodRunner, which you can find in the Spark UI.
             - If 0, this will use all task slots on the cluster to launch the job.
         """
         self.num_processor = np
