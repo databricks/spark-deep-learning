@@ -1,16 +1,16 @@
 # This file should list any python package dependencies.
 coverage>=4.4.1
 h5py>=2.7.0
-keras==2.2.4 # NOTE: this package has only been tested with keras 2.2.4
+keras==2.2.4 # NOTE: this package has only been tested with this keras version
 nose>=1.3.7  # for testing
 parameterized>=0.6.1 # for testing
 pillow>=4.1.1,<4.2
 pygments>=2.2.0
-tensorflow==1.12.0 # NOTE: This package has only been tested with this TensorFlow version.
+tensorflow==1.13.1 # NOTE: This package has only been tested with this TensorFlow version.
 pandas>=0.19.1
 six>=1.10.0
 paramiko>=2.4.0
 PyNaCl==1.2.1 # Note: This is a transitive dependency of paramiko v 1.3.0 fails
 cloudpickle>=0.5.2
-horovod==0.15.2
+horovod>=0.16.0
 wrapt==1.10.11
