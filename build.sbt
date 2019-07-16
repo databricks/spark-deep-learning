@@ -3,7 +3,7 @@
 
 import ReleaseTransformations._
 
-val sparkVer = sys.props.getOrElse("spark.version", "2.4.0")
+val sparkVer = sys.props.getOrElse("spark.version", "2.4.3")
 val sparkBranch = sparkVer.substring(0, 3)
 val defaultScalaVer = sparkBranch match {
   case "2.3" => "2.11.8"
