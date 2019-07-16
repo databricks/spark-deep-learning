@@ -47,7 +47,7 @@ class HorovodRunner(object):
             which maps to a GPU on a GPU cluster or a CPU core on a CPU cluster.
             Accepted values are:
 
-            - If -1, this will spawn a subprocess on the driver node to run the Horovod job locally.
+            - If <0, this will spawn -np subprocesses on the driver node to run Horovod locally.
               Training stdout and stderr messages go to the notebook cell output, and are also
               available in driver logs in case the cell output is truncated. This is useful for
               debugging and we recommend testing your code under this mode first. However, be
@@ -63,8 +63,6 @@ class HorovodRunner(object):
             - If 0, this will use all task slots on the cluster to launch the job.
         """
         self.num_processor = np
-        if self.num_processor < -1:
-            raise ValueError("Invalid number of processes: np = %s" % str(self.num_processor))
 
     def run(self, main, **kwargs):
         """
