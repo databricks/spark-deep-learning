@@ -47,11 +47,12 @@ class HorovodRunner(object):
             which maps to a GPU on a GPU cluster or a CPU core on a CPU cluster.
             Accepted values are:
 
-            - If <0, this will spawn -np subprocesses on the driver node to run Horovod locally.
+            - If <0, this will spawn `-np` subprocesses on the driver node to run Horovod locally.
               Training stdout and stderr messages go to the notebook cell output, and are also
               available in driver logs in case the cell output is truncated. This is useful for
               debugging and we recommend testing your code under this mode first. However, be
               careful of heavy use of the Spark driver on a shared Databricks cluster.
+              Note that `np < -1` is only supported on Databricks Runtime 5.5 ML and above.
             - If >0, this will launch a Spark job with `np` tasks starting all together and run the
               Horovod job on the task nodes.
               It will wait until `np` task slots are available to launch the job.
