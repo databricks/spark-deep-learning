@@ -756,17 +756,20 @@ On Databricks, each process will take an available task slot,
 which maps to a GPU on a GPU cluster or a CPU core on a CPU cluster.
 Accepted values are:</p>
 <ul class="simple">
-<li>If -1, this will spawn a subprocess on the driver node to run the Horovod job locally.
-Training stdout and stderr messages go to the notebook cell output.
-This is useful for debugging and we recommend testing your code under this mode first.
-However, be careful of heavy use of the Spark driver on a shared Databricks cluster.</li>
+<li>If &lt;0, this will spawn <cite>-np</cite> subprocesses on the driver node to run Horovod locally.
+Training stdout and stderr messages go to the notebook cell output, and are also
+available in driver logs in case the cell output is truncated. This is useful for
+debugging and we recommend testing your code under this mode first. However, be
+careful of heavy use of the Spark driver on a shared Databricks cluster.
+Note that <cite>np &lt; -1</cite> is only supported on Databricks Runtime 5.5 ML and above.</li>
 <li>If &gt;0, this will launch a Spark job with <cite>np</cite> tasks starting all together and run the
 Horovod job on the task nodes.
 It will wait until <cite>np</cite> task slots are available to launch the job.
 If <cite>np</cite> is greater than the total number of task slots on the cluster,
-the job will fail.
-Training stdout and stderr messages are redirected to the stderr stream of the first
-task, which you can find in the Spark UI.</li>
+the job will fail. As of  Databricks Runtime 5.4 ML, training stdout and stderr
+messages go to the notebook cell output. In the event that the cell output is
+truncated, full logs are available in stderr stream of task 0 under the 2nd spark
+job started by HorovodRunner, which you can find in the Spark UI.</li>
 <li>If 0, this will use all task slots on the cluster to launch the job.</li>
 </ul>
 </td>
@@ -877,7 +880,7 @@ value should be serializable using cloudpickle.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
     </div>
   </body>
 </html>
