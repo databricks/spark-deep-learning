@@ -40,7 +40,7 @@ sparkComponents ++= Seq("mllib-local", "mllib", "sql")
 
 // add any Spark Package dependencies using spDependencies.
 // e.g. spDependencies += "databricks/spark-avro:0.1"
-spDependencies += s"databricks/tensorframes:0.6.0-s_$scalaMajorVersion"
+spDependencies += s"databricks/tensorframes:0.7.0-s_$scalaMajorVersion"
 
 
 libraryDependencies ++= Seq(
