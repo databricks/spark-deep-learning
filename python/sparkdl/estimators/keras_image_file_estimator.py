@@ -69,10 +69,6 @@ class _ThreadSafeIterator(object):
             self.counter += 1
         return self.models[index]
 
-    def next(self):
-        """For python2 compatibility."""
-        return self.__next__()
-
 
 class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, HasKerasModel,
                               HasKerasOptimizer, HasKerasLoss, CanLoadImage, HasOutputMode):

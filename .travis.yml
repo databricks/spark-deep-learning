@@ -7,12 +7,11 @@ language: minimal
 env:
   global:
     - DOCKER_COMPOSE_VERSION=1.22.0
+    - PYTHON_VERSION=3.7
   matrix:
-    - PYTHON_VERSION=3.6 TEST_SUITE=pylint
-    - PYTHON_VERSION=2.7 TEST_SUITE=pylint
-    - PYTHON_VERSION=3.6 TEST_SUITE=python-tests
-    - PYTHON_VERSION=2.7 TEST_SUITE=python-tests
-    - PYTHON_VERSION=3.6 TEST_SUITE=scala-tests
+    - TEST_SUITE=pylint
+    - TEST_SUITE=python-tests
+    - TEST_SUITE=scala-tests
 
 services:
   - docker
