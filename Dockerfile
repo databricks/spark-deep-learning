@@ -40,7 +40,7 @@ RUN /opt/conda/bin/conda create -n sparkdl python=$PYTHON_VERSION && \
 
 # Install Spark and update env variables.
 ENV SCALA_VERSION 2.11.8
-ENV SPARK_VERSION 2.4.3
+ENV SPARK_VERSION 2.4.4
 ENV SPARK_BUILD "spark-${SPARK_VERSION}-bin-hadoop2.7"
 ENV SPARK_BUILD_URL "https://dist.apache.org/repos/dist/release/spark/spark-${SPARK_VERSION}/${SPARK_BUILD}.tgz"
 RUN wget --quiet $SPARK_BUILD_URL -O /tmp/spark.tgz && \
