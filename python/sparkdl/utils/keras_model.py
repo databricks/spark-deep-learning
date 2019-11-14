@@ -18,6 +18,7 @@
 import os
 import shutil
 import tempfile
+import warnings
 
 import keras
 from keras.models import load_model as _load_keras_hdf5_model
@@ -32,6 +33,8 @@ def model_to_bytes(model):
     This saves the Keras model to a temp file as an intermediate step.
     :return: str containing the model data
     """
+    warnings.warn("model_to_bytes() will be removed in the next major Databricks Runtime ML "
+                  "release. Please use model weights directly.", DeprecationWarning)
     temp_dir = tempfile.mkdtemp()
     temp_path = os.path.join(temp_dir, "model.h5")
     try:
@@ -48,6 +51,8 @@ def bytes_to_h5file(modelBytes):
     Dump HDF5 file content bytes to a local file
     :return: path to the file
     """
+    warnings.warn("bytes_to_h5file() will be removed in the next major Databricks Runtime ML "
+                  "release. Please use model weights directly.", DeprecationWarning)
     temp_dir = tempfile.mkdtemp()
     temp_path = os.path.join(temp_dir, "model.h5")
     with open(temp_path, mode='wb') as fout:
@@ -60,6 +65,8 @@ def bytes_to_model(modelBytes, remove_temp_path=True):
     Convert a Keras model from a byte string to a Keras model instance.
     This saves the Keras model to a temp file as an intermediate step.
     """
+    warnings.warn("bytes_to_model() will be removed in the next major Databricks Runtime ML "
+                  "release. Please use model weights directly.", DeprecationWarning)
     temp_path = bytes_to_h5file(modelBytes)
     try:
         model = _load_keras_hdf5_model(temp_path)
@@ -81,6 +88,8 @@ def _get_loss_function(identifier):
 
 def is_valid_loss_function(identifier):
     """ Check if a named loss function is supported in Keras """
+    warnings.warn("is_valid_loss_function() will be removed in the next major Databricks Runtime "
+                  "ML release. Please check Keras for valid loss functions.", DeprecationWarning)
     try:
         _loss = _get_loss_function(identifier)
         return _loss is not None
@@ -99,6 +108,8 @@ def _get_optimizer(identifier):
 
 def is_valid_optimizer(identifier):
     """ Check if a named optimizer is supported in Keras """
+    warnings.warn("is_valid_optimizer() will be removed in the next major Databricks Runtime ML "
+                  "release. Please check Keras for valid optimizers.", DeprecationWarning)
     try:
         _optim = _get_optimizer(identifier)
         return _optim is not None

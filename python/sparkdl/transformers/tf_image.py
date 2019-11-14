@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 
+from deprecated import deprecated
 import numpy as np
 import tensorflow as tf
 import tensorframes as tfs  # pylint: disable=import-error
@@ -37,7 +38,8 @@ IMAGE_INPUT_TENSOR_NAME = tfx.tensor_name(utils.IMAGE_INPUT_PLACEHOLDER_NAME)
 USER_GRAPH_NAMESPACE = 'given'
 NEW_OUTPUT_PREFIX = 'sdl_flattened'
 
-
+@deprecated(reason="TFImageTransformer will be removed in the next major Databricks Runtime ML "
+                   "release. Please use Pandas UDF for distributed model inference.")
 class TFImageTransformer(Transformer, HasInputCol, HasOutputCol, HasOutputMode):
     """
     Applies the Tensorflow graph to the image column in DataFrame.

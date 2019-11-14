@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+from deprecated import deprecated
 from pyspark.ml import Transformer
 from sparkdl.graph.input import TFInputGraph
 from sparkdl.param import HasInputCol, HasKerasModel, HasOutputCol, keyword_only
@@ -21,6 +23,8 @@ from .tf_tensor import TFTransformer
 # pylint: disable=duplicate-code
 
 
+@deprecated(reason="KerasTransformer will be removed in the next major Databricks Runtime ML "
+                   "release. Please use Pandas UDF instead.")
 class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
     """
     Applies a Tensorflow-backed Keras model (specified by a file name) to

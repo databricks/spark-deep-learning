@@ -17,6 +17,7 @@
 import logging
 
 import six
+from deprecated import deprecated
 import tensorflow as tf
 
 logger = logging.getLogger('sparkdl')
@@ -32,6 +33,7 @@ one of the four target variants.
 """
 
 __all__ = ['strip_and_freeze_until']
+
 
 def validated_graph(graph):
     """
@@ -196,6 +198,8 @@ def validated_input(tfobj_or_name, graph):
     return name
 
 
+@deprecated(reason="strip_and_freeze_until() will be removed in next major Databricks Runtime ML "
+                   "release. Please user Pandas UDF for distributed model inference.")
 def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
     """
     Create a static view of the graph by
