@@ -199,7 +199,7 @@ def validated_input(tfobj_or_name, graph):
 
 
 @deprecated(reason="strip_and_freeze_until() will be removed in next major Databricks Runtime ML "
-                   "release. Please user Pandas UDF for distributed model inference.")
+                   "release. Please use Pandas UDF for distributed model inference.")
 def strip_and_freeze_until(fetches, graph, sess=None, return_graph=False):
     """
     Create a static view of the graph by
