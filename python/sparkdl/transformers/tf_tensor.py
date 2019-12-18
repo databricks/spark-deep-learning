@@ -35,8 +35,8 @@ __all__ = ['TFTransformer']
 logger = logging.getLogger('sparkdl')
 
 
-@deprecated(reason="TFTransformer will be removed in the next major Databricks Runtime ML "
-                   "release. Please use Pandas UDF for distributed model inference.")
+@deprecated(reason="TFTransformer will be removed in the next release of sparkdl. "
+                   "Please use Pandas UDF for distributed model inference.")
 class TFTransformer(Transformer, HasTFInputGraph, HasTFHParams, HasInputMapping, HasOutputMapping):
     """
     Applies the TensorFlow graph to the array column in DataFrame.
