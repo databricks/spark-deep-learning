@@ -23,8 +23,8 @@ from sparkdl.transformers.tf_image import TFImageTransformer
 # pylint: disable=duplicate-code
 
 
-@deprecated(reason="KerasImageFileTransformer will be removed in the next major Databricks "
-                   "Runtime ML release. Please use binary file data source and Pandas UDF instead.")
+@deprecated(reason="KerasImageFileTransformer will be removed in the next release of sparkdl. "
+                   "Please use binary file data source and Pandas UDF instead.")
 class KerasImageFileTransformer(Transformer, HasInputCol, HasOutputCol,
                                 CanLoadImage, HasKerasModel, HasOutputMode):
     """

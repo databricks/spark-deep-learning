@@ -25,7 +25,7 @@ __all__ = ['TFInputGraph']
 # pylint: disable=invalid-name,wrong-spelling-in-comment,wrong-spelling-in-docstring
 
 
-@deprecated(reason="TFInputGraph will be removed in next major Databricks Runtime ML release. "
+@deprecated(reason="TFInputGraph will be removed in next release of sparkdl. "
                    "Please use Pandas UDF for distributed model inference.")
 class TFInputGraph(object):
     """

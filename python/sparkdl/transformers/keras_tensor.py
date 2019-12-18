@@ -23,8 +23,8 @@ from .tf_tensor import TFTransformer
 # pylint: disable=duplicate-code
 
 
-@deprecated(reason="KerasTransformer will be removed in the next major Databricks Runtime ML "
-                   "release. Please use Pandas UDF instead.")
+@deprecated(reason="KerasTransformer will be removed in the next release of sparkdl. "
+                   "Please use Pandas UDF instead.")
 class KerasTransformer(Transformer, HasInputCol, HasOutputCol, HasKerasModel):
     """
     Applies a Tensorflow-backed Keras model (specified by a file name) to

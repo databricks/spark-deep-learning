@@ -26,8 +26,8 @@ def imageInputPlaceholder(nChannels=None):
     '''
     Inserts a TensorFlow placeholder for imput images.
     '''
-    warnings.warn("imageInputPlaceholder() will be removed in the next major Databricks Runtime ML "
-                  "release. Please use Pandas UDF instead.", DeprecationWarning)
+    warnings.warn("imageInputPlaceholder() will be removed in the next release of sparkdl. "
+                  "Please use Pandas UDF instead.", DeprecationWarning)
     return tf.placeholder(tf.float32, [None, None, None, nChannels],
                           name=IMAGE_INPUT_PLACEHOLDER_NAME)
 

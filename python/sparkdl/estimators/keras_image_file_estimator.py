@@ -71,8 +71,8 @@ class _ThreadSafeIterator(object):
         return self.models[index]
 
 
-@deprecated(reason="KerasImageFileEstimator will be removed in the next major Databricks Runtime "
-                   "ML release. To replace a KerasImageFileEstimator workflow, please use "
+@deprecated(reason="KerasImageFileEstimator will be removed in the next release of sparkdl. "
+                   "To replace a KerasImageFileEstimator workflow, please use "
                    "Distributed Hyperopt with SparkTrials to distribute model tuning.")
 class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, HasKerasModel,
                               HasKerasOptimizer, HasKerasLoss, CanLoadImage, HasOutputMode):
