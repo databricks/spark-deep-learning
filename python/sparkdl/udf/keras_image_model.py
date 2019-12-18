@@ -15,6 +15,7 @@
 #
 
 import logging
+import warnings
 
 from pyspark.ml.image import ImageSchema
 from sparkdl.graph.builder import GraphFunction, IsolatedSession
@@ -26,6 +27,7 @@ from sparkdl.utils import jvmapi as JVMAPI
 logger = logging.getLogger('sparkdl')
 
 __all__ = ['registerKerasImageUDF']
+
 
 def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None):
     """
@@ -89,6 +91,9 @@ def registerKerasImageUDF(udf_name, keras_model_or_file_path, preprocessor=None)
                          in the correct shape to be served as input to the Keras model
     :return: :py:class:`GraphFunction`, the graph function for the Keras image model
     """
+    warnings.warn("registerKerasImageUDF() will be removed in the next release of sparkdl. "
+                  "Please use Pandas UDF for distributed model inference.",
+                  DeprecationWarning)
     ordered_udf_names = []
     keras_udf_name = udf_name
     if preprocessor is not None:

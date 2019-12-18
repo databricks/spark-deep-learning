@@ -15,6 +15,7 @@
 
 from io import BytesIO
 from collections import namedtuple
+import warnings
 
 # 3rd party
 import numpy as np
@@ -173,6 +174,8 @@ def createResizeImageUDF(size):
     :param size: tuple, target size of new image in the form (height, width).
     :return: udf, a udf for resizing an image column to `size`.
     """
+    warnings.warn("createResizeImageUDF() will be removed in the next release of sparkdl. "
+                  "Please use Pandas UDF instead.", DeprecationWarning)
     if len(size) != 2:
         raise ValueError(
             "New image size should have format [height, width] but got {}".format(size))
@@ -212,6 +215,8 @@ def PIL_decode(raw_bytes):
     :param raw_bytes:
     :return: image data as an array in CV_8UC3 format
     """
+    warnings.warn("PIL_decode() will be removed in the next release of sparkdl. "
+                  "Please use pillow and Pandas UDF instead.", DeprecationWarning)
     return PIL_to_imageStruct(Image.open(BytesIO(raw_bytes)))
 
 
@@ -237,6 +242,8 @@ def readImagesWithCustomFn(path, decode_f, numPartition=None):
     :param numPartition: [optional] int, number or partitions to use for reading files.
     :return: DataFrame with schema == ImageSchema.imageSchema.
     """
+    warnings.warn("readImagesWithCustomFn() will be removed in the next release of sparkdl. "
+                  "Please use pillow and Pandas UDF instead.", DeprecationWarning)
     return _readImagesWithCustomFn(path, decode_f, numPartition, sc=SparkContext.getOrCreate())
 
 

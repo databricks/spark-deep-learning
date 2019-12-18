@@ -14,6 +14,7 @@
 #
 from __future__ import absolute_import, division, print_function
 
+from deprecated import deprecated
 import tensorflow as tf
 from tensorflow.core.protobuf import meta_graph_pb2  # pylint: disable=no-name-in-module
 
@@ -24,6 +25,8 @@ __all__ = ['TFInputGraph']
 # pylint: disable=invalid-name,wrong-spelling-in-comment,wrong-spelling-in-docstring
 
 
+@deprecated(reason="TFInputGraph will be removed in next release of sparkdl. "
+                   "Please use Pandas UDF for distributed model inference.")
 class TFInputGraph(object):
     """
     An opaque object containing TensorFlow graph.

@@ -32,3 +32,4 @@ dependencies:
   - yapf==0.21.0
   # docs
   - sphinx
+  - Deprecated==1.2.7

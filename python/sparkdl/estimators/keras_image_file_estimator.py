@@ -18,6 +18,7 @@
 from __future__ import absolute_import, division, print_function
 
 import threading
+from deprecated import deprecated
 import numpy as np
 
 from pyspark.ml import Estimator
@@ -70,6 +71,9 @@ class _ThreadSafeIterator(object):
         return self.models[index]
 
 
+@deprecated(reason="KerasImageFileEstimator will be removed in the next release of sparkdl. "
+                   "To replace a KerasImageFileEstimator workflow, please use "
+                   "Distributed Hyperopt with SparkTrials to distribute model tuning.")
 class KerasImageFileEstimator(Estimator, HasInputCol, HasOutputCol, HasLabelCol, HasKerasModel,
                               HasKerasOptimizer, HasKerasLoss, CanLoadImage, HasOutputMode):
     """

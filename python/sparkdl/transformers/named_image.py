@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 
+from deprecated import deprecated
 from keras.applications.imagenet_utils import decode_predictions
 import numpy as np
 import py4j
@@ -36,6 +37,8 @@ from sparkdl.transformers.tf_image import TFImageTransformer
 SUPPORTED_MODELS = ["InceptionV3", "Xception", "ResNet50", "VGG16", "VGG19"]
 
 
+@deprecated(reason="DeepImagePredictor will be removed in the next release of sparkdl. "
+                   "Please use Pandas UDF instead.")
 class DeepImagePredictor(Transformer, HasInputCol, HasOutputCol):
     """
     Applies the model specified by its popular name to the image column in DataFrame.
@@ -150,6 +153,8 @@ class _LazyScaleHintConverter:  # pylint: disable=too-few-public-methods
         return self._sizeHintConverter(value)
 
 
+@deprecated(reason="DeepImageFeaturizer will be removed in the next release of sparkdl. "
+                   "Please use Pandas UDF instead.")
 class DeepImageFeaturizer(JavaTransformer):
     """
     Applies the model specified by its popular name, with its prediction layer(s) chopped off,
