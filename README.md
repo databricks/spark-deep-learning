@@ -46,10 +46,15 @@ Maintainers: Bago Amirbekian, Joseph Bradley, Yogesh Garg, Sue Ann Hong, Tim Hun
 
 ## Deprecation
 
-The following submodules are deprecated and will be removed in the next release of sparkdl. Please use Pandas UDF instead.
+The following submodules and classes are deprecated and will be removed in the next release of sparkdl. Please use Pandas UDF instead.
 * `sparkdl.graph`
-* `sparkdl.transformers`
 * `sparkdl.udf`
+* `sparkdl.KerasImageFileTransformer`
+* `sparkdl.KerasTransformer`
+* `sparkdl.DeepImagePredictor`
+* `sparkdl.DeepImageFeaturizer`
+* `sparkdl.TFImageTransformer`
+* `sparkdl.TFTransformer`
 
 The class `sparkdl.KerasImageFileEstimator` is deprecated and will be removed in the next release of sparkdl. To replace a KerasImageFileEstimator workflow, please use Distributed Hyperopt with SparkTrials to distribute model tuning.
 
