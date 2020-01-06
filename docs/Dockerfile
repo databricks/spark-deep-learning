@@ -8,7 +8,8 @@ RUN apt-get update && \
     apt-get install -y ruby ruby-dev && \
     apt-get clean
 
-RUN gem install jekyll bundler
+RUN gem install jekyll -v 3.8.5
+RUN gem install bundler
 RUN gem install jekyll-redirect-from pygments.rb
 
 WORKDIR /mnt/sparkdl
