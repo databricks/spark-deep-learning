@@ -1,0 +1,328 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.graph.utils &#8212; pysparkdl 1.4.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/pysparkdl.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.graph.utils</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">import</span> <span class="nn">six</span>
+<span class="kn">from</span> <span class="nn">deprecated</span> <span class="kn">import</span> <span class="n">deprecated</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;sparkdl&#39;</span><span class="p">)</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">When working with various pieces of TensorFlow, one is faced with</span>
+<span class="sd">figuring out providing one of the four variants</span>
+<span class="sd">(`tensor` OR `operation`, `name` OR `graph element`).</span>
+
+<span class="sd">The various combination makes it hard to figuring out the best way.</span>
+<span class="sd">We provide some methods to map whatever we have as input to</span>
+<span class="sd">one of the four target variants.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;strip_and_freeze_until&#39;</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">validated_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if the input is a valid :py:class:`tf.Graph` and return it.</span>
+<span class="sd">    Raise an error otherwise.</span>
+
+<span class="sd">    :param graph: :py:class:`tf.Graph`, a TensorFlow Graph object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Graph</span><span class="p">),</span> <span class="s1">&#39;must provide tf.Graph, but get </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">graph</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">graph</span>
+
+
+<span class="k">def</span> <span class="nf">get_shape</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the shape of the tensor as a list</span>
+
+<span class="sd">    :param graph: tf.Graph, a TensorFlow Graph object</span>
+<span class="sd">    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">validated_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+    <span class="n">_shape</span> <span class="o">=</span> <span class="n">get_tensor</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">_shape</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">get_op</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get a :py:class:`tf.Operation` object.</span>
+
+<span class="sd">    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or</span>
+<span class="sd">                          a name to either.</span>
+<span class="sd">    :param graph: a :py:class:`tf.Graph` object containing the operation.</span>
+<span class="sd">                  By default the graph we don&#39;t require this argument to be provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">validated_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+    <span class="n">_assert_same_graph</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Operation</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">tfobj_or_name</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">tfobj_or_name</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">tfobj_or_name</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;invalid op request for [type </span><span class="si">{}</span><span class="s1">] </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">name</span><span class="p">))</span>
+    <span class="n">_op_name</span> <span class="o">=</span> <span class="n">op_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">op</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_operation_by_name</span><span class="p">(</span><span class="n">_op_name</span><span class="p">)</span>  <span class="c1"># pylint: disable=invalid-name</span>
+    <span class="n">err_msg</span> <span class="o">=</span> <span class="s1">&#39;cannot locate op </span><span class="si">{}</span><span class="s1"> in the current graph, got [type </span><span class="si">{}</span><span class="s1">] </span><span class="si">{}</span><span class="s1">&#39;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Operation</span><span class="p">),</span> <span class="n">err_msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_op_name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">op</span><span class="p">),</span> <span class="n">op</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">op</span>
+
+
+<span class="k">def</span> <span class="nf">get_tensor</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get a :py:class:`tf.Tensor` object</span>
+
+<span class="sd">    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or</span>
+<span class="sd">                          a name to either.</span>
+<span class="sd">    :param graph: a :py:class:`tf.Graph` object containing the tensor.</span>
+<span class="sd">                  By default the graph we don&#39;t require this argument to be provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">validated_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+    <span class="n">_assert_same_graph</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">tfobj_or_name</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">tfobj_or_name</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Operation</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">tfobj_or_name</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;invalid tensor request for </span><span class="si">{}</span><span class="s1"> of </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">name</span><span class="p">)))</span>
+    <span class="n">_tensor_name</span> <span class="o">=</span> <span class="n">tensor_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">tnsr</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_tensor_by_name</span><span class="p">(</span><span class="n">_tensor_name</span><span class="p">)</span>
+    <span class="n">err_msg</span> <span class="o">=</span> <span class="s1">&#39;cannot locate tensor </span><span class="si">{}</span><span class="s1"> in the current graph, got [type </span><span class="si">{}</span><span class="s1">] </span><span class="si">{}</span><span class="s1">&#39;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tnsr</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">),</span> <span class="n">err_msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_tensor_name</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">tnsr</span><span class="p">),</span> <span class="n">tnsr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tnsr</span>
+
+
+<span class="k">def</span> <span class="nf">tensor_name</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Derive the :py:class:`tf.Tensor` name from a :py:class:`tf.Operation` or :py:class:`tf.Tensor`</span>
+<span class="sd">    object, or its name.</span>
+<span class="sd">    If a name is provided and the graph is not, we will derive the tensor name based on</span>
+<span class="sd">    TensorFlow&#39;s naming convention.</span>
+<span class="sd">    If the input is a TensorFlow object, or the graph is given, we also check that</span>
+<span class="sd">    the tensor exists in the associated graph.</span>
+
+<span class="sd">    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or</span>
+<span class="sd">                          a name to either.</span>
+<span class="sd">    :param graph: a :py:class:`tf.Graph` object containing the tensor.</span>
+<span class="sd">                  By default the graph we don&#39;t require this argument to be provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">graph</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">get_tensor</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+        <span class="c1"># If input is a string, assume it is a name and infer the corresponding tensor name.</span>
+        <span class="c1"># WARNING: this depends on TensorFlow&#39;s tensor naming convention</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">tfobj_or_name</span>
+        <span class="n">name_parts</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">name_parts</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">name_parts</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">name_parts</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">+=</span> <span class="s2">&quot;:0&quot;</span>
+        <span class="k">return</span> <span class="n">name</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="s1">&#39;graph&#39;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">get_tensor</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">tfobj_or_name</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;invalid tf.Tensor name query type </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">)))</span>
+
+
+<span class="k">def</span> <span class="nf">op_name</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Derive the :py:class:`tf.Operation` name from a :py:class:`tf.Operation` or</span>
+<span class="sd">    :py:class:`tf.Tensor` object, or its name.</span>
+<span class="sd">    If a name is provided and the graph is not, we will derive the operation name based on</span>
+<span class="sd">    TensorFlow&#39;s naming convention.</span>
+<span class="sd">    If the input is a TensorFlow object, or the graph is given, we also check that</span>
+<span class="sd">    the operation exists in the associated graph.</span>
+
+<span class="sd">    :param tfobj_or_name: either a :py:class:`tf.Tensor`, :py:class:`tf.Operation` or</span>
+<span class="sd">                          a name to either.</span>
+<span class="sd">    :param graph: a :py:class:`tf.Graph` object containing the operation.</span>
+<span class="sd">                  By default the graph we don&#39;t require this argument to be provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">graph</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">get_op</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+        <span class="c1"># If input is a string, assume it is a name and infer the corresponding operation name.</span>
+        <span class="c1"># WARNING: this depends on TensorFlow&#39;s operation naming convention</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">tfobj_or_name</span>
+        <span class="n">name_parts</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">name_parts</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">name_parts</span>
+        <span class="k">return</span> <span class="n">name_parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="s1">&#39;graph&#39;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">get_op</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">tfobj_or_name</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;invalid tf.Operation name query type </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">)))</span>
+
+
+<span class="k">def</span> <span class="nf">add_scope_to_name</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Prepends the provided scope to the passed-in op or tensor name. &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">validated_output</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate and return the output names useable GraphFunction</span>
+
+<span class="sd">    :param graph: tf.Graph, a TensorFlow Graph object</span>
+<span class="sd">    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">validated_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">op_name</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">validated_input</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate and return the input names useable GraphFunction</span>
+
+<span class="sd">    :param graph: tf.Graph, a TensorFlow Graph object</span>
+<span class="sd">    :param tfobj_or_name: either a tf.Tensor, tf.Operation or a name to either</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">validated_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">op_name</span><span class="p">(</span><span class="n">tfobj_or_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
+    <span class="n">op</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_operation_by_name</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>  <span class="c1"># pylint: disable=invalid-name</span>
+    <span class="k">assert</span> <span class="s1">&#39;Placeholder&#39;</span> <span class="o">==</span> <span class="n">op</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;input must be Placeholder, but get&#39;</span><span class="p">,</span> <span class="n">op</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">name</span>
+
+
+<div class="viewcode-block" id="strip_and_freeze_until"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.graph.utils.strip_and_freeze_until">[docs]</a><span class="nd">@deprecated</span><span class="p">(</span><span class="n">reason</span><span class="o">=</span><span class="s2">&quot;strip_and_freeze_until() will be removed in next release of sparkdl. &quot;</span>
+                   <span class="s2">&quot;Please use Pandas UDF for distributed model inference.&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">strip_and_freeze_until</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">sess</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_graph</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a static view of the graph by</span>
+
+<span class="sd">    * Converting all variables into constants</span>
+<span class="sd">    * Removing graph elements not reachacble to `fetches`</span>
+
+<span class="sd">    :param graph: tf.Graph, the graph to be frozen</span>
+<span class="sd">    :param fetches: list, graph elements representing the outputs of the graph</span>
+<span class="sd">    :param return_graph: bool, if set True, return the graph function object</span>
+<span class="sd">    :return: GraphDef, the GraphDef object with cleanup procedure applied</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">validated_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+    <span class="n">should_close_session</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sess</span><span class="p">:</span>
+        <span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">)</span>
+        <span class="n">should_close_session</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">gdef_frozen</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">graph_util</span><span class="o">.</span><span class="n">convert_variables_to_constants</span><span class="p">(</span>
+        <span class="n">sess</span><span class="p">,</span>
+        <span class="n">graph</span><span class="o">.</span><span class="n">as_graph_def</span><span class="p">(</span><span class="n">add_shapes</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+        <span class="p">[</span><span class="n">op_name</span><span class="p">(</span><span class="n">tnsr</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span> <span class="k">for</span> <span class="n">tnsr</span> <span class="ow">in</span> <span class="n">fetches</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">should_close_session</span><span class="p">:</span>
+        <span class="n">sess</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">return_graph</span><span class="p">:</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>  <span class="c1"># pylint: disable=invalid-name</span>
+        <span class="k">with</span> <span class="n">g</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">import_graph_def</span><span class="p">(</span><span class="n">gdef_frozen</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">g</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">gdef_frozen</span></div>
+
+
+<span class="k">def</span> <span class="nf">_assert_same_graph</span><span class="p">(</span><span class="n">tfobj</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">graph</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">tfobj</span><span class="p">,</span> <span class="s1">&#39;graph&#39;</span><span class="p">):</span>
+        <span class="n">err_msg</span> <span class="o">=</span> <span class="s1">&#39;the graph of TensorFlow element </span><span class="si">{}</span><span class="s1"> != graph </span><span class="si">{}</span><span class="s1">&#39;</span>
+        <span class="k">assert</span> <span class="n">tfobj</span><span class="o">.</span><span class="n">graph</span> <span class="o">==</span> <span class="n">graph</span><span class="p">,</span> <span class="n">err_msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tfobj</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>

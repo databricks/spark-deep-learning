@@ -1,0 +1,445 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.graph.input &#8212; pysparkdl 1.4.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/pysparkdl.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.graph.input</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span>
+
+<span class="kn">from</span> <span class="nn">deprecated</span> <span class="kn">import</span> <span class="n">deprecated</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">tensorflow.core.protobuf</span> <span class="kn">import</span> <span class="n">meta_graph_pb2</span>  <span class="c1"># pylint: disable=no-name-in-module</span>
+
+<span class="kn">import</span> <span class="nn">sparkdl.graph.utils</span> <span class="k">as</span> <span class="nn">tfx</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;TFInputGraph&#39;</span><span class="p">]</span>
+
+<span class="c1"># pylint: disable=invalid-name,wrong-spelling-in-comment,wrong-spelling-in-docstring</span>
+
+
+<div class="viewcode-block" id="TFInputGraph"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.TFInputGraph">[docs]</a><span class="nd">@deprecated</span><span class="p">(</span><span class="n">reason</span><span class="o">=</span><span class="s2">&quot;TFInputGraph will be removed in next release of sparkdl. &quot;</span>
+                   <span class="s2">&quot;Please use Pandas UDF for distributed model inference.&quot;</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">TFInputGraph</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An opaque object containing TensorFlow graph.</span>
+<span class="sd">    This object can be serialized.</span>
+
+<span class="sd">    .. note:: We recommend constructing this object using one of the class constructor methods.</span>
+
+<span class="sd">              - :py:meth:`fromGraph`</span>
+<span class="sd">              - :py:meth:`fromGraphDef`</span>
+<span class="sd">              - :py:meth:`fromCheckpoint`</span>
+<span class="sd">              - :py:meth:`fromCheckpointWithSignature`</span>
+<span class="sd">              - :py:meth:`fromSavedModel`</span>
+<span class="sd">              - :py:meth:`fromSavedModelWithSignature`</span>
+
+
+<span class="sd">    When the graph contains serving signatures in which a set of well-known names are associated</span>
+<span class="sd">    with their corresponding raw tensor names in the graph, we extract and store them here.</span>
+<span class="sd">    For example, the TensorFlow saved model may contain the following structure,</span>
+<span class="sd">    so that end users can retrieve the the input tensor via `well_known_input_sig` and</span>
+<span class="sd">    the output tensor via `well_known_output_sig` without knowing the actual tensor names a priori.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        sigdef: {&#39;well_known_prediction_signature&#39;:</span>
+<span class="sd">        inputs { key: &quot;well_known_input_sig&quot;</span>
+<span class="sd">          value {</span>
+<span class="sd">            name: &quot;tnsrIn:0&quot;</span>
+<span class="sd">            dtype: DT_DOUBLE</span>
+<span class="sd">            tensor_shape { dim { size: -1 } dim { size: 17 } }</span>
+<span class="sd">            }</span>
+<span class="sd">          }</span>
+<span class="sd">        outputs { key: &quot;well_known_output_sig&quot;</span>
+<span class="sd">          value {</span>
+<span class="sd">            name: &quot;tnsrOut:0&quot;</span>
+<span class="sd">            dtype: DT_DOUBLE</span>
+<span class="sd">            tensor_shape { dim { size: -1 } }</span>
+<span class="sd">            }</span>
+<span class="sd">        }}</span>
+
+
+<span class="sd">    In this case, the class will internally store the mapping from signature names to tensor names.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        {&#39;well_known_input_sig&#39;: &#39;tnsrIn:0&#39;}</span>
+<span class="sd">        {&#39;well_known_output_sig&#39;: &#39;tnsrOut:0&#39;}</span>
+
+
+<span class="sd">    :param graph_def: :py:obj:`tf.GraphDef`, a serializable object containing the topology and</span>
+<span class="sd">                       computation units of the TensorFlow graph. The graph object is prepared for</span>
+<span class="sd">                       inference, i.e. the variables are converted to constants and operations like</span>
+<span class="sd">                       BatchNormalization_ are converted to be independent of input batch.</span>
+
+<span class="sd">   .. _BatchNormalization: https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization</span>
+
+<span class="sd">    :param input_tensor_name_from_signature: dict, signature key names mapped to tensor names.</span>
+<span class="sd">                                             Please see the example above.</span>
+<span class="sd">    :param output_tensor_name_from_signature: dict, signature key names mapped to tensor names</span>
+<span class="sd">                                              Please see the example above.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph_def</span><span class="p">,</span> <span class="n">input_tensor_name_from_signature</span><span class="p">,</span>
+                 <span class="n">output_tensor_name_from_signature</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph_def</span> <span class="o">=</span> <span class="n">graph_def</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_tensor_name_from_signature</span> <span class="o">=</span> <span class="n">input_tensor_name_from_signature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_tensor_name_from_signature</span> <span class="o">=</span> <span class="n">output_tensor_name_from_signature</span>
+
+<div class="viewcode-block" id="TFInputGraph.translateInputMapping"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.TFInputGraph.translateInputMapping">[docs]</a>    <span class="k">def</span> <span class="nf">translateInputMapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_mapping</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        When the meta_graph contains signature_def, we expect users to provide</span>
+<span class="sd">        input and output mapping with respect to the tensor reference keys</span>
+<span class="sd">        embedded in the `signature_def`.</span>
+
+<span class="sd">        This function translates the input_mapping into the canonical format,</span>
+<span class="sd">        which maps input DataFrame column names to tensor names.</span>
+
+<span class="sd">        :param input_mapping: dict, DataFrame column name to tensor reference names</span>
+<span class="sd">                              defined in the signature_def key.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_tensor_name_from_signature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">_input_mapping</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_mapping</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">input_mapping</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">input_mapping</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_mapping</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col_name</span><span class="p">,</span> <span class="n">sig_key</span> <span class="ow">in</span> <span class="n">input_mapping</span><span class="p">:</span>
+            <span class="n">tnsr_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_tensor_name_from_signature</span><span class="p">[</span><span class="n">sig_key</span><span class="p">]</span>
+            <span class="n">_input_mapping</span><span class="p">[</span><span class="n">col_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">tnsr_name</span>
+        <span class="k">return</span> <span class="n">_input_mapping</span></div>
+
+<div class="viewcode-block" id="TFInputGraph.translateOutputMapping"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.TFInputGraph.translateOutputMapping">[docs]</a>    <span class="k">def</span> <span class="nf">translateOutputMapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_mapping</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        When the meta_graph contains signature_def, we expect users to provide</span>
+<span class="sd">        input and output mapping with respect to the tensor reference keys</span>
+<span class="sd">        embedded in the `signature_def`.</span>
+
+<span class="sd">        This function translates the output_mapping into the canonical format,</span>
+<span class="sd">        which maps tensor names into input DataFrame column names.</span>
+
+<span class="sd">        :param output_mapping: dict, tensor reference names defined in the signature_def keys</span>
+<span class="sd">                               into the output DataFrame column names.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_tensor_name_from_signature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">_output_mapping</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_mapping</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">output_mapping</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">output_mapping</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_mapping</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">sig_key</span><span class="p">,</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">output_mapping</span><span class="p">:</span>
+            <span class="n">tnsr_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_tensor_name_from_signature</span><span class="p">[</span><span class="n">sig_key</span><span class="p">]</span>
+            <span class="n">_output_mapping</span><span class="p">[</span><span class="n">tnsr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">col_name</span>
+        <span class="k">return</span> <span class="n">_output_mapping</span></div>
+
+<div class="viewcode-block" id="TFInputGraph.fromGraph"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.TFInputGraph.fromGraph">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">fromGraph</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">sess</span><span class="p">,</span> <span class="n">feed_names</span><span class="p">,</span> <span class="n">fetch_names</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a TFInputGraph from a in memory `tf.Graph` object.</span>
+<span class="sd">        The graph might contain variables that are maintained in the provided session.</span>
+<span class="sd">        Thus we need an active session in which the graph&#39;s variables are initialized or</span>
+<span class="sd">        restored. We do not close the session. As a result, this constructor can be used</span>
+<span class="sd">        inside a standard TensorFlow session context.</span>
+
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">             with tf.Session() as sess:</span>
+<span class="sd">                 graph = import_my_tensorflow_graph(...)</span>
+<span class="sd">                 input = TFInputGraph.fromGraph(graph, sess, ...)</span>
+
+<span class="sd">        :param graph: a :py:class:`tf.Graph` object containing the topology and computation units of</span>
+<span class="sd">                      the TensorFlow graph.</span>
+<span class="sd">        :param feed_names: list, names of the input tensors.</span>
+<span class="sd">        :param fetch_names: list, names of the output tensors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_build_with_feeds_fetches</span><span class="p">(</span><span class="n">sess</span><span class="o">=</span><span class="n">sess</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">,</span> <span class="n">feed_names</span><span class="o">=</span><span class="n">feed_names</span><span class="p">,</span>
+                                         <span class="n">fetch_names</span><span class="o">=</span><span class="n">fetch_names</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFInputGraph.fromGraphDef"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.TFInputGraph.fromGraphDef">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">fromGraphDef</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">graph_def</span><span class="p">,</span> <span class="n">feed_names</span><span class="p">,</span> <span class="n">fetch_names</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a TFInputGraph from a tf.GraphDef object.</span>
+
+<span class="sd">        :param graph_def: :py:class:`tf.GraphDef`, a serializable object containing the topology and</span>
+<span class="sd">                           computation units of the TensorFlow graph.</span>
+<span class="sd">        :param feed_names: list, names of the input tensors.</span>
+<span class="sd">        :param fetch_names: list, names of the output tensors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">graph_def</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">GraphDef</span><span class="p">),</span> \
+            <span class="p">(</span><span class="s1">&#39;expect tf.GraphDef type but got&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="n">graph_def</span><span class="p">))</span>
+
+        <span class="n">graph</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">)</span> <span class="k">as</span> <span class="n">sess</span><span class="p">:</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">import_graph_def</span><span class="p">(</span><span class="n">graph_def</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">_build_with_feeds_fetches</span><span class="p">(</span><span class="n">sess</span><span class="o">=</span><span class="n">sess</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">,</span> <span class="n">feed_names</span><span class="o">=</span><span class="n">feed_names</span><span class="p">,</span>
+                                             <span class="n">fetch_names</span><span class="o">=</span><span class="n">fetch_names</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFInputGraph.fromCheckpoint"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.TFInputGraph.fromCheckpoint">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">fromCheckpoint</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">checkpoint_dir</span><span class="p">,</span> <span class="n">feed_names</span><span class="p">,</span> <span class="n">fetch_names</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a TFInputGraph object from a checkpoint, ignore the embedded</span>
+<span class="sd">        signature_def, if there is any.</span>
+
+<span class="sd">        :param checkpoint_dir: str, name of the directory containing the TensorFlow graph</span>
+<span class="sd">                               training checkpoint.</span>
+<span class="sd">        :param feed_names: list, names of the input tensors.</span>
+<span class="sd">        :param fetch_names: list, names of the output tensors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_from_checkpoint_impl</span><span class="p">(</span><span class="n">checkpoint_dir</span><span class="p">,</span> <span class="n">signature_def_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">feed_names</span><span class="o">=</span><span class="n">feed_names</span><span class="p">,</span>
+                                     <span class="n">fetch_names</span><span class="o">=</span><span class="n">fetch_names</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFInputGraph.fromCheckpointWithSignature"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.TFInputGraph.fromCheckpointWithSignature">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">fromCheckpointWithSignature</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">checkpoint_dir</span><span class="p">,</span> <span class="n">signature_def_key</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a TFInputGraph object from a checkpoint, using the embedded</span>
+<span class="sd">        signature_def. Throw an error if we cannot find an entry with the `signature_def_key`</span>
+<span class="sd">        inside the `signature_def`.</span>
+
+<span class="sd">        :param checkpoint_dir: str, name of the directory containing the TensorFlow graph</span>
+<span class="sd">                               training checkpoint.</span>
+<span class="sd">        :param signature_def_key: str, key (name) of the signature_def to use. It should be in</span>
+<span class="sd">                                  the list of `signature_def` structures saved with the checkpoint.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">signature_def_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">_from_checkpoint_impl</span><span class="p">(</span><span class="n">checkpoint_dir</span><span class="p">,</span> <span class="n">signature_def_key</span><span class="p">,</span> <span class="n">feed_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                     <span class="n">fetch_names</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFInputGraph.fromSavedModel"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.TFInputGraph.fromSavedModel">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">fromSavedModel</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">saved_model_dir</span><span class="p">,</span> <span class="n">tag_set</span><span class="p">,</span> <span class="n">feed_names</span><span class="p">,</span> <span class="n">fetch_names</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a TFInputGraph object from a saved model (`tf.SavedModel`) directory.</span>
+<span class="sd">        Ignore the the embedded signature_def, if there is any.</span>
+
+<span class="sd">        :param saved_model_dir: str, name of the directory containing the TensorFlow graph</span>
+<span class="sd">                                training checkpoint.</span>
+<span class="sd">        :param tag_set: str, name of the graph stored in this meta_graph of the saved model</span>
+<span class="sd">                        that we are interested in using.</span>
+<span class="sd">        :param feed_names: list, names of the input tensors.</span>
+<span class="sd">        :param fetch_names: list, names of the output tensors.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_from_saved_model_impl</span><span class="p">(</span><span class="n">saved_model_dir</span><span class="p">,</span> <span class="n">tag_set</span><span class="p">,</span> <span class="n">signature_def_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                      <span class="n">feed_names</span><span class="o">=</span><span class="n">feed_names</span><span class="p">,</span> <span class="n">fetch_names</span><span class="o">=</span><span class="n">fetch_names</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TFInputGraph.fromSavedModelWithSignature"><a class="viewcode-back" href="../../../sparkdl.graph.html#sparkdl.TFInputGraph.fromSavedModelWithSignature">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">fromSavedModelWithSignature</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">saved_model_dir</span><span class="p">,</span> <span class="n">tag_set</span><span class="p">,</span> <span class="n">signature_def_key</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a TFInputGraph object from a saved model (`tf.SavedModel`) directory,</span>
+<span class="sd">        using the embedded signature_def. Throw error if we cannot find an entry with</span>
+<span class="sd">        the `signature_def_key` inside the `signature_def`.</span>
+
+<span class="sd">        :param saved_model_dir: str, name of the directory containing the TensorFlow graph</span>
+<span class="sd">                                training checkpoint.</span>
+<span class="sd">        :param tag_set: str, name of the graph stored in this meta_graph of the saved model</span>
+<span class="sd">                        that we are interested in using.</span>
+<span class="sd">        :param signature_def_key: str, key (name) of the signature_def to use. It should be in</span>
+<span class="sd">                                  the list of `signature_def` structures saved with the</span>
+<span class="sd">                                  TensorFlow `SavedModel`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">signature_def_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">_from_saved_model_impl</span><span class="p">(</span><span class="n">saved_model_dir</span><span class="p">,</span> <span class="n">tag_set</span><span class="p">,</span> <span class="n">signature_def_key</span><span class="o">=</span><span class="n">signature_def_key</span><span class="p">,</span>
+                                      <span class="n">feed_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fetch_names</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></div></div>
+
+
+<span class="k">def</span> <span class="nf">_from_checkpoint_impl</span><span class="p">(</span><span class="n">checkpoint_dir</span><span class="p">,</span> <span class="n">signature_def_key</span><span class="p">,</span> <span class="n">feed_names</span><span class="p">,</span> <span class="n">fetch_names</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Construct a TFInputGraph from a model checkpoint.</span>
+<span class="sd">    Notice that one should either provide the `signature_def_key` or provide both</span>
+<span class="sd">    `feed_names` and `fetch_names`. Please set the unprovided values to None.</span>
+
+<span class="sd">    :param signature_def_key: str, name of the mapping contained inside the `signature_def`</span>
+<span class="sd">                              from which we retrieve the signature key to tensor names mapping.</span>
+<span class="sd">    :param feed_names: list, names of the input tensors.</span>
+<span class="sd">    :param fetch_names: list, names of the output tensors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="p">(</span><span class="n">feed_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="n">fetch_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">),</span> \
+        <span class="s1">&#39;feed_names and fetch_names, if provided must be both non-None.&#39;</span>
+    <span class="k">assert</span> <span class="p">(</span><span class="n">feed_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">signature_def_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">),</span> \
+        <span class="s1">&#39;must either provide feed_names or singnature_def_key&#39;</span>
+
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">)</span> <span class="k">as</span> <span class="n">sess</span><span class="p">:</span>
+        <span class="c1"># Load checkpoint and import the graph</span>
+        <span class="n">ckpt_path</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">latest_checkpoint</span><span class="p">(</span><span class="n">checkpoint_dir</span><span class="p">)</span>
+
+        <span class="c1"># NOTE(phi-dbq): we must manually load meta_graph_def to get the signature_def</span>
+        <span class="c1">#                the current `import_graph_def` function seems to ignore</span>
+        <span class="c1">#                any signature_def fields in a checkpoint&#39;s meta_graph_def.</span>
+        <span class="n">meta_graph_def</span> <span class="o">=</span> <span class="n">meta_graph_pb2</span><span class="o">.</span><span class="n">MetaGraphDef</span><span class="p">()</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">.meta&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ckpt_path</span><span class="p">),</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fin</span><span class="p">:</span>
+            <span class="n">meta_graph_def</span><span class="o">.</span><span class="n">ParseFromString</span><span class="p">(</span><span class="n">fin</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+        <span class="n">saver</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">import_meta_graph</span><span class="p">(</span><span class="n">meta_graph_def</span><span class="p">,</span> <span class="n">clear_devices</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">saver</span><span class="o">.</span><span class="n">restore</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">ckpt_path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">signature_def_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sig_def</span> <span class="o">=</span> <span class="n">meta_graph_def</span><span class="o">.</span><span class="n">signature_def</span><span class="p">[</span><span class="n">signature_def_key</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">_build_with_sig_def</span><span class="p">(</span><span class="n">sess</span><span class="o">=</span><span class="n">sess</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">,</span> <span class="n">sig_def</span><span class="o">=</span><span class="n">sig_def</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_build_with_feeds_fetches</span><span class="p">(</span><span class="n">sess</span><span class="o">=</span><span class="n">sess</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">,</span> <span class="n">feed_names</span><span class="o">=</span><span class="n">feed_names</span><span class="p">,</span>
+                                             <span class="n">fetch_names</span><span class="o">=</span><span class="n">fetch_names</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_from_saved_model_impl</span><span class="p">(</span><span class="n">saved_model_dir</span><span class="p">,</span> <span class="n">tag_set</span><span class="p">,</span> <span class="n">signature_def_key</span><span class="p">,</span> <span class="n">feed_names</span><span class="p">,</span> <span class="n">fetch_names</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Construct a TFInputGraph from a SavedModel.</span>
+<span class="sd">    Notice that one should either provide the `signature_def_key` or provide both</span>
+<span class="sd">    `feed_names` and `fetch_names`. Please set the unprovided values to None.</span>
+
+<span class="sd">    :param signature_def_key: str, name of the mapping contained inside the `signature_def`</span>
+<span class="sd">                              from which we retrieve the signature key to tensor names mapping.</span>
+<span class="sd">    :param feed_names: list, names of the input tensors.</span>
+<span class="sd">    :param fetch_names: list, names of the output tensors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="p">(</span><span class="n">feed_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="n">fetch_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">),</span> \
+        <span class="s1">&#39;feed_names and fetch_names, if provided must be both non-None.&#39;</span>
+    <span class="k">assert</span> <span class="p">(</span><span class="n">feed_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">signature_def_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">),</span> \
+        <span class="s1">&#39;must either provide feed_names or singnature_def_key&#39;</span>
+
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">)</span> <span class="k">as</span> <span class="n">sess</span><span class="p">:</span>
+        <span class="n">tag_sets</span> <span class="o">=</span> <span class="n">tag_set</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+        <span class="n">meta_graph_def</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">saved_model</span><span class="o">.</span><span class="n">loader</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">tag_sets</span><span class="p">,</span> <span class="n">saved_model_dir</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">signature_def_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sig_def</span> <span class="o">=</span> <span class="n">meta_graph_def</span><span class="o">.</span><span class="n">signature_def</span><span class="p">[</span><span class="n">signature_def_key</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">_build_with_sig_def</span><span class="p">(</span><span class="n">sess</span><span class="o">=</span><span class="n">sess</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">,</span> <span class="n">sig_def</span><span class="o">=</span><span class="n">sig_def</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_build_with_feeds_fetches</span><span class="p">(</span><span class="n">sess</span><span class="o">=</span><span class="n">sess</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">,</span> <span class="n">feed_names</span><span class="o">=</span><span class="n">feed_names</span><span class="p">,</span>
+                                             <span class="n">fetch_names</span><span class="o">=</span><span class="n">fetch_names</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_build_with_sig_def</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">sig_def</span><span class="p">):</span>
+    <span class="c1"># pylint: disable=protected-access</span>
+    <span class="k">assert</span> <span class="n">sig_def</span><span class="p">,</span> <span class="s1">&#39;signature_def must not be None&#39;</span>
+
+    <span class="k">with</span> <span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">(),</span> <span class="n">graph</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+        <span class="n">feed_mapping</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">feed_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">sigdef_key</span><span class="p">,</span> <span class="n">tnsr_info</span> <span class="ow">in</span> <span class="n">sig_def</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">tnsr_name</span> <span class="o">=</span> <span class="n">tnsr_info</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">feed_mapping</span><span class="p">[</span><span class="n">sigdef_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">tnsr_name</span>
+            <span class="n">feed_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tnsr_name</span><span class="p">)</span>
+
+        <span class="n">fetch_mapping</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">fetch_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">sigdef_key</span><span class="p">,</span> <span class="n">tnsr_info</span> <span class="ow">in</span> <span class="n">sig_def</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">tnsr_name</span> <span class="o">=</span> <span class="n">tnsr_info</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">fetch_mapping</span><span class="p">[</span><span class="n">sigdef_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">tnsr_name</span>
+            <span class="n">fetch_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tnsr_name</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">tnsr_name</span> <span class="ow">in</span> <span class="n">feed_names</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">tfx</span><span class="o">.</span><span class="n">get_op</span><span class="p">(</span><span class="n">tnsr_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">),</span> \
+                <span class="s1">&#39;requested tensor </span><span class="si">{}</span><span class="s1"> but found none in graph </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tnsr_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
+        <span class="n">fetches</span> <span class="o">=</span> <span class="p">[</span><span class="n">tfx</span><span class="o">.</span><span class="n">get_tensor</span><span class="p">(</span><span class="n">tnsr_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span> <span class="k">for</span> <span class="n">tnsr_name</span> <span class="ow">in</span> <span class="n">fetch_names</span><span class="p">]</span>
+        <span class="n">graph_def</span> <span class="o">=</span> <span class="n">tfx</span><span class="o">.</span><span class="n">strip_and_freeze_until</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">sess</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">TFInputGraph</span><span class="p">(</span><span class="n">graph_def</span><span class="o">=</span><span class="n">graph_def</span><span class="p">,</span> <span class="n">input_tensor_name_from_signature</span><span class="o">=</span><span class="n">feed_mapping</span><span class="p">,</span>
+                        <span class="n">output_tensor_name_from_signature</span><span class="o">=</span><span class="n">fetch_mapping</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_build_with_feeds_fetches</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">feed_names</span><span class="p">,</span> <span class="n">fetch_names</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="n">feed_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;must provide feed_names&quot;</span>
+    <span class="k">assert</span> <span class="n">fetch_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;must provide fetch names&quot;</span>
+
+    <span class="k">with</span> <span class="n">sess</span><span class="o">.</span><span class="n">as_default</span><span class="p">(),</span> <span class="n">graph</span><span class="o">.</span><span class="n">as_default</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">tnsr_name</span> <span class="ow">in</span> <span class="n">feed_names</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">tfx</span><span class="o">.</span><span class="n">get_op</span><span class="p">(</span><span class="n">tnsr_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">),</span> \
+                <span class="s1">&#39;requested tensor </span><span class="si">{}</span><span class="s1"> but found none in graph </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tnsr_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
+        <span class="n">fetches</span> <span class="o">=</span> <span class="p">[</span><span class="n">tfx</span><span class="o">.</span><span class="n">get_tensor</span><span class="p">(</span><span class="n">tnsr_name</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span> <span class="k">for</span> <span class="n">tnsr_name</span> <span class="ow">in</span> <span class="n">fetch_names</span><span class="p">]</span>
+        <span class="n">graph_def</span> <span class="o">=</span> <span class="n">tfx</span><span class="o">.</span><span class="n">strip_and_freeze_until</span><span class="p">(</span><span class="n">fetches</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">sess</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">TFInputGraph</span><span class="p">(</span><span class="n">graph_def</span><span class="o">=</span><span class="n">graph_def</span><span class="p">,</span> <span class="n">input_tensor_name_from_signature</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">output_tensor_name_from_signature</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>

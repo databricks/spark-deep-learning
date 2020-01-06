@@ -1,0 +1,159 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.transformers.keras_image &#8212; pysparkdl 1.4.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/pysparkdl.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.transformers.keras_image</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">from</span> <span class="nn">deprecated</span> <span class="kn">import</span> <span class="n">deprecated</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml</span> <span class="kn">import</span> <span class="n">Transformer</span>
+<span class="kn">from</span> <span class="nn">sparkdl.param</span> <span class="kn">import</span> <span class="n">CanLoadImage</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasKerasModel</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">,</span> <span class="n">HasOutputMode</span><span class="p">,</span> \
+    <span class="n">keyword_only</span>
+<span class="kn">from</span> <span class="nn">sparkdl.transformers.keras_utils</span> <span class="kn">import</span> <span class="n">KSessionWrap</span>
+<span class="kn">from</span> <span class="nn">sparkdl.transformers.tf_image</span> <span class="kn">import</span> <span class="n">TFImageTransformer</span>
+
+<span class="c1"># pylint: disable=duplicate-code</span>
+
+
+<div class="viewcode-block" id="KerasImageFileTransformer"><a class="viewcode-back" href="../../../index.html#sparkdl.KerasImageFileTransformer">[docs]</a><span class="nd">@deprecated</span><span class="p">(</span><span class="n">reason</span><span class="o">=</span><span class="s2">&quot;KerasImageFileTransformer will be removed in the next release of sparkdl. &quot;</span>
+                   <span class="s2">&quot;Please use binary file data source and Pandas UDF instead.&quot;</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">KerasImageFileTransformer</span><span class="p">(</span><span class="n">Transformer</span><span class="p">,</span> <span class="n">HasInputCol</span><span class="p">,</span> <span class="n">HasOutputCol</span><span class="p">,</span>
+                                <span class="n">CanLoadImage</span><span class="p">,</span> <span class="n">HasKerasModel</span><span class="p">,</span> <span class="n">HasOutputMode</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies the Tensorflow-backed Keras model (specified by a file name) to</span>
+<span class="sd">    images (specified by the URI in the inputCol column) in the DataFrame.</span>
+
+<span class="sd">    Restrictions of the current API:</span>
+<span class="sd">      * see TFImageTransformer.</span>
+<span class="sd">      * Only supports Tensorflow-backed Keras models (no Theano).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelFile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">imageLoader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">outputMode</span><span class="o">=</span><span class="s2">&quot;vector&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        __init__(self, inputCol=None, outputCol=None, modelFile=None, imageLoader=None,</span>
+<span class="sd">                 outputMode=&quot;vector&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">KerasImageFileTransformer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setParams</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inputTensor</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_outputTensor</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="KerasImageFileTransformer.setParams"><a class="viewcode-back" href="../../../index.html#sparkdl.KerasImageFileTransformer.setParams">[docs]</a>    <span class="nd">@keyword_only</span>
+    <span class="k">def</span> <span class="nf">setParams</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputCol</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modelFile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">imageLoader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">outputMode</span><span class="o">=</span><span class="s2">&quot;vector&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        setParams(self, inputCol=None, outputCol=None, modelFile=None, imageLoader=None,</span>
+<span class="sd">                  outputMode=&quot;vector&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+    <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">KSessionWrap</span><span class="p">()</span> <span class="k">as</span> <span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">keras_graph</span><span class="p">):</span>
+            <span class="n">graph</span><span class="p">,</span> <span class="n">inputTensorName</span><span class="p">,</span> <span class="n">outputTensorName</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loadTFGraph</span><span class="p">(</span><span class="n">sess</span><span class="o">=</span><span class="n">sess</span><span class="p">,</span>
+                                                                         <span class="n">graph</span><span class="o">=</span><span class="n">keras_graph</span><span class="p">)</span>
+            <span class="n">image_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loadImagesInternal</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">getInputCol</span><span class="p">())</span>
+            <span class="n">transformer</span> <span class="o">=</span> <span class="n">TFImageTransformer</span><span class="p">(</span><span class="n">channelOrder</span><span class="o">=</span><span class="s1">&#39;RGB&#39;</span><span class="p">,</span> <span class="n">inputCol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_loadedImageCol</span><span class="p">(),</span>
+                                             <span class="n">outputCol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getOutputCol</span><span class="p">(),</span> <span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">,</span>
+                                             <span class="n">inputTensor</span><span class="o">=</span><span class="n">inputTensorName</span><span class="p">,</span>
+                                             <span class="n">outputTensor</span><span class="o">=</span><span class="n">outputTensorName</span><span class="p">,</span>
+                                             <span class="n">outputMode</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getOrDefault</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">outputMode</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">transformer</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">image_df</span><span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_loadedImageCol</span><span class="p">())</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>

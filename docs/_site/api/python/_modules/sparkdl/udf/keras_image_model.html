@@ -1,0 +1,248 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>sparkdl.udf.keras_image_model &#8212; pysparkdl 1.4.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/pysparkdl.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <script type="text/javascript" src="../../../_static/pysparkdl.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.udf.keras_image_model</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># Copyright 2017 Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#   http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="c1">#</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">from</span> <span class="nn">pyspark.ml.image</span> <span class="kn">import</span> <span class="n">ImageSchema</span>
+<span class="kn">from</span> <span class="nn">sparkdl.graph.builder</span> <span class="kn">import</span> <span class="n">GraphFunction</span><span class="p">,</span> <span class="n">IsolatedSession</span>
+<span class="kn">from</span> <span class="nn">sparkdl.graph.pieces</span> <span class="kn">import</span> <span class="n">buildFlattener</span><span class="p">,</span> <span class="n">buildSpImageConverter</span>
+<span class="kn">from</span> <span class="nn">sparkdl.graph.tensorframes_udf</span> <span class="kn">import</span> <span class="n">makeGraphUDF</span>
+<span class="kn">import</span> <span class="nn">sparkdl.image.imageIO</span> <span class="k">as</span> <span class="nn">imageIO</span>
+<span class="kn">from</span> <span class="nn">sparkdl.utils</span> <span class="kn">import</span> <span class="n">jvmapi</span> <span class="k">as</span> <span class="n">JVMAPI</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;sparkdl&#39;</span><span class="p">)</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;registerKerasImageUDF&#39;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="registerKerasImageUDF"><a class="viewcode-back" href="../../../sparkdl.udf.html#sparkdl.udf.keras_image_model.registerKerasImageUDF">[docs]</a><span class="k">def</span> <span class="nf">registerKerasImageUDF</span><span class="p">(</span><span class="n">udf_name</span><span class="p">,</span> <span class="n">keras_model_or_file_path</span><span class="p">,</span> <span class="n">preprocessor</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a Keras image model as a Spark SQL UDF.</span>
+<span class="sd">    The UDF takes a column (formatted in :py:const:`sparkdl.image.imageIO.imageSchema`)</span>
+<span class="sd">    and produces the output of the given Keras model (e.g.</span>
+<span class="sd">    for `Inception V3 &lt;https://keras.io/applications/#inceptionv3]&gt;`_</span>
+<span class="sd">    it produces a real valued score vector over the ImageNet object categories).</span>
+<span class="sd">    For other models, the output could have different meanings.</span>
+<span class="sd">    Please consult the actual models specification.</span>
+
+<span class="sd">    The user can provide an existing model in Keras as follows.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        from keras.applications import InceptionV3</span>
+<span class="sd">        registerKerasImageUDF(&quot;udf_name&quot;, InceptionV3(weights=&quot;imagenet&quot;))</span>
+
+<span class="sd">    To use a customized Keras model, we can save it and pass the file path as parameter.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        # Assume we have a compiled and trained Keras model</span>
+<span class="sd">        model.save(&#39;path/to/my/model.h5&#39;)</span>
+
+<span class="sd">        registerKerasImageUDF(&quot;my_custom_keras_model_udf&quot;, &quot;path/to/my/model.h5&quot;)</span>
+
+<span class="sd">    If there are further preprocessing steps are required to prepare the images,</span>
+<span class="sd">    the user has the option to provide a preprocessing function :py:obj:`preprocessor`.</span>
+<span class="sd">    The :py:obj:`preprocessor` converts a file path into a image array.</span>
+<span class="sd">    This function is usually introduced in Keras workflow, as in the following example.</span>
+
+<span class="sd">    .. warning:: There is a performance penalty to use a :py:obj:`preprocessor` as it will</span>
+<span class="sd">                 first convert the image into a file buffer and reloaded back.</span>
+<span class="sd">                 This provides compatibility with the usual way Keras model input are preprocessed.</span>
+<span class="sd">                 Please consider directly using Keras/TensorFlow layers for this purpose.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        def keras_load_img(fpath):</span>
+<span class="sd">            from keras.preprocessing.image import load_img, img_to_array</span>
+<span class="sd">            import numpy as np</span>
+<span class="sd">            from pyspark.sql import Row</span>
+<span class="sd">            img = load_img(fpath, target_size=(299, 299))</span>
+<span class="sd">            return img_to_array(img).astype(np.uint8)</span>
+
+<span class="sd">        registerKerasImageUDF(&quot;my_inception_udf&quot;, InceptionV3(weights=&quot;imagenet&quot;), keras_load_img)</span>
+
+
+<span class="sd">    If the `preprocessor` is not provided, we assume the function will be applied to</span>
+<span class="sd">    a (struct) column encoded in [sparkdl.image.imageIO.imageSchema].</span>
+<span class="sd">    The output will be a single (struct) column containing the resulting tensor data.</span>
+
+<span class="sd">    :param udf_name: str, name of the UserDefinedFunction. If the name exists, it will be</span>
+<span class="sd">    overwritten.</span>
+<span class="sd">    :param keras_model_or_file_path: str or KerasModel,</span>
+<span class="sd">                                     either a path to the HDF5 Keras model file</span>
+<span class="sd">                                     or an actual loaded Keras model</span>
+<span class="sd">    :param preprocessor: function, optional, a function that</span>
+<span class="sd">                         converts image file path to image tensor/ndarray</span>
+<span class="sd">                         in the correct shape to be served as input to the Keras model</span>
+<span class="sd">    :return: :py:class:`GraphFunction`, the graph function for the Keras image model</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;registerKerasImageUDF() will be removed in the next release of sparkdl. &quot;</span>
+                  <span class="s2">&quot;Please use Pandas UDF for distributed model inference.&quot;</span><span class="p">,</span>
+                  <span class="ne">DeprecationWarning</span><span class="p">)</span>
+    <span class="n">ordered_udf_names</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">keras_udf_name</span> <span class="o">=</span> <span class="n">udf_name</span>
+    <span class="k">if</span> <span class="n">preprocessor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Spill the image structure to file and reload it</span>
+        <span class="c1"># with the user provided preprocessing funcition</span>
+        <span class="n">preproc_udf_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">__preprocess&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">udf_name</span><span class="p">)</span>
+        <span class="n">ordered_udf_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">preproc_udf_name</span><span class="p">)</span>
+        <span class="n">JVMAPI</span><span class="o">.</span><span class="n">registerUDF</span><span class="p">(</span>
+            <span class="n">preproc_udf_name</span><span class="p">,</span>
+            <span class="n">_serialize_and_reload_with</span><span class="p">(</span><span class="n">preprocessor</span><span class="p">),</span>
+            <span class="n">ImageSchema</span><span class="o">.</span><span class="n">imageSchema</span><span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dataType</span><span class="p">)</span>
+        <span class="n">keras_udf_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">__model_predict&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">udf_name</span><span class="p">)</span>
+
+    <span class="n">stages</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;spimg&#39;</span><span class="p">,</span> <span class="n">buildSpImageConverter</span><span class="p">(</span><span class="s1">&#39;RGB&#39;</span><span class="p">,</span> <span class="s2">&quot;uint8&quot;</span><span class="p">)),</span>
+              <span class="p">(</span><span class="s1">&#39;model&#39;</span><span class="p">,</span> <span class="n">GraphFunction</span><span class="o">.</span><span class="n">fromKeras</span><span class="p">(</span><span class="n">keras_model_or_file_path</span><span class="p">)),</span>
+              <span class="p">(</span><span class="s1">&#39;final&#39;</span><span class="p">,</span> <span class="n">buildFlattener</span><span class="p">())]</span>
+    <span class="n">gfn</span> <span class="o">=</span> <span class="n">GraphFunction</span><span class="o">.</span><span class="n">fromList</span><span class="p">(</span><span class="n">stages</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">IsolatedSession</span><span class="p">()</span> <span class="k">as</span> <span class="n">issn</span><span class="p">:</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">fetches</span> <span class="o">=</span> <span class="n">issn</span><span class="o">.</span><span class="n">importGraphFunction</span><span class="p">(</span><span class="n">gfn</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">makeGraphUDF</span><span class="p">(</span><span class="n">issn</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">keras_udf_name</span><span class="p">,</span> <span class="n">fetches</span><span class="p">)</span>
+        <span class="n">ordered_udf_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">keras_udf_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ordered_udf_names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;registering pipelined UDF </span><span class="si">{udf}</span><span class="s2"> with stages </span><span class="si">{udfs}</span><span class="s2">&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">udf</span><span class="o">=</span><span class="n">udf_name</span><span class="p">,</span> <span class="n">udfs</span><span class="o">=</span><span class="n">ordered_udf_names</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">JVMAPI</span><span class="o">.</span><span class="n">registerPipeline</span><span class="p">(</span><span class="n">udf_name</span><span class="p">,</span> <span class="n">ordered_udf_names</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">gfn</span></div>
+
+
+<span class="k">def</span> <span class="nf">_serialize_and_reload_with</span><span class="p">(</span><span class="n">preprocessor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retruns a function that performs the following steps</span>
+
+<span class="sd">    * takes a [sparkdl.imageSchema] encoded image,</span>
+<span class="sd">    * serialize and reload it with provided proprocessor function</span>
+<span class="sd">      * the preprocessor: (image_file_path =&gt; image_tensor)</span>
+<span class="sd">    * encode the output image tensor with [sparkdl.imageSchema]</span>
+
+<span class="sd">    :param preprocessor: function, mapping from image file path to an image tensor</span>
+<span class="sd">                         (image_file_path =&gt; image_tensor)</span>
+<span class="sd">    :return: the UDF preprocessor implementation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">udf_impl</span><span class="p">(</span><span class="n">spimg</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+        <span class="kn">from</span> <span class="nn">tempfile</span> <span class="kn">import</span> <span class="n">NamedTemporaryFile</span>
+        <span class="kn">from</span> <span class="nn">sparkdl.image.imageIO</span> <span class="kn">import</span> <span class="n">imageArrayToStruct</span>
+
+        <span class="n">img</span> <span class="o">=</span> <span class="n">imageIO</span><span class="o">.</span><span class="n">imageStructToPIL</span><span class="p">(</span><span class="n">spimg</span><span class="p">)</span>
+        <span class="c1"># Warning: must use lossless format to guarantee consistency</span>
+        <span class="n">temp_fp</span> <span class="o">=</span> <span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s1">&#39;.png&#39;</span><span class="p">)</span>
+        <span class="n">img</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">temp_fp</span><span class="p">,</span> <span class="s1">&#39;PNG&#39;</span><span class="p">)</span>
+        <span class="n">img_arr_reloaded</span> <span class="o">=</span> <span class="n">preprocessor</span><span class="p">(</span><span class="n">temp_fp</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">img_arr_reloaded</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">),</span> \
+            <span class="s2">&quot;expect preprocessor to return a numpy array&quot;</span>
+        <span class="n">img_arr_reloaded</span> <span class="o">=</span> <span class="n">img_arr_reloaded</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="c1"># Keras works in RGB order, need to fix the order</span>
+        <span class="n">img_arr_reloaded</span> <span class="o">=</span> <span class="n">imageIO</span><span class="o">.</span><span class="n">fixColorChannelOrdering</span><span class="p">(</span>
+            <span class="n">currentOrder</span><span class="o">=</span><span class="s1">&#39;RGB&#39;</span><span class="p">,</span> <span class="n">imgAry</span><span class="o">=</span><span class="n">img_arr_reloaded</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">imageArrayToStruct</span><span class="p">(</span><span class="n">img_arr_reloaded</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">udf_impl</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl 1.4.0 documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>
