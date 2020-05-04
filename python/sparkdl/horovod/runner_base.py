@@ -70,10 +70,10 @@ class HorovodRunner(object):
         self.num_processor = np
         if np == 0:
             logger = logging.getLogger("HorovodRunner")
-            logger.warning("""
-                Setting np=0 is deprecated and it will be removed in the next major Databricks Runtime release.
-                Choosing np based on the total task slots at runtime is unreliable due to dynamic executor registration.
-                Please set the number of parallel processes you need explicitly.""")
+            logger.warning(
+                "Setting np=0 is deprecated and it will be removed in the next major Databricks Runtime release. "
+                "Choosing np based on the total task slots at runtime is unreliable due to dynamic executor registration. "
+                "Please set the number of parallel processes you need explicitly.")
 
     def run(self, main, **kwargs):
         """
