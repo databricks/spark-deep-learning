@@ -62,8 +62,18 @@ class HorovodRunner(object):
               truncated, full logs are available in stderr stream of task 0 under the 2nd spark
               job started by HorovodRunner, which you can find in the Spark UI.
             - If 0, this will use all task slots on the cluster to launch the job.
+              .. warning:: Setting np=0 is deprecated and it will be removed in the next major
+                Databricks Runtime release. Choosing np based on the total task slots at runtime is
+                unreliable due to dynamic executor registration. Please set the number of parallel
+                processes you need explicitly.
         """
         self.num_processor = np
+        if np == 0:
+            logger = logging.getLogger("HorovodRunner")
+            logger.warning(
+                "Setting np=0 is deprecated and it will be removed in the next major Databricks Runtime release. "
+                "Choosing np based on the total task slots at runtime is unreliable due to dynamic executor registration. "
+                "Please set the number of parallel processes you need explicitly.")
 
     def run(self, main, **kwargs):
         """
