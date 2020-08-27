@@ -37,7 +37,7 @@ setuptools.setup(
     ],
     platforms=["Linux"],
     license="BSD",
-    keywords="spark deep learning horovod model distribbuted training",
+    keywords="spark deep learning horovod model distributed training",
     install_requires=[],
     extras_require={},
     tests_require=["nose", "pytest"],
