@@ -16,4 +16,6 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=invalid-name
 
+from sparkdl.horovod.runner_base import HorovodRunnerBase as HorovodRunner
+
 __version__ = '2.0.0-SNAPSHOT'

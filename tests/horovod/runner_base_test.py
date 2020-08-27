@@ -18,7 +18,7 @@ from __future__ import absolute_import, division, print_function
 from inspect import getfullargspec, FullArgSpec
 import unittest
 
-from sparkdl.horovod.runner_base import HorovodRunnerBase as HorovodRunner
+from sparkdl import HorovodRunner
 
 
 class HorovodRunnerBaseTestCase(unittest.TestCase):
@@ -57,4 +57,3 @@ class HorovodRunnerBaseTestCase(unittest.TestCase):
         hr = HorovodRunner(np=-1)
         return_value = hr.run(lambda: 42)
         self.assertEquals(return_value, 42)
-
