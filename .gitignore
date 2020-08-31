@@ -10,16 +10,13 @@ docs/_site
 docs/api
 README.org
 
-# sbt specific
-.cache/
-.history/
-.lib/
-dist/*
-target/
-lib_managed/
-src_managed/
-project/boot/
-project/plugins/project/
+# python
+*.pyc
+docs/_build/
+build/
+dist/
+*.egg-info/
+
 
 # intellij
 .idea/

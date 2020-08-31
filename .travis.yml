@@ -1,36 +1,9 @@
-sudo: required
-
 dist: trusty
 
-language: minimal
+language: python
 
-env:
-  global:
-    - DOCKER_COMPOSE_VERSION=1.22.0
-    - PYTHON_VERSION=3.7
-  matrix:
-    - TEST_SUITE=pylint
-    - TEST_SUITE=python-tests
-    - TEST_SUITE=scala-tests
-
-services:
-  - docker
-
-cache:
-  directories:
-  - $HOME/.ivy2/
-
-before_install:
-  # update docker compose to the specified version, https://docs.travis-ci.com/user/docker/#using-docker-compose
-  - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
-
-install :
-  - docker-compose build --build-arg PYTHON_VERSION=$PYTHON_VERSION
-  - docker-compose up -d --scale worker=2
-  - docker-compose exec master bash -i -c "build/sbt assembly"
+python:
+  - "3.6"
 
 script:
-  - docker-compose exec master bash -i -c "dev/run.py $TEST_SUITE"
+  - pytest
