@@ -6,9 +6,7 @@
 python/.setup.sh
 build/*.jar
 
-docs/_site
-docs/api
-README.org
+docs/build
 
 # python
 *.pyc
