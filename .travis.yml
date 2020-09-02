@@ -9,5 +9,5 @@ install:
   - pip install sphinx
 
 script:
-  - cd docs && make html
+  - pushd docs && make html && popd
   - pytest
