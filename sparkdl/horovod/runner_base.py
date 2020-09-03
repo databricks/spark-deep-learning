@@ -63,17 +63,7 @@ class HorovodRunnerBase(object):
                 Databricks Runtime release. Choosing np based on the total task slots at runtime is
                 unreliable due to dynamic executor registration. Please set the number of parallel
                 processes you need explicitly.
-        :param driver_log_verbosity: driver log verbosity, "all" (default) or "log_callback_only".
-            During training, the first worker process will collect logs from all workers.
-            The training logs are always merged into the first Spark executors stderr logs.
-            If driver log verbosity is "all", HorovodRunner streams all logs to the driver and shows
-            them in the notebook cell output.
-            However, this might generate excessive amount of logs during distributed training.
-            You can turn it off by setting driver log verbosity to "log_callback_only".
-            In this mode, HorovodRunner will only stream selected logs if you use a HorovodRunner
-            log callback in the first worker process, e.g.,
-            :class:`sparkdl.horovod.tensorflow.keras.LogCallback`.
-            .. warning:: We will switch the default to "log_callback_only" in a future release.
+        :param driver_log_verbosity: This argument is only available on Databricks Runtime.
         """
         self.num_processor = np
 
