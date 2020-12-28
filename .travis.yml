@@ -9,5 +9,5 @@ install:
   - pip install sphinx
 
 script:
-  - pushd docs/ && make clean html && popd docs
+  - pushd docs/ && PYTHONPATH=.. make clean html && popd docs
   - pytest
