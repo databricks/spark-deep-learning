@@ -35,7 +35,8 @@ class HorovodRunner(object):
     .. note:: Horovod is a distributed training framework developed by Uber.
     """
 
-    def __init__(self, *, np, driver_log_verbosity="all"):  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    def __init__(self, *, np, driver_log_verbosity="log_callback_only"):
         """
         :param np: number of parallel processes to use for the Horovod job.
             This argument only takes effect on Databricks Runtime 5.0 ML and above.
@@ -64,7 +65,7 @@ class HorovodRunner(object):
                 Databricks Runtime release. Choosing np based on the total task slots at runtime is
                 unreliable due to dynamic executor registration. Please set the number of parallel
                 processes you need explicitly.
-        :param driver_log_verbosity: driver log verbosity, "all" (default) or "log_callback_only".
+        :param driver_log_verbosity: driver log verbosity, "all" or "log_callback_only"(default).
             During training, the first worker process will collect logs from all workers.
             The training logs are always merged into the first Spark executors stderr logs.
             If driver log verbosity is "all", HorovodRunner streams all logs to the driver and shows
@@ -75,8 +76,6 @@ class HorovodRunner(object):
             logs from remote worker can be sent by :func:`sparkdl.horovod.log_to_driver`, or use
             log callback in the first worker process, e.g.,
             :class:`sparkdl.horovod.tensorflow.keras.LogCallback`.
-
-            .. warning:: We will switch the default to "log_callback_only" in a future release.
         """
         self.num_processor = np
 
