@@ -29,7 +29,7 @@ class HorovodRunnerBaseTestCase(unittest.TestCase):
         self.assertEquals(init_spec, FullArgSpec(
             args=['self'], varargs=None, varkw=None, defaults=None,
             kwonlyargs=['np', 'driver_log_verbosity'],
-            kwonlydefaults={'driver_log_verbosity': 'all'}, annotations={}))
+            kwonlydefaults={'driver_log_verbosity': 'log_callback_only'}, annotations={}))
         run_spec = getfullargspec(HorovodRunner.run)
         self.assertEquals(run_spec, FullArgSpec(
             args=['self', 'main'], varargs=None, varkw='kwargs', defaults=None, kwonlyargs=[],

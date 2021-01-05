@@ -16,14 +16,8 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=invalid-name
 
+from .xgboost import (XgboostClassifier, XgboostClassifierModel,
+                      XgboostRegressor, XgboostRegressorModel)
 
-def log_to_driver(message):
-    """
-    Send a log message (string type) to driver side, and driver will print log to stdout.
-    If message length is greater than 4000, it will be truncated.
-    """
-    raise NotImplementedError()
-
-
-__all__ = ['log_to_driver']
-
+__all__ = ['XgboostClassifier', 'XgboostClassifierModel',
+           'XgboostRegressor', 'XgboostRegressorModel']

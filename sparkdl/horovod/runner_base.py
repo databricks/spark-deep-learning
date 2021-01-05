@@ -20,7 +20,7 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 
-class HorovodRunnerBase(object):
+class HorovodRunner(object):
     """
     HorovodRunner runs distributed deep learning training jobs using Horovod.
 
@@ -35,7 +35,8 @@ class HorovodRunnerBase(object):
     .. note:: Horovod is a distributed training framework developed by Uber.
     """
 
-    def __init__(self, *, np, driver_log_verbosity="all"):  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
+    def __init__(self, *, np, driver_log_verbosity="log_callback_only"):
         """
         :param np: number of parallel processes to use for the Horovod job.
             This argument only takes effect on Databricks Runtime 5.0 ML and above.
@@ -59,11 +60,22 @@ class HorovodRunnerBase(object):
               truncated, full logs are available in stderr stream of task 0 under the 2nd spark
               job started by HorovodRunner, which you can find in the Spark UI.
             - If 0, this will use all task slots on the cluster to launch the job.
-              .. warning:: Setting np=0 is deprecated and it will be removed in the next major
+
+            .. warning:: Setting np=0 is deprecated and it will be removed in the next major
                 Databricks Runtime release. Choosing np based on the total task slots at runtime is
                 unreliable due to dynamic executor registration. Please set the number of parallel
                 processes you need explicitly.
-        :param driver_log_verbosity: This argument is only available on Databricks Runtime.
+        :param driver_log_verbosity: driver log verbosity, "all" or "log_callback_only"(default).
+            During training, the first worker process will collect logs from all workers.
+            The training logs are always merged into the first Spark executors stderr logs.
+            If driver log verbosity is "all", HorovodRunner streams all logs to the driver and shows
+            them in the notebook cell output.
+            However, this might generate excessive amount of logs during distributed training.
+            You can turn it off by setting driver log verbosity to "log_callback_only".
+            In this mode, HorovodRunner will only stream selected logs from remote worker.
+            logs from remote worker can be sent by :func:`sparkdl.horovod.log_to_driver`, or use
+            log callback in the first worker process, e.g.,
+            :class:`sparkdl.horovod.tensorflow.keras.LogCallback`.
         """
         self.num_processor = np
 
