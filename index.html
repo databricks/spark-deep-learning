@@ -1,8 +1,1602 @@
-<!DOCTYPE html>
-<head><meta http-equiv="refresh" content="0; url=docs/_site/index.html" /></head>
-<p>
-    Your browser should automatically redirect you to the API docs.
-    <a href="docs/_site/index.html">Click here</a> if you aren't redirected within 3 seconds.
-</p>
 
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to the Deep Learning Pipelines Python API docs! &#8212; pysparkdl  documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pysparkdl.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="_static/pysparkdl.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="#">pysparkdl  documentation</a> &#187;</li>
+
+        <li class="nav-item nav-item-this"><a href="">Welcome to the Deep Learning Pipelines Python API docs!</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-the-deep-learning-pipelines-python-api-docs">
+<h1>Welcome to the Deep Learning Pipelines Python API docs!<a class="headerlink" href="#welcome-to-the-deep-learning-pipelines-python-api-docs" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-sparkdl">
+<span id="horovod-runner"></span><h2>Horovod Runner<a class="headerlink" href="#module-sparkdl" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="sparkdl.HorovodRunner">
+<em class="property">class </em><code class="sig-prename descclassname">sparkdl.</code><code class="sig-name descname">HorovodRunner</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">np</span></em>, <em class="sig-param"><span class="n">driver_log_verbosity</span><span class="o">=</span><span class="default_value">'log_callback_only'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/horovod/runner_base.html#HorovodRunner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.HorovodRunner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>HorovodRunner runs distributed deep learning training jobs using Horovod.</p>
+<p>On Databricks Runtime 5.0 ML and above, it launches the Horovod job as a distributed Spark job.
+It makes running Horovod easy on Databricks by managing the cluster setup and integrating with
+Spark.
+Check out Databricks documentation to view end-to-end examples and performance tuning tips.</p>
+<p>The open-source version only runs the job locally inside the same Python process,
+which is for local development only.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Horovod is a distributed training framework developed by Uber.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>np</strong> – <p>number of parallel processes to use for the Horovod job.
+This argument only takes effect on Databricks Runtime 5.0 ML and above.
+It is ignored in the open-source version.
+On Databricks, each process will take an available task slot,
+which maps to a GPU on a GPU cluster or a CPU core on a CPU cluster.
+Accepted values are:</p>
+<ul>
+<li><p>If &lt;0, this will spawn <cite>-np</cite> subprocesses on the driver node to run Horovod locally.
+Training stdout and stderr messages go to the notebook cell output, and are also
+available in driver logs in case the cell output is truncated. This is useful for
+debugging and we recommend testing your code under this mode first. However, be
+careful of heavy use of the Spark driver on a shared Databricks cluster.
+Note that <cite>np &lt; -1</cite> is only supported on Databricks Runtime 5.5 ML and above.</p></li>
+<li><p>If &gt;0, this will launch a Spark job with <cite>np</cite> tasks starting all together and run the
+Horovod job on the task nodes.
+It will wait until <cite>np</cite> task slots are available to launch the job.
+If <cite>np</cite> is greater than the total number of task slots on the cluster,
+the job will fail. As of  Databricks Runtime 5.4 ML, training stdout and stderr
+messages go to the notebook cell output. In the event that the cell output is
+truncated, full logs are available in stderr stream of task 0 under the 2nd spark
+job started by HorovodRunner, which you can find in the Spark UI.</p></li>
+<li><p>If 0, this will use all task slots on the cluster to launch the job.</p></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Setting np=0 is deprecated and it will be removed in the next major
+Databricks Runtime release. Choosing np based on the total task slots at runtime is
+unreliable due to dynamic executor registration. Please set the number of parallel
+processes you need explicitly.</p>
+</div>
+</p></li>
+<li><p><strong>driver_log_verbosity</strong> – driver log verbosity, “all” or “log_callback_only”(default).
+During training, the first worker process will collect logs from all workers.
+The training logs are always merged into the first Spark executors stderr logs.
+If driver log verbosity is “all”, HorovodRunner streams all logs to the driver and shows
+them in the notebook cell output.
+However, this might generate excessive amount of logs during distributed training.
+You can turn it off by setting driver log verbosity to “log_callback_only”.
+In this mode, HorovodRunner will only stream selected logs from remote worker.
+logs from remote worker can be sent by <a class="reference internal" href="#sparkdl.horovod.log_to_driver" title="sparkdl.horovod.log_to_driver"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparkdl.horovod.log_to_driver()</span></code></a>, or use
+log callback in the first worker process, e.g.,
+<a class="reference internal" href="#sparkdl.horovod.tensorflow.keras.LogCallback" title="sparkdl.horovod.tensorflow.keras.LogCallback"><code class="xref py py-class docutils literal notranslate"><span class="pre">sparkdl.horovod.tensorflow.keras.LogCallback</span></code></a>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="sparkdl.HorovodRunner.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">main</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/horovod/runner_base.html#HorovodRunner.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.HorovodRunner.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs a Horovod training job invoking main(<a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs).</p>
+<p>The open-source version only invokes main(<a href="#id3"><span class="problematic" id="id4">**</span></a>kwargs) inside the same Python process.
+On Databricks Runtime 5.0 ML and above, it will launch the Horovod job based on the
+documented behavior of <cite>np</cite>.  Both the main function and the keyword arguments are
+serialized using cloudpickle and distributed to cluster workers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>main</strong> – a Python function that contains the Horovod training code.
+The expected signature is <cite>def main(**kwargs)</cite> or compatible forms.
+Because the function gets pickled and distributed to workers,
+please change global states inside the function, e.g., setting logging level,
+and be aware of pickling limitations.
+Avoid referencing large objects in the function, which might result large pickled data,
+making the job slow to start.</p></li>
+<li><p><strong>kwargs</strong> – keyword arguments passed to the main function at invocation time.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>return value of the main function.
+With <cite>np&gt;=0</cite>, this returns the value from the rank 0 process. Note that the returned
+value should be serializable using cloudpickle.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-sparkdl.horovod"></span><dl class="py function">
+<dt id="sparkdl.horovod.log_to_driver">
+<code class="sig-prename descclassname">sparkdl.horovod.</code><code class="sig-name descname">log_to_driver</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">message</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/horovod.html#log_to_driver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.horovod.log_to_driver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a log message (string type) to driver side, and driver will print log to stdout.
+If message length is greater than 4000, it will be truncated.</p>
+</dd></dl>
+
+<span class="target" id="module-sparkdl.horovod.tensorflow.keras"></span><dl class="py class">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback">
+<em class="property">class </em><code class="sig-prename descclassname">sparkdl.horovod.tensorflow.keras.</code><code class="sig-name descname">LogCallback</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">per_batch_log</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/horovod/tensorflow/keras.html#LogCallback"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">tensorflow.python.keras.callbacks.Callback</span></code></p>
+<p>A simple HorovodRunner log callback that streams event logs to notebook cell output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>per_batch_log</strong> – whether to output logs per batch, default: False.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_batch_begin">
+<code class="sig-name descname">on_batch_begin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">batch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_batch_begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>A backwards compatibility alias for <cite>on_train_batch_begin</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_batch_end">
+<code class="sig-name descname">on_batch_end</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">batch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/horovod/tensorflow/keras.html#LogCallback.on_batch_end"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_batch_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>A backwards compatibility alias for <cite>on_train_batch_end</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_epoch_begin">
+<code class="sig-name descname">on_epoch_begin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epoch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/horovod/tensorflow/keras.html#LogCallback.on_epoch_begin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_epoch_begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the start of an epoch.</p>
+<p>Subclasses should override for any actions to run. This function should only
+be called during TRAIN mode.</p>
+<dl>
+<dt>Arguments:</dt><dd><p>epoch: integer, index of epoch.
+logs: dict. Currently no data is passed to this argument for this method</p>
+<blockquote>
+<div><p>but that may change in the future.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_epoch_end">
+<code class="sig-name descname">on_epoch_end</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epoch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/horovod/tensorflow/keras.html#LogCallback.on_epoch_end"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_epoch_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the end of an epoch.</p>
+<p>Subclasses should override for any actions to run. This function should only
+be called during TRAIN mode.</p>
+<dl>
+<dt>Arguments:</dt><dd><p>epoch: integer, index of epoch.
+logs: dict, metric results for this training epoch, and for the</p>
+<blockquote>
+<div><p>validation epoch if validation is performed. Validation result keys
+are prefixed with <cite>val_</cite>.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_predict_batch_begin">
+<code class="sig-name descname">on_predict_batch_begin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">batch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_predict_batch_begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the beginning of a batch in <cite>predict</cite> methods.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl>
+<dt>Arguments:</dt><dd><p>batch: integer, index of batch within the current epoch.
+logs: dict. Has keys <cite>batch</cite> and <cite>size</cite> representing the current batch</p>
+<blockquote>
+<div><p>number and the size of the batch.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_predict_batch_end">
+<code class="sig-name descname">on_predict_batch_end</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">batch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_predict_batch_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the end of a batch in <cite>predict</cite> methods.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><p>batch: integer, index of batch within the current epoch.
+logs: dict. Metric results for this batch.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_predict_begin">
+<code class="sig-name descname">on_predict_begin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_predict_begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the beginning of prediction.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><dl class="simple">
+<dt>logs: dict. Currently no data is passed to this argument for this method</dt><dd><p>but that may change in the future.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_predict_end">
+<code class="sig-name descname">on_predict_end</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_predict_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the end of prediction.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><dl class="simple">
+<dt>logs: dict. Currently no data is passed to this argument for this method</dt><dd><p>but that may change in the future.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_test_batch_begin">
+<code class="sig-name descname">on_test_batch_begin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">batch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_test_batch_begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the beginning of a batch in <cite>evaluate</cite> methods.</p>
+<p>Also called at the beginning of a validation batch in the <cite>fit</cite>
+methods, if validation data is provided.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl>
+<dt>Arguments:</dt><dd><p>batch: integer, index of batch within the current epoch.
+logs: dict. Has keys <cite>batch</cite> and <cite>size</cite> representing the current batch</p>
+<blockquote>
+<div><p>number and the size of the batch.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_test_batch_end">
+<code class="sig-name descname">on_test_batch_end</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">batch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_test_batch_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the end of a batch in <cite>evaluate</cite> methods.</p>
+<p>Also called at the end of a validation batch in the <cite>fit</cite>
+methods, if validation data is provided.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><p>batch: integer, index of batch within the current epoch.
+logs: dict. Metric results for this batch.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_test_begin">
+<code class="sig-name descname">on_test_begin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_test_begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the beginning of evaluation or validation.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><dl class="simple">
+<dt>logs: dict. Currently no data is passed to this argument for this method</dt><dd><p>but that may change in the future.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_test_end">
+<code class="sig-name descname">on_test_end</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_test_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the end of evaluation or validation.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><dl class="simple">
+<dt>logs: dict. Currently no data is passed to this argument for this method</dt><dd><p>but that may change in the future.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_train_batch_begin">
+<code class="sig-name descname">on_train_batch_begin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">batch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_train_batch_begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the beginning of a training batch in <cite>fit</cite> methods.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl>
+<dt>Arguments:</dt><dd><p>batch: integer, index of batch within the current epoch.
+logs: dict. Has keys <cite>batch</cite> and <cite>size</cite> representing the current batch</p>
+<blockquote>
+<div><p>number and the size of the batch.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_train_batch_end">
+<code class="sig-name descname">on_train_batch_end</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">batch</span></em>, <em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_train_batch_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the end of a training batch in <cite>fit</cite> methods.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><p>batch: integer, index of batch within the current epoch.
+logs: dict. Metric results for this batch.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_train_begin">
+<code class="sig-name descname">on_train_begin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_train_begin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the beginning of training.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><dl class="simple">
+<dt>logs: dict. Currently no data is passed to this argument for this method</dt><dd><p>but that may change in the future.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.on_train_end">
+<code class="sig-name descname">on_train_end</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.on_train_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called at the end of training.</p>
+<p>Subclasses should override for any actions to run.</p>
+<dl class="simple">
+<dt>Arguments:</dt><dd><dl class="simple">
+<dt>logs: dict. Currently no data is passed to this argument for this method</dt><dd><p>but that may change in the future.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.set_model">
+<code class="sig-name descname">set_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.set_model" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.horovod.tensorflow.keras.LogCallback.set_params">
+<code class="sig-name descname">set_params</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.horovod.tensorflow.keras.LogCallback.set_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-sparkdl.xgboost">
+<span id="xgboost-for-pyspark-pipeline"></span><h2>Xgboost for PySpark Pipeline<a class="headerlink" href="#module-sparkdl.xgboost" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="sparkdl.xgboost.XgboostClassifier">
+<em class="property">class </em><code class="sig-prename descclassname">sparkdl.xgboost.</code><code class="sig-name descname">XgboostClassifier</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/xgboost/xgboost.html#XgboostClassifier"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sparkdl.xgboost.xgboost._XgboostEstimator</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.ml.param.shared.HasProbabilityCol</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.ml.param.shared.HasRawPredictionCol</span></code></p>
+<p>XgboostClassifier is a PySpark ML estimator. It implements the XGBoost classification
+algorithm based on XGBoost python library, and it can be used in PySpark Pipeline
+and PySpark ML meta algorithms like CrossValidator/TrainValidationSplit/OneVsRest.</p>
+<p>XgboostClassifier automatically supports most of the parameters in
+<cite>xgboost.XGBClassifier</cite> constructor and most of the parameters used in
+<cite>xgboost.XGBClassifier</cite> fit and predict method (see <a class="reference external" href="https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBClassifier">API docs</a> for details), excluding the
+unsupported parameters: <cite>gpu_id</cite>, <cite>kwargs</cite>, <cite>output_margin</cite>, <cite>base_margin</cite>,
+<cite>validate_features</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>callbacks</strong> – The export and import of the callback functions are at best effort. For
+details, see <a class="reference internal" href="#sparkdl.xgboost.XgboostClassifier.callbacks" title="sparkdl.xgboost.XgboostClassifier.callbacks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostClassifier.callbacks</span></code></a> param doc.</p></li>
+<li><p><strong>missing</strong> – The parameter <cite>missing</cite> in XgboostClassifier has different semantics with
+that in <cite>xgboost.XGBClassifier</cite>. For details, see
+<a class="reference internal" href="#sparkdl.xgboost.XgboostClassifier.missing" title="sparkdl.xgboost.XgboostClassifier.missing"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostClassifier.missing</span></code></a> param doc.</p></li>
+<li><p><strong>rawPredictionCol</strong> – The <cite>output_margin=True</cite> is implicitly supported by the
+<cite>rawPredictionCol</cite> output column, which is always returned with the predicted margin
+values.</p></li>
+<li><p><strong>validationIndicatorCol</strong> – For params related to <cite>xgboost.XGBClassifier</cite> training with
+evaluation dataset’s supervision,
+set <a class="reference internal" href="#sparkdl.xgboost.XgboostClassifier.validationIndicatorCol" title="sparkdl.xgboost.XgboostClassifier.validationIndicatorCol"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostClassifier.validationIndicatorCol</span></code></a>
+parameter instead of setting the <cite>eval_set</cite> parameter in <cite>xgboost.XGBClassifier</cite>
+fit method.</p></li>
+<li><p><strong>weightCol</strong> – To specify the weight of the training and validation dataset, set
+<a class="reference internal" href="#sparkdl.xgboost.XgboostClassifier.weightCol" title="sparkdl.xgboost.XgboostClassifier.weightCol"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostClassifier.weightCol</span></code></a> parameter instead of setting
+<cite>sample_weight</cite> and <cite>sample_weight_eval_set</cite> parameter in <cite>xgboost.XGBClassifier</cite>
+fit method.</p></li>
+<li><p><strong>xgb_model</strong> – Set the value to be the instance returned by
+<a class="reference internal" href="#sparkdl.xgboost.XgboostClassifierModel.get_booster" title="sparkdl.xgboost.XgboostClassifierModel.get_booster"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostClassifierModel.get_booster()</span></code></a>.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The Parameters chart above contains parameters that need special handling.
+For a full list of parameters, see entries with <cite>Param(parent=…</cite> below.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>XgboostClassifier currently only supports training on a single worker node,
+and it would load all the training data into memory during training. If the
+training data cannot fit into the worker’s memory, an error will be raised.
+XgboostClassifier supports predicting on multiple workers in parallel.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This API is experimental.</p>
+</div>
+<p><strong>Examples</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">sparkdl.xgboost</span> <span class="kn">import</span> <span class="n">XgboostClassifier</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pyspark.ml.linalg</span> <span class="kn">import</span> <span class="n">Vectors</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df_train</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">dense</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">sparse</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="mf">5.5</span><span class="p">}),</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">dense</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">sparse</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="mf">7.5</span><span class="p">}),</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="s2">&quot;isVal&quot;</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df_test</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">dense</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">),</span> <span class="p">),</span>
+<span class="gp">... </span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">xgb_classifier</span> <span class="o">=</span> <span class="n">XgboostClassifier</span><span class="p">(</span><span class="n">max_depth</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">missing</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">validationIndicatorCol</span><span class="o">=</span><span class="s1">&#39;isVal&#39;</span><span class="p">,</span> <span class="n">weightCol</span><span class="o">=</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">early_stopping_rounds</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">eval_metric</span><span class="o">=</span><span class="s1">&#39;logloss&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">xgb_clf_model</span> <span class="o">=</span> <span class="n">xgb_classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">df_train</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">xgb_clf_model</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df_test</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifier.callbacks">
+<code class="sig-name descname">callbacks</code><em class="property"> = Param(parent='undefined', name='callbacks', doc='Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or `xgboost.XGBRegressor.fit()` for this param callbacks.The callbacks can be arbitrary functions. It is saved using cloudpickle which is not a fully self-contained format. It may fail to load with different versions of dependencies.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.callbacks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.clear">
+<code class="sig-name descname">clear</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.clear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clears a param from the param map if it has been explicitly set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.copy">
+<code class="sig-name descname">copy</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">extra</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a copy of this instance with the same uid and some
+extra params. The default implementation creates a
+shallow copy using <code class="xref py py-func docutils literal notranslate"><span class="pre">copy.copy()</span></code>, and then copies the
+embedded and extra parameters over and returns the copy.
+Subclasses should override this method if the default approach
+is not sufficient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>extra</strong> – Extra parameters to copy to the new instance</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Copy of this instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.explainParam">
+<code class="sig-name descname">explainParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.explainParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Explains a single param and returns its name, doc, and optional
+default value and user-supplied value in a string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.explainParams">
+<code class="sig-name descname">explainParams</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.explainParams" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the documentation of all params with their optionally
+default values and user-supplied values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.extractParamMap">
+<code class="sig-name descname">extractParamMap</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">extra</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.extractParamMap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts the embedded default param values and user-supplied
+values, and then merges them with extra values from input into
+a flat param map, where the latter value is used if there exist
+conflicts, i.e., with ordering: default param values &lt;
+user-supplied values &lt; extra.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>extra</strong> – extra param values</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>merged param map</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifier.featuresCol">
+<code class="sig-name descname">featuresCol</code><em class="property"> = Param(parent='undefined', name='featuresCol', doc='features column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.featuresCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.fit">
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fits a model to the input dataset with optional parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset</strong> – input dataset, which is an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.sql.DataFrame</span></code></p></li>
+<li><p><strong>params</strong> – an optional param map that overrides embedded params. If a list/tuple of
+param maps is given, this calls fit on each param map and returns a list of
+models.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>fitted model(s)</p>
+</dd>
+</dl>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 1.3.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.fitMultiple">
+<code class="sig-name descname">fitMultiple</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">paramMaps</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.fitMultiple" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fits a model to the input dataset for each param map in <cite>paramMaps</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset</strong> – input dataset, which is an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.sql.DataFrame</span></code>.</p></li>
+<li><p><strong>paramMaps</strong> – A Sequence of param maps.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A thread safe iterable which contains one model for each param map. Each
+call to <cite>next(modelIterator)</cite> will return <cite>(index, model)</cite> where model was fit
+using <cite>paramMaps[index]</cite>. <cite>index</cite> values may not be sequential.</p>
+</dd>
+</dl>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 2.3.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.getFeaturesCol">
+<code class="sig-name descname">getFeaturesCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.getFeaturesCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of featuresCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.getLabelCol">
+<code class="sig-name descname">getLabelCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.getLabelCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of labelCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.getOrDefault">
+<code class="sig-name descname">getOrDefault</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.getOrDefault" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of a param in the user-supplied param map or its
+default value. Raises an error if neither is set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.getParam">
+<code class="sig-name descname">getParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">paramName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.getParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a param by its name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.getPredictionCol">
+<code class="sig-name descname">getPredictionCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.getPredictionCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of predictionCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.getProbabilityCol">
+<code class="sig-name descname">getProbabilityCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.getProbabilityCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of probabilityCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.getRawPredictionCol">
+<code class="sig-name descname">getRawPredictionCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.getRawPredictionCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of rawPredictionCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.getValidationIndicatorCol">
+<code class="sig-name descname">getValidationIndicatorCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.getValidationIndicatorCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of validationIndicatorCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.getWeightCol">
+<code class="sig-name descname">getWeightCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.getWeightCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of weightCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.hasDefault">
+<code class="sig-name descname">hasDefault</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.hasDefault" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param has a default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.hasParam">
+<code class="sig-name descname">hasParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">paramName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.hasParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests whether this instance contains a param with a given
+(string) name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.isDefined">
+<code class="sig-name descname">isDefined</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.isDefined" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param is explicitly set by user or has
+a default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.isSet">
+<code class="sig-name descname">isSet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.isSet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param is explicitly set by user.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifier.labelCol">
+<code class="sig-name descname">labelCol</code><em class="property"> = Param(parent='undefined', name='labelCol', doc='label column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.labelCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.load">
+<em class="property">classmethod </em><code class="sig-name descname">load</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads an ML instance from the input path, a shortcut of <cite>read().load(path)</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifier.missing">
+<code class="sig-name descname">missing</code><em class="property"> = Param(parent='undefined', name='missing', doc='Specify the missing value in the features, default np.nan. We recommend using 0.0 as the missing value for better performance. Note: In a spark DataFrame, the inactive values in a sparse vector mean 0 instead of missing values, unless missing=0 is specified.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.missing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.params">
+<em class="property">property </em><code class="sig-name descname">params</code><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns all params ordered by name. The default implementation
+uses <code class="xref py py-func docutils literal notranslate"><span class="pre">dir()</span></code> to get all attributes of type
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifier.predictionCol">
+<code class="sig-name descname">predictionCol</code><em class="property"> = Param(parent='undefined', name='predictionCol', doc='prediction column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.predictionCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifier.probabilityCol">
+<code class="sig-name descname">probabilityCol</code><em class="property"> = Param(parent='undefined', name='probabilityCol', doc='Column name for predicted class conditional probabilities. Note: Not all models output well-calibrated probability estimates! These probabilities should be treated as confidences, not precise probabilities.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.probabilityCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifier.rawPredictionCol">
+<code class="sig-name descname">rawPredictionCol</code><em class="property"> = Param(parent='undefined', name='rawPredictionCol', doc='raw prediction (a.k.a. confidence) column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.rawPredictionCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.read">
+<em class="property">classmethod </em><code class="sig-name descname">read</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an MLReader instance for this class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.save">
+<code class="sig-name descname">save</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save this ML instance to the given path, a shortcut of ‘write().save(path)’.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.set">
+<code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets a parameter in the embedded param map.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifier.validationIndicatorCol">
+<code class="sig-name descname">validationIndicatorCol</code><em class="property"> = Param(parent='undefined', name='validationIndicatorCol', doc='name of the column that indicates whether each row is for training or for validation. False indicates training; true indicates validation.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.validationIndicatorCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifier.weightCol">
+<code class="sig-name descname">weightCol</code><em class="property"> = Param(parent='undefined', name='weightCol', doc='weight column name. If this is not set or empty, we treat all instance weights as 1.0.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.weightCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifier.write">
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifier.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an MLWriter instance for this ML instance.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="sparkdl.xgboost.XgboostClassifierModel">
+<em class="property">class </em><code class="sig-prename descclassname">sparkdl.xgboost.</code><code class="sig-name descname">XgboostClassifierModel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">xgb_sklearn_model</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/xgboost/xgboost.html#XgboostClassifierModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sparkdl.xgboost.xgboost._XgboostModel</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.ml.param.shared.HasProbabilityCol</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.ml.param.shared.HasRawPredictionCol</span></code></p>
+<p>The model returned by <a class="reference internal" href="#sparkdl.xgboost.XgboostClassifier.fit" title="sparkdl.xgboost.XgboostClassifier.fit"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostClassifier.fit()</span></code></a></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This API is experimental.</p>
+</div>
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.callbacks">
+<code class="sig-name descname">callbacks</code><em class="property"> = Param(parent='undefined', name='callbacks', doc='Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or `xgboost.XGBRegressor.fit()` for this param callbacks.The callbacks can be arbitrary functions. It is saved using cloudpickle which is not a fully self-contained format. It may fail to load with different versions of dependencies.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.callbacks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.clear">
+<code class="sig-name descname">clear</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.clear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clears a param from the param map if it has been explicitly set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.copy">
+<code class="sig-name descname">copy</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">extra</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a copy of this instance with the same uid and some
+extra params. The default implementation creates a
+shallow copy using <code class="xref py py-func docutils literal notranslate"><span class="pre">copy.copy()</span></code>, and then copies the
+embedded and extra parameters over and returns the copy.
+Subclasses should override this method if the default approach
+is not sufficient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>extra</strong> – Extra parameters to copy to the new instance</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Copy of this instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.explainParam">
+<code class="sig-name descname">explainParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.explainParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Explains a single param and returns its name, doc, and optional
+default value and user-supplied value in a string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.explainParams">
+<code class="sig-name descname">explainParams</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.explainParams" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the documentation of all params with their optionally
+default values and user-supplied values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.extractParamMap">
+<code class="sig-name descname">extractParamMap</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">extra</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.extractParamMap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts the embedded default param values and user-supplied
+values, and then merges them with extra values from input into
+a flat param map, where the latter value is used if there exist
+conflicts, i.e., with ordering: default param values &lt;
+user-supplied values &lt; extra.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>extra</strong> – extra param values</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>merged param map</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.featuresCol">
+<code class="sig-name descname">featuresCol</code><em class="property"> = Param(parent='undefined', name='featuresCol', doc='features column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.featuresCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.getFeaturesCol">
+<code class="sig-name descname">getFeaturesCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.getFeaturesCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of featuresCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.getLabelCol">
+<code class="sig-name descname">getLabelCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.getLabelCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of labelCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.getOrDefault">
+<code class="sig-name descname">getOrDefault</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.getOrDefault" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of a param in the user-supplied param map or its
+default value. Raises an error if neither is set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.getParam">
+<code class="sig-name descname">getParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">paramName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.getParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a param by its name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.getPredictionCol">
+<code class="sig-name descname">getPredictionCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.getPredictionCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of predictionCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.getProbabilityCol">
+<code class="sig-name descname">getProbabilityCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.getProbabilityCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of probabilityCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.getRawPredictionCol">
+<code class="sig-name descname">getRawPredictionCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.getRawPredictionCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of rawPredictionCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.getValidationIndicatorCol">
+<code class="sig-name descname">getValidationIndicatorCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.getValidationIndicatorCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of validationIndicatorCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.getWeightCol">
+<code class="sig-name descname">getWeightCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.getWeightCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of weightCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.get_booster">
+<code class="sig-name descname">get_booster</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.get_booster" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the <cite>xgboost.core.Booster</cite> instance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.hasDefault">
+<code class="sig-name descname">hasDefault</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.hasDefault" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param has a default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.hasParam">
+<code class="sig-name descname">hasParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">paramName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.hasParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests whether this instance contains a param with a given
+(string) name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.isDefined">
+<code class="sig-name descname">isDefined</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.isDefined" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param is explicitly set by user or has
+a default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.isSet">
+<code class="sig-name descname">isSet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.isSet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param is explicitly set by user.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.labelCol">
+<code class="sig-name descname">labelCol</code><em class="property"> = Param(parent='undefined', name='labelCol', doc='label column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.labelCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.load">
+<em class="property">classmethod </em><code class="sig-name descname">load</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads an ML instance from the input path, a shortcut of <cite>read().load(path)</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.missing">
+<code class="sig-name descname">missing</code><em class="property"> = Param(parent='undefined', name='missing', doc='Specify the missing value in the features, default np.nan. We recommend using 0.0 as the missing value for better performance. Note: In a spark DataFrame, the inactive values in a sparse vector mean 0 instead of missing values, unless missing=0 is specified.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.missing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.params">
+<em class="property">property </em><code class="sig-name descname">params</code><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns all params ordered by name. The default implementation
+uses <code class="xref py py-func docutils literal notranslate"><span class="pre">dir()</span></code> to get all attributes of type
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.predictionCol">
+<code class="sig-name descname">predictionCol</code><em class="property"> = Param(parent='undefined', name='predictionCol', doc='prediction column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.predictionCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.probabilityCol">
+<code class="sig-name descname">probabilityCol</code><em class="property"> = Param(parent='undefined', name='probabilityCol', doc='Column name for predicted class conditional probabilities. Note: Not all models output well-calibrated probability estimates! These probabilities should be treated as confidences, not precise probabilities.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.probabilityCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.rawPredictionCol">
+<code class="sig-name descname">rawPredictionCol</code><em class="property"> = Param(parent='undefined', name='rawPredictionCol', doc='raw prediction (a.k.a. confidence) column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.rawPredictionCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.read">
+<em class="property">classmethod </em><code class="sig-name descname">read</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an MLReader instance for this class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.save">
+<code class="sig-name descname">save</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save this ML instance to the given path, a shortcut of ‘write().save(path)’.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.set">
+<code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets a parameter in the embedded param map.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.transform">
+<code class="sig-name descname">transform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transforms the input dataset with optional parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset</strong> – input dataset, which is an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.sql.DataFrame</span></code></p></li>
+<li><p><strong>params</strong> – an optional param map that overrides embedded params.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>transformed dataset</p>
+</dd>
+</dl>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 1.3.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.validationIndicatorCol">
+<code class="sig-name descname">validationIndicatorCol</code><em class="property"> = Param(parent='undefined', name='validationIndicatorCol', doc='name of the column that indicates whether each row is for training or for validation. False indicates training; true indicates validation.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.validationIndicatorCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.weightCol">
+<code class="sig-name descname">weightCol</code><em class="property"> = Param(parent='undefined', name='weightCol', doc='weight column name. If this is not set or empty, we treat all instance weights as 1.0.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.weightCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostClassifierModel.write">
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostClassifierModel.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an MLWriter instance for this ML instance.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="sparkdl.xgboost.XgboostRegressor">
+<em class="property">class </em><code class="sig-prename descclassname">sparkdl.xgboost.</code><code class="sig-name descname">XgboostRegressor</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/xgboost/xgboost.html#XgboostRegressor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sparkdl.xgboost.xgboost._XgboostEstimator</span></code></p>
+<p>XgboostRegressor is a PySpark ML estimator. It implements the XGBoost regression
+algorithm based on XGBoost python library, and it can be used in PySpark Pipeline
+and PySpark ML meta algorithms like CrossValidator/TrainValidationSplit/OneVsRest.</p>
+<p>XgboostRegressor automatically supports most of the parameters in
+<cite>xgboost.XGBRegressor</cite> constructor and most of the parameters used in
+<cite>xgboost.XGBRegressor</cite> fit and predict method (see <a class="reference external" href="https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor">API docs</a> for details), excluding the
+unsupported parameters: <cite>gpu_id</cite>, <cite>kwargs</cite>, <cite>output_margin</cite>, <cite>base_margin</cite>,
+<cite>validate_features</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>callbacks</strong> – The export and import of the callback functions are at best effort.
+For details, see <a class="reference internal" href="#sparkdl.xgboost.XgboostRegressor.callbacks" title="sparkdl.xgboost.XgboostRegressor.callbacks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostRegressor.callbacks</span></code></a> param doc.</p></li>
+<li><p><strong>missing</strong> – The parameter <cite>missing</cite> in XgboostRegressor has different semantics with
+that in <cite>xgboost.XGBRegressor</cite>. For details, see
+<a class="reference internal" href="#sparkdl.xgboost.XgboostRegressor.missing" title="sparkdl.xgboost.XgboostRegressor.missing"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostRegressor.missing</span></code></a> param doc.</p></li>
+<li><p><strong>rawPredictionCol</strong> – The <cite>output_margin=True</cite> is implicitly supported by the
+<cite>rawPredictionCol</cite> output column, which is always returned with the predicted margin
+values.</p></li>
+<li><p><strong>validationIndicatorCol</strong> – For params related to <cite>xgboost.XGBRegressor</cite> training
+with evaluation dataset’s supervision, set
+<a class="reference internal" href="#sparkdl.xgboost.XgboostRegressor.validationIndicatorCol" title="sparkdl.xgboost.XgboostRegressor.validationIndicatorCol"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostRegressor.validationIndicatorCol</span></code></a>
+parameter instead of setting the <cite>eval_set</cite> parameter in <cite>xgboost.XGBRegressor</cite>
+fit method.</p></li>
+<li><p><strong>weightCol</strong> – To specify the weight of the training and validation dataset, set
+<a class="reference internal" href="#sparkdl.xgboost.XgboostRegressor.weightCol" title="sparkdl.xgboost.XgboostRegressor.weightCol"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostRegressor.weightCol</span></code></a> parameter instead of setting
+<cite>sample_weight</cite> and <cite>sample_weight_eval_set</cite> parameter in <cite>xgboost.XGBRegressor</cite>
+fit method.</p></li>
+<li><p><strong>xgb_model</strong> – Set the value to be the instance returned by
+<a class="reference internal" href="#sparkdl.xgboost.XgboostRegressorModel.get_booster" title="sparkdl.xgboost.XgboostRegressorModel.get_booster"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostRegressorModel.get_booster()</span></code></a>.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The Parameters chart above contains parameters that need special handling.
+For a full list of parameters, see entries with <cite>Param(parent=…</cite> below.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>XgboostRegressor currently only supports training on a single worker node,
+and it would load all the training data into memory during training. If the
+training data cannot fit into the worker’s memory, an error will be raised.
+XgboostRegressor supports predicting on multiple workers in parallel.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This API is experimental.</p>
+</div>
+<p><strong>Examples</strong></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">sparkdl.xgboost</span> <span class="kn">import</span> <span class="n">XgboostRegressor</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pyspark.ml.linalg</span> <span class="kn">import</span> <span class="n">Vectors</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df_train</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">dense</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">sparse</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="mf">5.5</span><span class="p">}),</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">dense</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span> <span class="mi">2</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">sparse</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="mf">7.5</span><span class="p">}),</span> <span class="mi">3</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="s2">&quot;isVal&quot;</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df_test</span> <span class="o">=</span> <span class="n">spark</span><span class="o">.</span><span class="n">createDataFrame</span><span class="p">([</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">dense</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">),</span> <span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="n">Vectors</span><span class="o">.</span><span class="n">sparse</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="mf">5.5</span><span class="p">}),</span> <span class="p">)</span>
+<span class="gp">... </span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">xgb_regressor</span> <span class="o">=</span> <span class="n">XgboostRegressor</span><span class="p">(</span><span class="n">max_depth</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">missing</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+<span class="gp">... </span><span class="n">validationIndicatorCol</span><span class="o">=</span><span class="s1">&#39;isVal&#39;</span><span class="p">,</span> <span class="n">weightCol</span><span class="o">=</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span>
+<span class="gp">... </span><span class="n">early_stopping_rounds</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">eval_metric</span><span class="o">=</span><span class="s1">&#39;rmse&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">xgb_reg_model</span> <span class="o">=</span> <span class="n">xgb_regressor</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">df_train</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">xgb_reg_model</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df_test</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressor.callbacks">
+<code class="sig-name descname">callbacks</code><em class="property"> = Param(parent='undefined', name='callbacks', doc='Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or `xgboost.XGBRegressor.fit()` for this param callbacks.The callbacks can be arbitrary functions. It is saved using cloudpickle which is not a fully self-contained format. It may fail to load with different versions of dependencies.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.callbacks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.clear">
+<code class="sig-name descname">clear</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.clear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clears a param from the param map if it has been explicitly set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.copy">
+<code class="sig-name descname">copy</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">extra</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a copy of this instance with the same uid and some
+extra params. The default implementation creates a
+shallow copy using <code class="xref py py-func docutils literal notranslate"><span class="pre">copy.copy()</span></code>, and then copies the
+embedded and extra parameters over and returns the copy.
+Subclasses should override this method if the default approach
+is not sufficient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>extra</strong> – Extra parameters to copy to the new instance</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Copy of this instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.explainParam">
+<code class="sig-name descname">explainParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.explainParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Explains a single param and returns its name, doc, and optional
+default value and user-supplied value in a string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.explainParams">
+<code class="sig-name descname">explainParams</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.explainParams" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the documentation of all params with their optionally
+default values and user-supplied values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.extractParamMap">
+<code class="sig-name descname">extractParamMap</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">extra</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.extractParamMap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts the embedded default param values and user-supplied
+values, and then merges them with extra values from input into
+a flat param map, where the latter value is used if there exist
+conflicts, i.e., with ordering: default param values &lt;
+user-supplied values &lt; extra.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>extra</strong> – extra param values</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>merged param map</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressor.featuresCol">
+<code class="sig-name descname">featuresCol</code><em class="property"> = Param(parent='undefined', name='featuresCol', doc='features column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.featuresCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.fit">
+<code class="sig-name descname">fit</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fits a model to the input dataset with optional parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset</strong> – input dataset, which is an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.sql.DataFrame</span></code></p></li>
+<li><p><strong>params</strong> – an optional param map that overrides embedded params. If a list/tuple of
+param maps is given, this calls fit on each param map and returns a list of
+models.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>fitted model(s)</p>
+</dd>
+</dl>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 1.3.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.fitMultiple">
+<code class="sig-name descname">fitMultiple</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">paramMaps</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.fitMultiple" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fits a model to the input dataset for each param map in <cite>paramMaps</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset</strong> – input dataset, which is an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.sql.DataFrame</span></code>.</p></li>
+<li><p><strong>paramMaps</strong> – A Sequence of param maps.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A thread safe iterable which contains one model for each param map. Each
+call to <cite>next(modelIterator)</cite> will return <cite>(index, model)</cite> where model was fit
+using <cite>paramMaps[index]</cite>. <cite>index</cite> values may not be sequential.</p>
+</dd>
+</dl>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 2.3.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.getFeaturesCol">
+<code class="sig-name descname">getFeaturesCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.getFeaturesCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of featuresCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.getLabelCol">
+<code class="sig-name descname">getLabelCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.getLabelCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of labelCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.getOrDefault">
+<code class="sig-name descname">getOrDefault</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.getOrDefault" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of a param in the user-supplied param map or its
+default value. Raises an error if neither is set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.getParam">
+<code class="sig-name descname">getParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">paramName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.getParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a param by its name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.getPredictionCol">
+<code class="sig-name descname">getPredictionCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.getPredictionCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of predictionCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.getValidationIndicatorCol">
+<code class="sig-name descname">getValidationIndicatorCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.getValidationIndicatorCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of validationIndicatorCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.getWeightCol">
+<code class="sig-name descname">getWeightCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.getWeightCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of weightCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.hasDefault">
+<code class="sig-name descname">hasDefault</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.hasDefault" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param has a default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.hasParam">
+<code class="sig-name descname">hasParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">paramName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.hasParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests whether this instance contains a param with a given
+(string) name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.isDefined">
+<code class="sig-name descname">isDefined</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.isDefined" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param is explicitly set by user or has
+a default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.isSet">
+<code class="sig-name descname">isSet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.isSet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param is explicitly set by user.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressor.labelCol">
+<code class="sig-name descname">labelCol</code><em class="property"> = Param(parent='undefined', name='labelCol', doc='label column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.labelCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.load">
+<em class="property">classmethod </em><code class="sig-name descname">load</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads an ML instance from the input path, a shortcut of <cite>read().load(path)</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressor.missing">
+<code class="sig-name descname">missing</code><em class="property"> = Param(parent='undefined', name='missing', doc='Specify the missing value in the features, default np.nan. We recommend using 0.0 as the missing value for better performance. Note: In a spark DataFrame, the inactive values in a sparse vector mean 0 instead of missing values, unless missing=0 is specified.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.missing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.params">
+<em class="property">property </em><code class="sig-name descname">params</code><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns all params ordered by name. The default implementation
+uses <code class="xref py py-func docutils literal notranslate"><span class="pre">dir()</span></code> to get all attributes of type
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressor.predictionCol">
+<code class="sig-name descname">predictionCol</code><em class="property"> = Param(parent='undefined', name='predictionCol', doc='prediction column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.predictionCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.read">
+<em class="property">classmethod </em><code class="sig-name descname">read</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an MLReader instance for this class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.save">
+<code class="sig-name descname">save</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save this ML instance to the given path, a shortcut of ‘write().save(path)’.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.set">
+<code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets a parameter in the embedded param map.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressor.validationIndicatorCol">
+<code class="sig-name descname">validationIndicatorCol</code><em class="property"> = Param(parent='undefined', name='validationIndicatorCol', doc='name of the column that indicates whether each row is for training or for validation. False indicates training; true indicates validation.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.validationIndicatorCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressor.weightCol">
+<code class="sig-name descname">weightCol</code><em class="property"> = Param(parent='undefined', name='weightCol', doc='weight column name. If this is not set or empty, we treat all instance weights as 1.0.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.weightCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressor.write">
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressor.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an MLWriter instance for this ML instance.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="sparkdl.xgboost.XgboostRegressorModel">
+<em class="property">class </em><code class="sig-prename descclassname">sparkdl.xgboost.</code><code class="sig-name descname">XgboostRegressorModel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">xgb_sklearn_model</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sparkdl/xgboost/xgboost.html#XgboostRegressorModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sparkdl.xgboost.xgboost._XgboostModel</span></code></p>
+<p>The model returned by <a class="reference internal" href="#sparkdl.xgboost.XgboostRegressor.fit" title="sparkdl.xgboost.XgboostRegressor.fit"><code class="xref py py-func docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostRegressor.fit()</span></code></a></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This API is experimental.</p>
+</div>
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.callbacks">
+<code class="sig-name descname">callbacks</code><em class="property"> = Param(parent='undefined', name='callbacks', doc='Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or `xgboost.XGBRegressor.fit()` for this param callbacks.The callbacks can be arbitrary functions. It is saved using cloudpickle which is not a fully self-contained format. It may fail to load with different versions of dependencies.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.callbacks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.clear">
+<code class="sig-name descname">clear</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.clear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clears a param from the param map if it has been explicitly set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.copy">
+<code class="sig-name descname">copy</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">extra</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a copy of this instance with the same uid and some
+extra params. The default implementation creates a
+shallow copy using <code class="xref py py-func docutils literal notranslate"><span class="pre">copy.copy()</span></code>, and then copies the
+embedded and extra parameters over and returns the copy.
+Subclasses should override this method if the default approach
+is not sufficient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>extra</strong> – Extra parameters to copy to the new instance</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Copy of this instance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.explainParam">
+<code class="sig-name descname">explainParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.explainParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Explains a single param and returns its name, doc, and optional
+default value and user-supplied value in a string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.explainParams">
+<code class="sig-name descname">explainParams</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.explainParams" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the documentation of all params with their optionally
+default values and user-supplied values.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.extractParamMap">
+<code class="sig-name descname">extractParamMap</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">extra</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.extractParamMap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts the embedded default param values and user-supplied
+values, and then merges them with extra values from input into
+a flat param map, where the latter value is used if there exist
+conflicts, i.e., with ordering: default param values &lt;
+user-supplied values &lt; extra.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>extra</strong> – extra param values</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>merged param map</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.featuresCol">
+<code class="sig-name descname">featuresCol</code><em class="property"> = Param(parent='undefined', name='featuresCol', doc='features column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.featuresCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.getFeaturesCol">
+<code class="sig-name descname">getFeaturesCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.getFeaturesCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of featuresCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.getLabelCol">
+<code class="sig-name descname">getLabelCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.getLabelCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of labelCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.getOrDefault">
+<code class="sig-name descname">getOrDefault</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.getOrDefault" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of a param in the user-supplied param map or its
+default value. Raises an error if neither is set.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.getParam">
+<code class="sig-name descname">getParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">paramName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.getParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a param by its name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.getPredictionCol">
+<code class="sig-name descname">getPredictionCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.getPredictionCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of predictionCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.getValidationIndicatorCol">
+<code class="sig-name descname">getValidationIndicatorCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.getValidationIndicatorCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of validationIndicatorCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.getWeightCol">
+<code class="sig-name descname">getWeightCol</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.getWeightCol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the value of weightCol or its default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.get_booster">
+<code class="sig-name descname">get_booster</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.get_booster" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the <cite>xgboost.core.Booster</cite> instance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.hasDefault">
+<code class="sig-name descname">hasDefault</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.hasDefault" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param has a default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.hasParam">
+<code class="sig-name descname">hasParam</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">paramName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.hasParam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests whether this instance contains a param with a given
+(string) name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.isDefined">
+<code class="sig-name descname">isDefined</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.isDefined" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param is explicitly set by user or has
+a default value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.isSet">
+<code class="sig-name descname">isSet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.isSet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks whether a param is explicitly set by user.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.labelCol">
+<code class="sig-name descname">labelCol</code><em class="property"> = Param(parent='undefined', name='labelCol', doc='label column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.labelCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.load">
+<em class="property">classmethod </em><code class="sig-name descname">load</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads an ML instance from the input path, a shortcut of <cite>read().load(path)</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.missing">
+<code class="sig-name descname">missing</code><em class="property"> = Param(parent='undefined', name='missing', doc='Specify the missing value in the features, default np.nan. We recommend using 0.0 as the missing value for better performance. Note: In a spark DataFrame, the inactive values in a sparse vector mean 0 instead of missing values, unless missing=0 is specified.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.missing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.params">
+<em class="property">property </em><code class="sig-name descname">params</code><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns all params ordered by name. The default implementation
+uses <code class="xref py py-func docutils literal notranslate"><span class="pre">dir()</span></code> to get all attributes of type
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Param</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.predictionCol">
+<code class="sig-name descname">predictionCol</code><em class="property"> = Param(parent='undefined', name='predictionCol', doc='prediction column name.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.predictionCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.read">
+<em class="property">classmethod </em><code class="sig-name descname">read</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an MLReader instance for this class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.save">
+<code class="sig-name descname">save</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save this ML instance to the given path, a shortcut of ‘write().save(path)’.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.set">
+<code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">param</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets a parameter in the embedded param map.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.transform">
+<code class="sig-name descname">transform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dataset</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transforms the input dataset with optional parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dataset</strong> – input dataset, which is an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">pyspark.sql.DataFrame</span></code></p></li>
+<li><p><strong>params</strong> – an optional param map that overrides embedded params.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>transformed dataset</p>
+</dd>
+</dl>
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 1.3.0.</span></p>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.validationIndicatorCol">
+<code class="sig-name descname">validationIndicatorCol</code><em class="property"> = Param(parent='undefined', name='validationIndicatorCol', doc='name of the column that indicates whether each row is for training or for validation. False indicates training; true indicates validation.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.validationIndicatorCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.weightCol">
+<code class="sig-name descname">weightCol</code><em class="property"> = Param(parent='undefined', name='weightCol', doc='weight column name. If this is not set or empty, we treat all instance weights as 1.0.')</em><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.weightCol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="sparkdl.xgboost.XgboostRegressorModel.write">
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sparkdl.xgboost.XgboostRegressorModel.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an MLWriter instance for this ML instance.</p>
+</dd></dl>
+
+</dd></dl>
+
+<ul class="simple">
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Welcome to the Deep Learning Pipelines Python API docs!</a><ul>
+<li><a class="reference internal" href="#module-sparkdl">Horovod Runner</a></li>
+<li><a class="reference internal" href="#module-sparkdl.xgboost">Xgboost for PySpark Pipeline</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="#">pysparkdl  documentation</a> &#187;</li>
+
+        <li class="nav-item nav-item-this"><a href="">Welcome to the Deep Learning Pipelines Python API docs!</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.2.1.
+    </div>
+  </body>
 </html>

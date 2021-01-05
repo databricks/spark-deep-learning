@@ -1,0 +1,334 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sparkdl.xgboost.xgboost &#8212; pysparkdl  documentation</title>
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../_static/pysparkdl.js"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl  documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">sparkdl.xgboost.xgboost</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for sparkdl.xgboost.xgboost</h1><div class="highlight"><pre>
+<span></span><span class="c1">#</span>
+<span class="c1"># DATABRICKS CONFIDENTIAL &amp; PROPRIETARY</span>
+<span class="c1"># __________________</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright 2020 Databricks, Inc.</span>
+<span class="c1"># All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># NOTICE:  All information contained herein is, and remains the property of Databricks, Inc.</span>
+<span class="c1"># and its suppliers, if any.  The intellectual and technical concepts contained herein are</span>
+<span class="c1"># proprietary to Databricks, Inc. and its suppliers and may be covered by U.S. and foreign Patents,</span>
+<span class="c1"># patents in process, and are protected by trade secret and/or copyright law. Dissemination, use,</span>
+<span class="c1"># or reproduction of this information is strictly forbidden unless prior written permission is</span>
+<span class="c1"># obtained from Databricks, Inc.</span>
+<span class="c1">#</span>
+<span class="c1"># If you view or obtain a copy of this information and believe Databricks, Inc. may not have</span>
+<span class="c1"># intended it to be made available, please promptly report it to Databricks Legal Department</span>
+<span class="c1"># @ legal@databricks.com.</span>
+<span class="c1">#</span>
+
+<span class="c1"># pylint: disable=invalid-name</span>
+<span class="c1"># pylint: disable=useless-super-delegation</span>
+<span class="c1"># pylint: disable=import-error</span>
+<span class="c1"># pylint: disable=no-name-in-module</span>
+<span class="c1"># pylint: disable=import-outside-toplevel</span>
+<span class="c1"># pylint: disable=too-many-function-args</span>
+<span class="c1"># pylint: disable=logging-format-interpolation</span>
+<span class="c1"># pylint: disable=bare-except</span>
+<span class="c1"># pylint: disable=ungrouped-imports</span>
+<span class="c1"># pylint: disable=too-many-ancestors</span>
+
+<span class="kn">from</span> <span class="nn">pyspark.ml</span> <span class="kn">import</span> <span class="n">Estimator</span><span class="p">,</span> <span class="n">Model</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.param.shared</span> <span class="kn">import</span> <span class="n">HasFeaturesCol</span><span class="p">,</span> <span class="n">HasLabelCol</span><span class="p">,</span> <span class="n">HasWeightCol</span><span class="p">,</span> \
+    <span class="n">HasPredictionCol</span><span class="p">,</span> <span class="n">HasProbabilityCol</span><span class="p">,</span> <span class="n">HasRawPredictionCol</span><span class="p">,</span> <span class="n">HasValidationIndicatorCol</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.param</span> <span class="kn">import</span> <span class="n">Param</span><span class="p">,</span> <span class="n">Params</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.util</span> <span class="kn">import</span> <span class="n">MLReadable</span><span class="p">,</span> <span class="n">MLWritable</span>
+
+
+<span class="k">class</span> <span class="nc">_XgboostParams</span><span class="p">(</span><span class="n">HasFeaturesCol</span><span class="p">,</span> <span class="n">HasLabelCol</span><span class="p">,</span> <span class="n">HasWeightCol</span><span class="p">,</span> <span class="n">HasPredictionCol</span><span class="p">,</span>
+                     <span class="n">HasValidationIndicatorCol</span><span class="p">):</span>
+
+    <span class="n">missing</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;missing&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span>
+            <span class="s1">&#39;Specify the missing value in the features, default np.nan. &#39;</span> \
+            <span class="s1">&#39;We recommend using 0.0 as the missing value for better performance. &#39;</span> \
+            <span class="s1">&#39;Note: In a spark DataFrame, the inactive values in a sparse vector &#39;</span> \
+            <span class="s1">&#39;mean 0 instead of missing values, unless missing=0 is specified.&#39;</span><span class="p">)</span>
+
+    <span class="n">callbacks</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;callbacks&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span>
+            <span class="s1">&#39;Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or &#39;</span> \
+            <span class="s1">&#39;`xgboost.XGBRegressor.fit()` for this param callbacks.&#39;</span> \
+            <span class="s1">&#39;The callbacks can be arbitrary functions. It is saved using cloudpickle &#39;</span> \
+            <span class="s1">&#39;which is not a fully self-contained format. It may fail to load with &#39;</span> \
+            <span class="s1">&#39;different versions of dependencies.&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">_XgboostEstimator</span><span class="p">(</span><span class="n">Estimator</span><span class="p">,</span> <span class="n">_XgboostParams</span><span class="p">,</span> <span class="n">MLReadable</span><span class="p">,</span> <span class="n">MLWritable</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">_XgboostModel</span><span class="p">(</span><span class="n">Model</span><span class="p">,</span> <span class="n">_XgboostParams</span><span class="p">,</span> <span class="n">MLReadable</span><span class="p">,</span> <span class="n">MLWritable</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xgb_sklearn_model</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_booster</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the `xgboost.core.Booster` instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="XgboostRegressorModel"><a class="viewcode-back" href="../../../index.html#sparkdl.xgboost.XgboostRegressorModel">[docs]</a><span class="k">class</span> <span class="nc">XgboostRegressorModel</span><span class="p">(</span><span class="n">_XgboostModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The model returned by :func:`sparkdl.xgboost.XgboostRegressor.fit`</span>
+
+<span class="sd">    .. Note:: This API is experimental.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="XgboostClassifierModel"><a class="viewcode-back" href="../../../index.html#sparkdl.xgboost.XgboostClassifierModel">[docs]</a><span class="k">class</span> <span class="nc">XgboostClassifierModel</span><span class="p">(</span><span class="n">_XgboostModel</span><span class="p">,</span> <span class="n">HasProbabilityCol</span><span class="p">,</span> <span class="n">HasRawPredictionCol</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The model returned by :func:`sparkdl.xgboost.XgboostClassifier.fit`</span>
+
+<span class="sd">    .. Note:: This API is experimental.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="XgboostRegressor"><a class="viewcode-back" href="../../../index.html#sparkdl.xgboost.XgboostRegressor">[docs]</a><span class="k">class</span> <span class="nc">XgboostRegressor</span><span class="p">(</span><span class="n">_XgboostEstimator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    XgboostRegressor is a PySpark ML estimator. It implements the XGBoost regression</span>
+<span class="sd">    algorithm based on XGBoost python library, and it can be used in PySpark Pipeline</span>
+<span class="sd">    and PySpark ML meta algorithms like CrossValidator/TrainValidationSplit/OneVsRest.</span>
+
+<span class="sd">    XgboostRegressor automatically supports most of the parameters in</span>
+<span class="sd">    `xgboost.XGBRegressor` constructor and most of the parameters used in</span>
+<span class="sd">    `xgboost.XGBRegressor` fit and predict method (see `API docs &lt;https://xgboost.readthedocs\</span>
+<span class="sd">    .io/en/latest/python/python_api.html#xgboost.XGBRegressor&gt;`_ for details), excluding the</span>
+<span class="sd">    unsupported parameters: `gpu_id`, `kwargs`, `output_margin`, `base_margin`,</span>
+<span class="sd">    `validate_features`.</span>
+
+<span class="sd">    :param callbacks: The export and import of the callback functions are at best effort.</span>
+<span class="sd">        For details, see :py:attr:`sparkdl.xgboost.XgboostRegressor.callbacks` param doc.</span>
+<span class="sd">    :param missing: The parameter `missing` in XgboostRegressor has different semantics with</span>
+<span class="sd">        that in `xgboost.XGBRegressor`. For details, see</span>
+<span class="sd">        :py:attr:`sparkdl.xgboost.XgboostRegressor.missing` param doc.</span>
+<span class="sd">    :param rawPredictionCol: The `output_margin=True` is implicitly supported by the</span>
+<span class="sd">        `rawPredictionCol` output column, which is always returned with the predicted margin</span>
+<span class="sd">        values.</span>
+<span class="sd">    :param validationIndicatorCol: For params related to `xgboost.XGBRegressor` training</span>
+<span class="sd">        with evaluation dataset&#39;s supervision, set</span>
+<span class="sd">        :py:attr:`sparkdl.xgboost.XgboostRegressor.validationIndicatorCol`</span>
+<span class="sd">        parameter instead of setting the `eval_set` parameter in `xgboost.XGBRegressor`</span>
+<span class="sd">        fit method.</span>
+<span class="sd">    :param weightCol: To specify the weight of the training and validation dataset, set</span>
+<span class="sd">        :py:attr:`sparkdl.xgboost.XgboostRegressor.weightCol` parameter instead of setting</span>
+<span class="sd">        `sample_weight` and `sample_weight_eval_set` parameter in `xgboost.XGBRegressor`</span>
+<span class="sd">        fit method.</span>
+<span class="sd">    :param xgb_model: Set the value to be the instance returned by</span>
+<span class="sd">        :func:`sparkdl.xgboost.XgboostRegressorModel.get_booster`.</span>
+
+<span class="sd">    .. Note:: The Parameters chart above contains parameters that need special handling.</span>
+<span class="sd">        For a full list of parameters, see entries with `Param(parent=...` below.</span>
+
+<span class="sd">    .. Note:: XgboostRegressor currently only supports training on a single worker node,</span>
+<span class="sd">        and it would load all the training data into memory during training. If the</span>
+<span class="sd">        training data cannot fit into the worker&#39;s memory, an error will be raised.</span>
+<span class="sd">        XgboostRegressor supports predicting on multiple workers in parallel.</span>
+
+<span class="sd">    .. Note:: This API is experimental.</span>
+
+<span class="sd">    **Examples**</span>
+
+<span class="sd">    &gt;&gt;&gt; from sparkdl.xgboost import XgboostRegressor</span>
+<span class="sd">    &gt;&gt;&gt; from pyspark.ml.linalg import Vectors</span>
+<span class="sd">    &gt;&gt;&gt; df_train = spark.createDataFrame([</span>
+<span class="sd">    ...     (Vectors.dense(1.0, 2.0, 3.0), 0, False, 1.0),</span>
+<span class="sd">    ...     (Vectors.sparse(3, {1: 1.0, 2: 5.5}), 1, False, 2.0),</span>
+<span class="sd">    ...     (Vectors.dense(4.0, 5.0, 6.0), 2, True, 1.0),</span>
+<span class="sd">    ...     (Vectors.sparse(3, {1: 6.0, 2: 7.5}), 3, True, 2.0),</span>
+<span class="sd">    ... ], [&quot;features&quot;, &quot;label&quot;, &quot;isVal&quot;, &quot;weight&quot;])</span>
+<span class="sd">    &gt;&gt;&gt; df_test = spark.createDataFrame([</span>
+<span class="sd">    ...     (Vectors.dense(1.0, 2.0, 3.0), ),</span>
+<span class="sd">    ...     (Vectors.sparse(3, {1: 1.0, 2: 5.5}), )</span>
+<span class="sd">    ... ], [&quot;features&quot;])</span>
+<span class="sd">    &gt;&gt;&gt; xgb_regressor = XgboostRegressor(max_depth=5, missing=0.0,</span>
+<span class="sd">    ... validationIndicatorCol=&#39;isVal&#39;, weightCol=&#39;weight&#39;,</span>
+<span class="sd">    ... early_stopping_rounds=1, eval_metric=&#39;rmse&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; xgb_reg_model = xgb_regressor.fit(df_train)</span>
+<span class="sd">    &gt;&gt;&gt; xgb_reg_model.transform(df_test)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="XgboostClassifier"><a class="viewcode-back" href="../../../index.html#sparkdl.xgboost.XgboostClassifier">[docs]</a><span class="k">class</span> <span class="nc">XgboostClassifier</span><span class="p">(</span><span class="n">_XgboostEstimator</span><span class="p">,</span> <span class="n">HasProbabilityCol</span><span class="p">,</span> <span class="n">HasRawPredictionCol</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    XgboostClassifier is a PySpark ML estimator. It implements the XGBoost classification</span>
+<span class="sd">    algorithm based on XGBoost python library, and it can be used in PySpark Pipeline</span>
+<span class="sd">    and PySpark ML meta algorithms like CrossValidator/TrainValidationSplit/OneVsRest.</span>
+
+<span class="sd">    XgboostClassifier automatically supports most of the parameters in</span>
+<span class="sd">    `xgboost.XGBClassifier` constructor and most of the parameters used in</span>
+<span class="sd">    `xgboost.XGBClassifier` fit and predict method (see `API docs &lt;https://xgboost.readthedocs\</span>
+<span class="sd">    .io/en/latest/python/python_api.html#xgboost.XGBClassifier&gt;`_ for details), excluding the</span>
+<span class="sd">    unsupported parameters: `gpu_id`, `kwargs`, `output_margin`, `base_margin`,</span>
+<span class="sd">    `validate_features`.</span>
+
+<span class="sd">    :param callbacks: The export and import of the callback functions are at best effort. For</span>
+<span class="sd">        details, see :py:attr:`sparkdl.xgboost.XgboostClassifier.callbacks` param doc.</span>
+<span class="sd">    :param missing: The parameter `missing` in XgboostClassifier has different semantics with</span>
+<span class="sd">        that in `xgboost.XGBClassifier`. For details, see</span>
+<span class="sd">        :py:attr:`sparkdl.xgboost.XgboostClassifier.missing` param doc.</span>
+<span class="sd">    :param rawPredictionCol: The `output_margin=True` is implicitly supported by the</span>
+<span class="sd">        `rawPredictionCol` output column, which is always returned with the predicted margin</span>
+<span class="sd">        values.</span>
+<span class="sd">    :param validationIndicatorCol: For params related to `xgboost.XGBClassifier` training with</span>
+<span class="sd">        evaluation dataset&#39;s supervision,</span>
+<span class="sd">        set :py:attr:`sparkdl.xgboost.XgboostClassifier.validationIndicatorCol`</span>
+<span class="sd">        parameter instead of setting the `eval_set` parameter in `xgboost.XGBClassifier`</span>
+<span class="sd">        fit method.</span>
+<span class="sd">    :param weightCol: To specify the weight of the training and validation dataset, set</span>
+<span class="sd">        :py:attr:`sparkdl.xgboost.XgboostClassifier.weightCol` parameter instead of setting</span>
+<span class="sd">        `sample_weight` and `sample_weight_eval_set` parameter in `xgboost.XGBClassifier`</span>
+<span class="sd">        fit method.</span>
+<span class="sd">    :param xgb_model: Set the value to be the instance returned by</span>
+<span class="sd">        :func:`sparkdl.xgboost.XgboostClassifierModel.get_booster`.</span>
+
+<span class="sd">    .. Note:: The Parameters chart above contains parameters that need special handling.</span>
+<span class="sd">        For a full list of parameters, see entries with `Param(parent=...` below.</span>
+
+<span class="sd">    .. Note:: XgboostClassifier currently only supports training on a single worker node,</span>
+<span class="sd">        and it would load all the training data into memory during training. If the</span>
+<span class="sd">        training data cannot fit into the worker&#39;s memory, an error will be raised.</span>
+<span class="sd">        XgboostClassifier supports predicting on multiple workers in parallel.</span>
+
+<span class="sd">    .. Note:: This API is experimental.</span>
+
+<span class="sd">    **Examples**</span>
+
+<span class="sd">    &gt;&gt;&gt; from sparkdl.xgboost import XgboostClassifier</span>
+<span class="sd">    &gt;&gt;&gt; from pyspark.ml.linalg import Vectors</span>
+<span class="sd">    &gt;&gt;&gt; df_train = spark.createDataFrame([</span>
+<span class="sd">    ...     (Vectors.dense(1.0, 2.0, 3.0), 0, False, 1.0),</span>
+<span class="sd">    ...     (Vectors.sparse(3, {1: 1.0, 2: 5.5}), 1, False, 2.0),</span>
+<span class="sd">    ...     (Vectors.dense(4.0, 5.0, 6.0), 0, True, 1.0),</span>
+<span class="sd">    ...     (Vectors.sparse(3, {1: 6.0, 2: 7.5}), 1, True, 2.0),</span>
+<span class="sd">    ... ], [&quot;features&quot;, &quot;label&quot;, &quot;isVal&quot;, &quot;weight&quot;])</span>
+<span class="sd">    &gt;&gt;&gt; df_test = spark.createDataFrame([</span>
+<span class="sd">    ...     (Vectors.dense(1.0, 2.0, 3.0), ),</span>
+<span class="sd">    ... ], [&quot;features&quot;])</span>
+<span class="sd">    &gt;&gt;&gt; xgb_classifier = XgboostClassifier(max_depth=5, missing=0.0,</span>
+<span class="sd">    ...     validationIndicatorCol=&#39;isVal&#39;, weightCol=&#39;weight&#39;,</span>
+<span class="sd">    ...     early_stopping_rounds=1, eval_metric=&#39;logloss&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; xgb_clf_model = xgb_classifier.fit(df_train)</span>
+<span class="sd">    &gt;&gt;&gt; xgb_clf_model.transform(df_test).show()</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+    
+        <li class="nav-item nav-item-0"><a href="../../../index.html">pysparkdl  documentation</a> &#187;</li>
+
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">sparkdl.xgboost.xgboost</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.2.1.
+    </div>
+  </body>
+</html>
