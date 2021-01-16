@@ -126,9 +126,6 @@ class XgboostRegressor(_XgboostEstimator):
     :param missing: The parameter `missing` in XgboostRegressor has different semantics with
         that in `xgboost.XGBRegressor`. For details, see
         :py:attr:`sparkdl.xgboost.XgboostRegressor.missing` param doc.
-    :param rawPredictionCol: The `output_margin=True` is implicitly supported by the
-        `rawPredictionCol` output column, which is always returned with the predicted margin
-        values.
     :param validationIndicatorCol: For params related to `xgboost.XGBRegressor` training
         with evaluation dataset's supervision, set
         :py:attr:`sparkdl.xgboost.XgboostRegressor.validationIndicatorCol`
