@@ -84,15 +84,7 @@ the job will fail. As of  Databricks Runtime 5.4 ML, training stdout and stderr
 messages go to the notebook cell output. In the event that the cell output is
 truncated, full logs are available in stderr stream of task 0 under the 2nd spark
 job started by HorovodRunner, which you can find in the Spark UI.</p></li>
-<li><p>If 0, this will use all task slots on the cluster to launch the job.</p></li>
 </ul>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Setting np=0 is deprecated and it will be removed in the next major
-Databricks Runtime release. Choosing np based on the total task slots at runtime is
-unreliable due to dynamic executor registration. Please set the number of parallel
-processes you need explicitly.</p>
-</div>
 </p></li>
 <li><p><strong>driver_log_verbosity</strong> – driver log verbosity, “all” or “log_callback_only”(default).
 During training, the first worker process will collect logs from all workers.
@@ -1002,9 +994,6 @@ For details, see <a class="reference internal" href="#sparkdl.xgboost.XgboostReg
 <li><p><strong>missing</strong> – The parameter <cite>missing</cite> in XgboostRegressor has different semantics with
 that in <cite>xgboost.XGBRegressor</cite>. For details, see
 <a class="reference internal" href="#sparkdl.xgboost.XgboostRegressor.missing" title="sparkdl.xgboost.XgboostRegressor.missing"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostRegressor.missing</span></code></a> param doc.</p></li>
-<li><p><strong>rawPredictionCol</strong> – The <cite>output_margin=True</cite> is implicitly supported by the
-<cite>rawPredictionCol</cite> output column, which is always returned with the predicted margin
-values.</p></li>
 <li><p><strong>validationIndicatorCol</strong> – For params related to <cite>xgboost.XGBRegressor</cite> training
 with evaluation dataset’s supervision, set
 <a class="reference internal" href="#sparkdl.xgboost.XgboostRegressor.validationIndicatorCol" title="sparkdl.xgboost.XgboostRegressor.validationIndicatorCol"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sparkdl.xgboost.XgboostRegressor.validationIndicatorCol</span></code></a>
