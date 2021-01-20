@@ -59,12 +59,6 @@ class HorovodRunner(object):
               messages go to the notebook cell output. In the event that the cell output is
               truncated, full logs are available in stderr stream of task 0 under the 2nd spark
               job started by HorovodRunner, which you can find in the Spark UI.
-            - If 0, this will use all task slots on the cluster to launch the job.
-
-            .. warning:: Setting np=0 is deprecated and it will be removed in the next major
-                Databricks Runtime release. Choosing np based on the total task slots at runtime is
-                unreliable due to dynamic executor registration. Please set the number of parallel
-                processes you need explicitly.
         :param driver_log_verbosity: driver log verbosity, "all" or "log_callback_only"(default).
             During training, the first worker process will collect logs from all workers.
             The training logs are always merged into the first Spark executors stderr logs.
