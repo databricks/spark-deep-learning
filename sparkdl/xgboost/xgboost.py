@@ -117,9 +117,15 @@ class XgboostRegressor(_XgboostEstimator):
     XgboostRegressor automatically supports most of the parameters in
     `xgboost.XGBRegressor` constructor and most of the parameters used in
     `xgboost.XGBRegressor` fit and predict method (see `API docs <https://xgboost.readthedocs\
-    .io/en/latest/python/python_api.html#xgboost.XGBRegressor>`_ for details), excluding the
-    unsupported parameters: `gpu_id`, `kwargs`, `output_margin`, `base_margin`,
-    `validate_features`.
+    .io/en/latest/python/python_api.html#xgboost.XGBRegressor>`_ for details).
+
+    XgboostRegressor doesn't support setting `gpu_id` but support another param `use_gpu`,
+    see doc below for more details.
+
+    XgboostRegressor doesn't support setting `base_margin` explicitly as well, but support
+    another param called `baseMarginCol`. see doc below for more details.
+
+    XgboostRegressor doesn't support `validate_features` and `output_margin` param.
 
     :param callbacks: The export and import of the callback functions are at best effort.
         For details, see :py:attr:`sparkdl.xgboost.XgboostRegressor.callbacks` param doc.
@@ -137,14 +143,22 @@ class XgboostRegressor(_XgboostEstimator):
         fit method.
     :param xgb_model: Set the value to be the instance returned by
         :func:`sparkdl.xgboost.XgboostRegressorModel.get_booster`.
+    :param num_workers: Integer that specifies the number of XGBoost workers to use.
+        Each XGBoost worker corresponds to one spark task.
+    :param use_gpu: Boolean that specifies whether the executors are running on GPU
+        instances.
+    :param use_external_storage: Boolean that specifices whether you want to use
+        external storage when training in a distributed manner. This allows using disk
+        as cache. Setting this to true is useful when you want better memory utilization
+        but is not needed for small test datasets.
+    :param baseMarginCol: To specify the base margins of the training and validation
+        dataset, set :py:attr:`sparkdl.xgboost.XgboostRegressor.baseMarginCol` parameter
+        instead of setting `base_margin` and `base_margin_eval_set` in the
+        `xgboost.XGBRegressor` fit method. Note: this isn't available for distributed
+        training.
 
     .. Note:: The Parameters chart above contains parameters that need special handling.
         For a full list of parameters, see entries with `Param(parent=...` below.
-
-    .. Note:: XgboostRegressor currently only supports training on a single worker node,
-        and it would load all the training data into memory during training. If the
-        training data cannot fit into the worker's memory, an error will be raised.
-        XgboostRegressor supports predicting on multiple workers in parallel.
 
     .. Note:: This API is experimental.
 
@@ -183,9 +197,18 @@ class XgboostClassifier(_XgboostEstimator, HasProbabilityCol, HasRawPredictionCo
     XgboostClassifier automatically supports most of the parameters in
     `xgboost.XGBClassifier` constructor and most of the parameters used in
     `xgboost.XGBClassifier` fit and predict method (see `API docs <https://xgboost.readthedocs\
-    .io/en/latest/python/python_api.html#xgboost.XGBClassifier>`_ for details), excluding the
-    unsupported parameters: `gpu_id`, `kwargs`, `output_margin`, `base_margin`,
-    `validate_features`.
+    .io/en/latest/python/python_api.html#xgboost.XGBClassifier>`_ for details).
+
+    XgboostClassifier doesn't support setting `gpu_id` but support another param `use_gpu`,
+    see doc below for more details.
+
+    XgboostClassifier doesn't support setting `base_margin` explicitly as well, but support
+    another param called `baseMarginCol`. see doc below for more details.
+
+    XgboostClassifier doesn't support setting `output_margin`, but we can get output margin
+    from the raw prediction column. See `rawPredictionCol` param doc below for more details.
+
+    XgboostClassifier doesn't support `validate_features` and `output_margin` param.
 
     :param callbacks: The export and import of the callback functions are at best effort. For
         details, see :py:attr:`sparkdl.xgboost.XgboostClassifier.callbacks` param doc.
@@ -206,14 +229,22 @@ class XgboostClassifier(_XgboostEstimator, HasProbabilityCol, HasRawPredictionCo
         fit method.
     :param xgb_model: Set the value to be the instance returned by
         :func:`sparkdl.xgboost.XgboostClassifierModel.get_booster`.
+    :param num_workers: Integer that specifies the number of XGBoost workers to use.
+        Each XGBoost worker corresponds to one spark task.
+    :param use_gpu: Boolean that specifies whether the executors are running on GPU
+        instances.
+    :param use_external_storage: Boolean that specifices whether you want to use
+        external storage when training in a distributed manner. This allows using disk
+        as cache. Setting this to true is useful when you want better memory utilization
+        but is not needed for small test datasets.
+    :param baseMarginCol: To specify the base margins of the training and validation
+        dataset, set :py:attr:`sparkdl.xgboost.XgboostClassifier.baseMarginCol` parameter
+        instead of setting `base_margin` and `base_margin_eval_set` in the
+        `xgboost.XGBClassifier` fit method. Note: this isn't available for distributed
+        training.
 
     .. Note:: The Parameters chart above contains parameters that need special handling.
         For a full list of parameters, see entries with `Param(parent=...` below.
-
-    .. Note:: XgboostClassifier currently only supports training on a single worker node,
-        and it would load all the training data into memory during training. If the
-        training data cannot fit into the worker's memory, an error will be raised.
-        XgboostClassifier supports predicting on multiple workers in parallel.
 
     .. Note:: This API is experimental.
 
