@@ -53,12 +53,12 @@ class _XgboostParams(HasFeaturesCol, HasLabelCol, HasWeightCol, HasPredictionCol
 
     num_workers = Param(parent=Params._dummy(), name='num_workers', doc=
             'Specify the number of XGBoost workers to use for distributed ' \
-            'training. Each worker corresponds to one Spark task.' \
-            '\n\n*New in `sparkdl` version 2.2.0-db1*.')
+            'training. Each worker corresponds to one Spark task. ' \
+            'Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.')
 
     use_gpu = Param(parent=Params._dummy(), name='use_gpu', doc=
-            'Specify whether the Spark executors are running on GPU instances.' \
-            '\n\n*New in `sparkdl` version 2.2.0-db1*.')
+            'Specify whether the Spark executors are running on GPU instances. ' \
+            'Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.')
 
 
 class _XgboostEstimator(Estimator, _XgboostParams, MLReadable, MLWritable):
@@ -153,9 +153,10 @@ class XgboostRegressor(_XgboostEstimator):
     :param xgb_model: Set the value to be the instance returned by
         :func:`sparkdl.xgboost.XgboostRegressorModel.get_booster`.
     :param num_workers: Integer that specifies the number of XGBoost workers to use.
-        Each XGBoost worker corresponds to one Spark task.
+        Each XGBoost worker corresponds to one Spark task. This parameter is only
+        supported on Databricks Runtime 9.0 ML and above.
     :param use_gpu: Boolean that specifies whether the executors are running on GPU
-        instances.
+        instances. This parameter is only supported on Databricks Runtime 9.0 ML and above.
     :param use_external_storage: Boolean that specifices whether you want to use
         external storage when training in a distributed manner. This allows using disk
         as cache. Setting this to true is useful when you want better memory utilization
@@ -239,9 +240,10 @@ class XgboostClassifier(_XgboostEstimator, HasProbabilityCol, HasRawPredictionCo
     :param xgb_model: Set the value to be the instance returned by
         :func:`sparkdl.xgboost.XgboostClassifierModel.get_booster`.
     :param num_workers: Integer that specifies the number of XGBoost workers to use.
-        Each XGBoost worker corresponds to one Spark task.
+        Each XGBoost worker corresponds to one Spark task. This parameter is only
+        supported on Databricks Runtime 9.0 ML and above.
     :param use_gpu: Boolean that specifies whether the executors are running on GPU
-        instances.
+        instances. This parameter is only supported on Databricks Runtime 9.0 ML and above.
     :param use_external_storage: Boolean that specifices whether you want to use
         external storage when training in a distributed manner. This allows using disk
         as cache. Setting this to true is useful when you want better memory utilization
