@@ -51,12 +51,12 @@ class _XgboostParams(HasFeaturesCol, HasLabelCol, HasWeightCol, HasPredictionCol
             'which is not a fully self-contained format. It may fail to load with ' \
             'different versions of dependencies.')
 
-    num_workers = Param(parent=Param._dummy(), name='num_workers', doc=
+    num_workers = Param(parent=Params._dummy(), name='num_workers', doc=
             'Specify the number of XGBoost workers to use for distributed ' \
             'training. Each worker corresponds to one Spark task.' \
             '\n\n*New in `sparkdl` version 2.2.0-db1*.')
 
-    use_gpu = Param(parent=Param._dummy(), name='use_gpu', doc=
+    use_gpu = Param(parent=Params._dummy(), name='use_gpu', doc=
             'Specify whether the Spark executors are running on GPU instances.' \
             '\n\n*New in `sparkdl` version 2.2.0-db1*.')
 
