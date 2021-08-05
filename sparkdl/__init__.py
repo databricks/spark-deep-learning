@@ -21,4 +21,4 @@ from sparkdl.horovod.runner_base import HorovodRunner
 __all__ = ['HorovodRunner']
 
 
-__version__ = '2.2.0-db2-SNAPSHOT'
+__version__ = '2.2.0-db1'
