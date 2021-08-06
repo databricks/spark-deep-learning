@@ -60,6 +60,20 @@ class _XgboostParams(HasFeaturesCol, HasLabelCol, HasWeightCol, HasPredictionCol
             'Specify whether the Spark executors are running on GPU instances. ' \
             'Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.')
 
+    use_external_storage = Param(parent=Params._dummy(), name='use_external_storage', doc=
+            'Boolean that specifices whether you want to use external storage when training ' \
+            'in a distributed manner. This allows using disk as cache. Setting this to true ' \
+            'is useful when you want better memory utilization but is not needed for small ' \
+            'test datasets. ' \
+            'This parameter is only supported on Databricks Runtime 9.0 ML and above.')
+
+    baseMarginCol = Param(parent=Params._dummy(), name='baseMarginCol', doc=
+            'Specify the base margins of the training and validation dataset. Set ' \
+            'this value instead of setting `base_margin` and `base_margin_eval_set` ' \
+            'in the fit method. Note: this parameter is not available for distributed ' \
+            'training. ' \
+            'This parameter is only supported on Databricks Runtime 9.0 ML and above.')
+
 
 class _XgboostEstimator(Estimator, _XgboostParams, MLReadable, MLWritable):
 
@@ -160,12 +174,13 @@ class XgboostRegressor(_XgboostEstimator):
     :param use_external_storage: Boolean that specifices whether you want to use
         external storage when training in a distributed manner. This allows using disk
         as cache. Setting this to true is useful when you want better memory utilization
-        but is not needed for small test datasets.
+        but is not needed for small test datasets. This parameter is only supported on
+        Databricks Runtime 9.0 ML and above.
     :param baseMarginCol: To specify the base margins of the training and validation
         dataset, set :py:attr:`sparkdl.xgboost.XgboostRegressor.baseMarginCol` parameter
         instead of setting `base_margin` and `base_margin_eval_set` in the
         `xgboost.XGBRegressor` fit method. Note: this isn't available for distributed
-        training.
+        training. This parameter is only supported on Databricks Runtime 9.0 ML and above.
 
     .. Note:: The Parameters chart above contains parameters that need special handling.
         For a full list of parameters, see entries with `Param(parent=...` below.
@@ -247,12 +262,13 @@ class XgboostClassifier(_XgboostEstimator, HasProbabilityCol, HasRawPredictionCo
     :param use_external_storage: Boolean that specifices whether you want to use
         external storage when training in a distributed manner. This allows using disk
         as cache. Setting this to true is useful when you want better memory utilization
-        but is not needed for small test datasets.
+        but is not needed for small test datasets. This parameter is only supported on
+        Databricks Runtime 9.0 ML and above.
     :param baseMarginCol: To specify the base margins of the training and validation
         dataset, set :py:attr:`sparkdl.xgboost.XgboostClassifier.baseMarginCol` parameter
         instead of setting `base_margin` and `base_margin_eval_set` in the
         `xgboost.XGBClassifier` fit method. Note: this isn't available for distributed
-        training.
+        training. This parameter is only supported on Databricks Runtime 9.0 ML and above.
 
     .. Note:: The Parameters chart above contains parameters that need special handling.
         For a full list of parameters, see entries with `Param(parent=...` below.
