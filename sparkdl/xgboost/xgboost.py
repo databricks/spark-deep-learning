@@ -31,48 +31,79 @@
 from pyspark.ml import Estimator, Model
 from pyspark.ml.param.shared import HasFeaturesCol, HasLabelCol, HasWeightCol, \
     HasPredictionCol, HasProbabilityCol, HasRawPredictionCol, HasValidationIndicatorCol
-from pyspark.ml.param import Param, Params
+from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.ml.util import MLReadable, MLWritable
 
 
 class _XgboostParams(HasFeaturesCol, HasLabelCol, HasWeightCol, HasPredictionCol,
                      HasValidationIndicatorCol):
 
-    missing = Param(parent=Params._dummy(), name='missing', doc=
-            'Specify the missing value in the features, default np.nan. ' \
-            'We recommend using 0.0 as the missing value for better performance. ' \
-            'Note: In a spark DataFrame, the inactive values in a sparse vector ' \
-            'mean 0 instead of missing values, unless missing=0 is specified.')
+    missing = Param(
+        parent=Params._dummy(),
+        name="missing",
+        doc="Specify the missing value in the features, default np.nan. " \
+            "We recommend using 0.0 as the missing value for better performance. " \
+            "Note: In a spark DataFrame, the inactive values in a sparse vector " \
+            "mean 0 instead of missing values, unless missing=0 is specified.")
 
-    callbacks = Param(parent=Params._dummy(), name='callbacks', doc=
-            'Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or ' \
-            '`xgboost.XGBRegressor.fit()` for this param callbacks.' \
-            'The callbacks can be arbitrary functions. It is saved using cloudpickle ' \
-            'which is not a fully self-contained format. It may fail to load with ' \
-            'different versions of dependencies.')
+    callbacks = Param(
+        parent=Params._dummy(),
+        name="callbacks",
+        doc="Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or " \
+            "`xgboost.XGBRegressor.fit()` for this param callbacks. " \
+            "The callbacks can be arbitrary functions. It is saved using cloudpickle " \
+            "which is not a fully self-contained format. It may fail to load with " \
+            "different versions of dependencies.")
 
-    num_workers = Param(parent=Params._dummy(), name='num_workers', doc=
-            'Specify the number of XGBoost workers to use for distributed ' \
-            'training. Each worker corresponds to one Spark task. ' \
-            'Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.')
+    num_workers = Param(
+        parent=Params._dummy(),
+        name="num_workers",
+        doc="The number of XGBoost workers. Each XGBoost worker corresponds to one spark task. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.",
+        typeConverter=TypeConverters.toInt
+    )
+    use_gpu = Param(
+        parent=Params._dummy(),
+        name="use_gpu",
+        doc="A boolean variable. Set use_gpu=true if the executors " \
+            "are running on GPU instances. Currently, only one GPU per task is supported. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above."
+    )
+    force_repartition = Param(
+        parent=Params._dummy(),
+        name="force_repartition",
+        doc="A boolean variable. Set force_repartition=true if you " \
+            "want to force the input dataset to be repartitioned before XGBoost training. " \
+            "Note: The auto repartitioning judgement is not fully accurate, so it is recommended " \
+            "to have force_repartition be True. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above."
+    )
+    use_external_storage = Param(
+        parent=Params._dummy(),
+        name="use_external_storage",
+        doc="A boolean variable (that is False by default). External storage is a parameter " \
+            "for distributed training that allows external storage (disk) to be used when " \
+            "you have an exceptionally large dataset. This should be set to false for " \
+            "small datasets. Note that base margin and weighting doesn't work if this is True. " \
+            "Also note that you may use precision if you use external storage. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above."
+    )
+    external_storage_precision = Param(
+        parent=Params._dummy(),
+        name="external_storage_precision",
+        doc="The number of significant digits for data storage on disk when using external storage. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.",
+        typeConverter=TypeConverters.toInt
+    )
 
-    use_gpu = Param(parent=Params._dummy(), name='use_gpu', doc=
-            'Specify whether the Spark executors are running on GPU instances. ' \
-            'Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.')
-
-    use_external_storage = Param(parent=Params._dummy(), name='use_external_storage', doc=
-            'Boolean that specifices whether you want to use external storage when training ' \
-            'in a distributed manner. This allows using disk as cache. Setting this to true ' \
-            'is useful when you want better memory utilization but is not needed for small ' \
-            'test datasets. ' \
-            'This parameter is only supported on Databricks Runtime 9.0 ML and above.')
-
-    baseMarginCol = Param(parent=Params._dummy(), name='baseMarginCol', doc=
-            'Specify the base margins of the training and validation dataset. Set ' \
-            'this value instead of setting `base_margin` and `base_margin_eval_set` ' \
-            'in the fit method. Note: this parameter is not available for distributed ' \
-            'training. ' \
-            'This parameter is only supported on Databricks Runtime 9.0 ML and above.')
+    baseMarginCol = Param(
+        parent=Params._dummy(),
+        name="baseMarginCol",
+        doc="Specify the base margins of the training and validation dataset. Set " \
+            "this value instead of setting `base_margin` and `base_margin_eval_set` " \
+            "in the fit method. Note: this parameter is not available for distributed " \
+            "training. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.")
 
 
 class _XgboostEstimator(Estimator, _XgboostParams, MLReadable, MLWritable):
