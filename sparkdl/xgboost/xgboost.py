@@ -31,25 +31,79 @@
 from pyspark.ml import Estimator, Model
 from pyspark.ml.param.shared import HasFeaturesCol, HasLabelCol, HasWeightCol, \
     HasPredictionCol, HasProbabilityCol, HasRawPredictionCol, HasValidationIndicatorCol
-from pyspark.ml.param import Param, Params
+from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark.ml.util import MLReadable, MLWritable
 
 
 class _XgboostParams(HasFeaturesCol, HasLabelCol, HasWeightCol, HasPredictionCol,
                      HasValidationIndicatorCol):
 
-    missing = Param(parent=Params._dummy(), name='missing', doc=
-            'Specify the missing value in the features, default np.nan. ' \
-            'We recommend using 0.0 as the missing value for better performance. ' \
-            'Note: In a spark DataFrame, the inactive values in a sparse vector ' \
-            'mean 0 instead of missing values, unless missing=0 is specified.')
+    missing = Param(
+        parent=Params._dummy(),
+        name="missing",
+        doc="Specify the missing value in the features, default np.nan. " \
+            "We recommend using 0.0 as the missing value for better performance. " \
+            "Note: In a spark DataFrame, the inactive values in a sparse vector " \
+            "mean 0 instead of missing values, unless missing=0 is specified.")
 
-    callbacks = Param(parent=Params._dummy(), name='callbacks', doc=
-            'Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or ' \
-            '`xgboost.XGBRegressor.fit()` for this param callbacks.' \
-            'The callbacks can be arbitrary functions. It is saved using cloudpickle ' \
-            'which is not a fully self-contained format. It may fail to load with ' \
-            'different versions of dependencies.')
+    callbacks = Param(
+        parent=Params._dummy(),
+        name="callbacks",
+        doc="Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or " \
+            "`xgboost.XGBRegressor.fit()` for this param callbacks. " \
+            "The callbacks can be arbitrary functions. It is saved using cloudpickle " \
+            "which is not a fully self-contained format. It may fail to load with " \
+            "different versions of dependencies.")
+
+    num_workers = Param(
+        parent=Params._dummy(),
+        name="num_workers",
+        doc="The number of XGBoost workers. Each XGBoost worker corresponds to one spark task. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.",
+        typeConverter=TypeConverters.toInt
+    )
+    use_gpu = Param(
+        parent=Params._dummy(),
+        name="use_gpu",
+        doc="A boolean variable. Set use_gpu=true if the executors " \
+            "are running on GPU instances. Currently, only one GPU per task is supported. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above."
+    )
+    force_repartition = Param(
+        parent=Params._dummy(),
+        name="force_repartition",
+        doc="A boolean variable. Set force_repartition=true if you " \
+            "want to force the input dataset to be repartitioned before XGBoost training. " \
+            "Note: The auto repartitioning judgement is not fully accurate, so it is recommended " \
+            "to have force_repartition be True. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above."
+    )
+    use_external_storage = Param(
+        parent=Params._dummy(),
+        name="use_external_storage",
+        doc="A boolean variable (that is False by default). External storage is a parameter " \
+            "for distributed training that allows external storage (disk) to be used when " \
+            "you have an exceptionally large dataset. This should be set to false for " \
+            "small datasets. Note that base margin and weighting doesn't work if this is True. " \
+            "Also note that you may use precision if you use external storage. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above."
+    )
+    external_storage_precision = Param(
+        parent=Params._dummy(),
+        name="external_storage_precision",
+        doc="The number of significant digits for data storage on disk when using external storage. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.",
+        typeConverter=TypeConverters.toInt
+    )
+
+    baseMarginCol = Param(
+        parent=Params._dummy(),
+        name="baseMarginCol",
+        doc="Specify the base margins of the training and validation dataset. Set " \
+            "this value instead of setting `base_margin` and `base_margin_eval_set` " \
+            "in the fit method. Note: this parameter is not available for distributed " \
+            "training. " \
+            "Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.")
 
 
 class _XgboostEstimator(Estimator, _XgboostParams, MLReadable, MLWritable):
@@ -117,9 +171,15 @@ class XgboostRegressor(_XgboostEstimator):
     XgboostRegressor automatically supports most of the parameters in
     `xgboost.XGBRegressor` constructor and most of the parameters used in
     `xgboost.XGBRegressor` fit and predict method (see `API docs <https://xgboost.readthedocs\
-    .io/en/latest/python/python_api.html#xgboost.XGBRegressor>`_ for details), excluding the
-    unsupported parameters: `gpu_id`, `kwargs`, `output_margin`, `base_margin`,
-    `validate_features`.
+    .io/en/latest/python/python_api.html#xgboost.XGBRegressor>`_ for details).
+
+    XgboostRegressor doesn't support setting `gpu_id` but support another param `use_gpu`,
+    see doc below for more details.
+
+    XgboostRegressor doesn't support setting `base_margin` explicitly as well, but support
+    another param called `baseMarginCol`. see doc below for more details.
+
+    XgboostRegressor doesn't support `validate_features` and `output_margin` param.
 
     :param callbacks: The export and import of the callback functions are at best effort.
         For details, see :py:attr:`sparkdl.xgboost.XgboostRegressor.callbacks` param doc.
@@ -137,14 +197,24 @@ class XgboostRegressor(_XgboostEstimator):
         fit method.
     :param xgb_model: Set the value to be the instance returned by
         :func:`sparkdl.xgboost.XgboostRegressorModel.get_booster`.
+    :param num_workers: Integer that specifies the number of XGBoost workers to use.
+        Each XGBoost worker corresponds to one Spark task. This parameter is only
+        supported on Databricks Runtime 9.0 ML and above.
+    :param use_gpu: Boolean that specifies whether the executors are running on GPU
+        instances. This parameter is only supported on Databricks Runtime 9.0 ML and above.
+    :param use_external_storage: Boolean that specifices whether you want to use
+        external storage when training in a distributed manner. This allows using disk
+        as cache. Setting this to true is useful when you want better memory utilization
+        but is not needed for small test datasets. This parameter is only supported on
+        Databricks Runtime 9.0 ML and above.
+    :param baseMarginCol: To specify the base margins of the training and validation
+        dataset, set :py:attr:`sparkdl.xgboost.XgboostRegressor.baseMarginCol` parameter
+        instead of setting `base_margin` and `base_margin_eval_set` in the
+        `xgboost.XGBRegressor` fit method. Note: this isn't available for distributed
+        training. This parameter is only supported on Databricks Runtime 9.0 ML and above.
 
     .. Note:: The Parameters chart above contains parameters that need special handling.
         For a full list of parameters, see entries with `Param(parent=...` below.
-
-    .. Note:: XgboostRegressor currently only supports training on a single worker node,
-        and it would load all the training data into memory during training. If the
-        training data cannot fit into the worker's memory, an error will be raised.
-        XgboostRegressor supports predicting on multiple workers in parallel.
 
     .. Note:: This API is experimental.
 
@@ -183,9 +253,18 @@ class XgboostClassifier(_XgboostEstimator, HasProbabilityCol, HasRawPredictionCo
     XgboostClassifier automatically supports most of the parameters in
     `xgboost.XGBClassifier` constructor and most of the parameters used in
     `xgboost.XGBClassifier` fit and predict method (see `API docs <https://xgboost.readthedocs\
-    .io/en/latest/python/python_api.html#xgboost.XGBClassifier>`_ for details), excluding the
-    unsupported parameters: `gpu_id`, `kwargs`, `output_margin`, `base_margin`,
-    `validate_features`.
+    .io/en/latest/python/python_api.html#xgboost.XGBClassifier>`_ for details).
+
+    XgboostClassifier doesn't support setting `gpu_id` but support another param `use_gpu`,
+    see doc below for more details.
+
+    XgboostClassifier doesn't support setting `base_margin` explicitly as well, but support
+    another param called `baseMarginCol`. see doc below for more details.
+
+    XgboostClassifier doesn't support setting `output_margin`, but we can get output margin
+    from the raw prediction column. See `rawPredictionCol` param doc below for more details.
+
+    XgboostClassifier doesn't support `validate_features` and `output_margin` param.
 
     :param callbacks: The export and import of the callback functions are at best effort. For
         details, see :py:attr:`sparkdl.xgboost.XgboostClassifier.callbacks` param doc.
@@ -206,14 +285,24 @@ class XgboostClassifier(_XgboostEstimator, HasProbabilityCol, HasRawPredictionCo
         fit method.
     :param xgb_model: Set the value to be the instance returned by
         :func:`sparkdl.xgboost.XgboostClassifierModel.get_booster`.
+    :param num_workers: Integer that specifies the number of XGBoost workers to use.
+        Each XGBoost worker corresponds to one Spark task. This parameter is only
+        supported on Databricks Runtime 9.0 ML and above.
+    :param use_gpu: Boolean that specifies whether the executors are running on GPU
+        instances. This parameter is only supported on Databricks Runtime 9.0 ML and above.
+    :param use_external_storage: Boolean that specifices whether you want to use
+        external storage when training in a distributed manner. This allows using disk
+        as cache. Setting this to true is useful when you want better memory utilization
+        but is not needed for small test datasets. This parameter is only supported on
+        Databricks Runtime 9.0 ML and above.
+    :param baseMarginCol: To specify the base margins of the training and validation
+        dataset, set :py:attr:`sparkdl.xgboost.XgboostClassifier.baseMarginCol` parameter
+        instead of setting `base_margin` and `base_margin_eval_set` in the
+        `xgboost.XGBClassifier` fit method. Note: this isn't available for distributed
+        training. This parameter is only supported on Databricks Runtime 9.0 ML and above.
 
     .. Note:: The Parameters chart above contains parameters that need special handling.
         For a full list of parameters, see entries with `Param(parent=...` below.
-
-    .. Note:: XgboostClassifier currently only supports training on a single worker node,
-        and it would load all the training data into memory during training. If the
-        training data cannot fit into the worker's memory, an error will be raised.
-        XgboostClassifier supports predicting on multiple workers in parallel.
 
     .. Note:: This API is experimental.
 
