@@ -6,15 +6,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>sparkdl.xgboost.xgboost &#8212; pysparkdl  documentation</title>
-    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pysparkdl.css" type="text/css" />
     
     <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
     <script src="../../../_static/jquery.js"></script>
     <script src="../../../_static/underscore.js"></script>
     <script src="../../../_static/doctools.js"></script>
-    <script src="../../../_static/language_data.js"></script>
     <script src="../../../_static/pysparkdl.js"></script>
     
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -76,25 +75,79 @@
 <span class="kn">from</span> <span class="nn">pyspark.ml</span> <span class="kn">import</span> <span class="n">Estimator</span><span class="p">,</span> <span class="n">Model</span>
 <span class="kn">from</span> <span class="nn">pyspark.ml.param.shared</span> <span class="kn">import</span> <span class="n">HasFeaturesCol</span><span class="p">,</span> <span class="n">HasLabelCol</span><span class="p">,</span> <span class="n">HasWeightCol</span><span class="p">,</span> \
     <span class="n">HasPredictionCol</span><span class="p">,</span> <span class="n">HasProbabilityCol</span><span class="p">,</span> <span class="n">HasRawPredictionCol</span><span class="p">,</span> <span class="n">HasValidationIndicatorCol</span>
-<span class="kn">from</span> <span class="nn">pyspark.ml.param</span> <span class="kn">import</span> <span class="n">Param</span><span class="p">,</span> <span class="n">Params</span>
+<span class="kn">from</span> <span class="nn">pyspark.ml.param</span> <span class="kn">import</span> <span class="n">Param</span><span class="p">,</span> <span class="n">Params</span><span class="p">,</span> <span class="n">TypeConverters</span>
 <span class="kn">from</span> <span class="nn">pyspark.ml.util</span> <span class="kn">import</span> <span class="n">MLReadable</span><span class="p">,</span> <span class="n">MLWritable</span>
 
 
 <span class="k">class</span> <span class="nc">_XgboostParams</span><span class="p">(</span><span class="n">HasFeaturesCol</span><span class="p">,</span> <span class="n">HasLabelCol</span><span class="p">,</span> <span class="n">HasWeightCol</span><span class="p">,</span> <span class="n">HasPredictionCol</span><span class="p">,</span>
                      <span class="n">HasValidationIndicatorCol</span><span class="p">):</span>
 
-    <span class="n">missing</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;missing&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span>
-            <span class="s1">&#39;Specify the missing value in the features, default np.nan. &#39;</span> \
-            <span class="s1">&#39;We recommend using 0.0 as the missing value for better performance. &#39;</span> \
-            <span class="s1">&#39;Note: In a spark DataFrame, the inactive values in a sparse vector &#39;</span> \
-            <span class="s1">&#39;mean 0 instead of missing values, unless missing=0 is specified.&#39;</span><span class="p">)</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span>
+        <span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;missing&quot;</span><span class="p">,</span>
+        <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Specify the missing value in the features, default np.nan. &quot;</span> \
+            <span class="s2">&quot;We recommend using 0.0 as the missing value for better performance. &quot;</span> \
+            <span class="s2">&quot;Note: In a spark DataFrame, the inactive values in a sparse vector &quot;</span> \
+            <span class="s2">&quot;mean 0 instead of missing values, unless missing=0 is specified.&quot;</span><span class="p">)</span>
 
-    <span class="n">callbacks</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;callbacks&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span>
-            <span class="s1">&#39;Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or &#39;</span> \
-            <span class="s1">&#39;`xgboost.XGBRegressor.fit()` for this param callbacks.&#39;</span> \
-            <span class="s1">&#39;The callbacks can be arbitrary functions. It is saved using cloudpickle &#39;</span> \
-            <span class="s1">&#39;which is not a fully self-contained format. It may fail to load with &#39;</span> \
-            <span class="s1">&#39;different versions of dependencies.&#39;</span><span class="p">)</span>
+    <span class="n">callbacks</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span>
+        <span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;callbacks&quot;</span><span class="p">,</span>
+        <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Refer to XGBoost doc of `xgboost.XGBClassifier.fit()` or &quot;</span> \
+            <span class="s2">&quot;`xgboost.XGBRegressor.fit()` for this param callbacks. &quot;</span> \
+            <span class="s2">&quot;The callbacks can be arbitrary functions. It is saved using cloudpickle &quot;</span> \
+            <span class="s2">&quot;which is not a fully self-contained format. It may fail to load with &quot;</span> \
+            <span class="s2">&quot;different versions of dependencies.&quot;</span><span class="p">)</span>
+
+    <span class="n">num_workers</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span>
+        <span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;num_workers&quot;</span><span class="p">,</span>
+        <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;The number of XGBoost workers. Each XGBoost worker corresponds to one spark task. &quot;</span> \
+            <span class="s2">&quot;Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.&quot;</span><span class="p">,</span>
+        <span class="n">typeConverter</span><span class="o">=</span><span class="n">TypeConverters</span><span class="o">.</span><span class="n">toInt</span>
+    <span class="p">)</span>
+    <span class="n">use_gpu</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span>
+        <span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;use_gpu&quot;</span><span class="p">,</span>
+        <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;A boolean variable. Set use_gpu=true if the executors &quot;</span> \
+            <span class="s2">&quot;are running on GPU instances. Currently, only one GPU per task is supported. &quot;</span> \
+            <span class="s2">&quot;Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">force_repartition</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span>
+        <span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;force_repartition&quot;</span><span class="p">,</span>
+        <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;A boolean variable. Set force_repartition=true if you &quot;</span> \
+            <span class="s2">&quot;want to force the input dataset to be repartitioned before XGBoost training. &quot;</span> \
+            <span class="s2">&quot;Note: The auto repartitioning judgement is not fully accurate, so it is recommended &quot;</span> \
+            <span class="s2">&quot;to have force_repartition be True. &quot;</span> \
+            <span class="s2">&quot;Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">use_external_storage</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span>
+        <span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;use_external_storage&quot;</span><span class="p">,</span>
+        <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;A boolean variable (that is False by default). External storage is a parameter &quot;</span> \
+            <span class="s2">&quot;for distributed training that allows external storage (disk) to be used when &quot;</span> \
+            <span class="s2">&quot;you have an exceptionally large dataset. This should be set to false for &quot;</span> \
+            <span class="s2">&quot;small datasets. Note that base margin and weighting doesn&#39;t work if this is True. &quot;</span> \
+            <span class="s2">&quot;Also note that you may use precision if you use external storage. &quot;</span> \
+            <span class="s2">&quot;Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">external_storage_precision</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span>
+        <span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;external_storage_precision&quot;</span><span class="p">,</span>
+        <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;The number of significant digits for data storage on disk when using external storage. &quot;</span> \
+            <span class="s2">&quot;Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.&quot;</span><span class="p">,</span>
+        <span class="n">typeConverter</span><span class="o">=</span><span class="n">TypeConverters</span><span class="o">.</span><span class="n">toInt</span>
+    <span class="p">)</span>
+
+    <span class="n">baseMarginCol</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span>
+        <span class="n">parent</span><span class="o">=</span><span class="n">Params</span><span class="o">.</span><span class="n">_dummy</span><span class="p">(),</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;baseMarginCol&quot;</span><span class="p">,</span>
+        <span class="n">doc</span><span class="o">=</span><span class="s2">&quot;Specify the base margins of the training and validation dataset. Set &quot;</span> \
+            <span class="s2">&quot;this value instead of setting `base_margin` and `base_margin_eval_set` &quot;</span> \
+            <span class="s2">&quot;in the fit method. Note: this parameter is not available for distributed &quot;</span> \
+            <span class="s2">&quot;training. &quot;</span> \
+            <span class="s2">&quot;Note: This parameter is only supported on Databricks Runtime 9.0 ML and above.&quot;</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">_XgboostEstimator</span><span class="p">(</span><span class="n">Estimator</span><span class="p">,</span> <span class="n">_XgboostParams</span><span class="p">,</span> <span class="n">MLReadable</span><span class="p">,</span> <span class="n">MLWritable</span><span class="p">):</span>
@@ -162,9 +215,15 @@
 <span class="sd">    XgboostRegressor automatically supports most of the parameters in</span>
 <span class="sd">    `xgboost.XGBRegressor` constructor and most of the parameters used in</span>
 <span class="sd">    `xgboost.XGBRegressor` fit and predict method (see `API docs &lt;https://xgboost.readthedocs\</span>
-<span class="sd">    .io/en/latest/python/python_api.html#xgboost.XGBRegressor&gt;`_ for details), excluding the</span>
-<span class="sd">    unsupported parameters: `gpu_id`, `kwargs`, `output_margin`, `base_margin`,</span>
-<span class="sd">    `validate_features`.</span>
+<span class="sd">    .io/en/latest/python/python_api.html#xgboost.XGBRegressor&gt;`_ for details).</span>
+
+<span class="sd">    XgboostRegressor doesn&#39;t support setting `gpu_id` but support another param `use_gpu`,</span>
+<span class="sd">    see doc below for more details.</span>
+
+<span class="sd">    XgboostRegressor doesn&#39;t support setting `base_margin` explicitly as well, but support</span>
+<span class="sd">    another param called `baseMarginCol`. see doc below for more details.</span>
+
+<span class="sd">    XgboostRegressor doesn&#39;t support `validate_features` and `output_margin` param.</span>
 
 <span class="sd">    :param callbacks: The export and import of the callback functions are at best effort.</span>
 <span class="sd">        For details, see :py:attr:`sparkdl.xgboost.XgboostRegressor.callbacks` param doc.</span>
@@ -182,14 +241,24 @@
 <span class="sd">        fit method.</span>
 <span class="sd">    :param xgb_model: Set the value to be the instance returned by</span>
 <span class="sd">        :func:`sparkdl.xgboost.XgboostRegressorModel.get_booster`.</span>
+<span class="sd">    :param num_workers: Integer that specifies the number of XGBoost workers to use.</span>
+<span class="sd">        Each XGBoost worker corresponds to one Spark task. This parameter is only</span>
+<span class="sd">        supported on Databricks Runtime 9.0 ML and above.</span>
+<span class="sd">    :param use_gpu: Boolean that specifies whether the executors are running on GPU</span>
+<span class="sd">        instances. This parameter is only supported on Databricks Runtime 9.0 ML and above.</span>
+<span class="sd">    :param use_external_storage: Boolean that specifices whether you want to use</span>
+<span class="sd">        external storage when training in a distributed manner. This allows using disk</span>
+<span class="sd">        as cache. Setting this to true is useful when you want better memory utilization</span>
+<span class="sd">        but is not needed for small test datasets. This parameter is only supported on</span>
+<span class="sd">        Databricks Runtime 9.0 ML and above.</span>
+<span class="sd">    :param baseMarginCol: To specify the base margins of the training and validation</span>
+<span class="sd">        dataset, set :py:attr:`sparkdl.xgboost.XgboostRegressor.baseMarginCol` parameter</span>
+<span class="sd">        instead of setting `base_margin` and `base_margin_eval_set` in the</span>
+<span class="sd">        `xgboost.XGBRegressor` fit method. Note: this isn&#39;t available for distributed</span>
+<span class="sd">        training. This parameter is only supported on Databricks Runtime 9.0 ML and above.</span>
 
 <span class="sd">    .. Note:: The Parameters chart above contains parameters that need special handling.</span>
 <span class="sd">        For a full list of parameters, see entries with `Param(parent=...` below.</span>
-
-<span class="sd">    .. Note:: XgboostRegressor currently only supports training on a single worker node,</span>
-<span class="sd">        and it would load all the training data into memory during training. If the</span>
-<span class="sd">        training data cannot fit into the worker&#39;s memory, an error will be raised.</span>
-<span class="sd">        XgboostRegressor supports predicting on multiple workers in parallel.</span>
 
 <span class="sd">    .. Note:: This API is experimental.</span>
 
@@ -228,9 +297,18 @@
 <span class="sd">    XgboostClassifier automatically supports most of the parameters in</span>
 <span class="sd">    `xgboost.XGBClassifier` constructor and most of the parameters used in</span>
 <span class="sd">    `xgboost.XGBClassifier` fit and predict method (see `API docs &lt;https://xgboost.readthedocs\</span>
-<span class="sd">    .io/en/latest/python/python_api.html#xgboost.XGBClassifier&gt;`_ for details), excluding the</span>
-<span class="sd">    unsupported parameters: `gpu_id`, `kwargs`, `output_margin`, `base_margin`,</span>
-<span class="sd">    `validate_features`.</span>
+<span class="sd">    .io/en/latest/python/python_api.html#xgboost.XGBClassifier&gt;`_ for details).</span>
+
+<span class="sd">    XgboostClassifier doesn&#39;t support setting `gpu_id` but support another param `use_gpu`,</span>
+<span class="sd">    see doc below for more details.</span>
+
+<span class="sd">    XgboostClassifier doesn&#39;t support setting `base_margin` explicitly as well, but support</span>
+<span class="sd">    another param called `baseMarginCol`. see doc below for more details.</span>
+
+<span class="sd">    XgboostClassifier doesn&#39;t support setting `output_margin`, but we can get output margin</span>
+<span class="sd">    from the raw prediction column. See `rawPredictionCol` param doc below for more details.</span>
+
+<span class="sd">    XgboostClassifier doesn&#39;t support `validate_features` and `output_margin` param.</span>
 
 <span class="sd">    :param callbacks: The export and import of the callback functions are at best effort. For</span>
 <span class="sd">        details, see :py:attr:`sparkdl.xgboost.XgboostClassifier.callbacks` param doc.</span>
@@ -251,14 +329,24 @@
 <span class="sd">        fit method.</span>
 <span class="sd">    :param xgb_model: Set the value to be the instance returned by</span>
 <span class="sd">        :func:`sparkdl.xgboost.XgboostClassifierModel.get_booster`.</span>
+<span class="sd">    :param num_workers: Integer that specifies the number of XGBoost workers to use.</span>
+<span class="sd">        Each XGBoost worker corresponds to one Spark task. This parameter is only</span>
+<span class="sd">        supported on Databricks Runtime 9.0 ML and above.</span>
+<span class="sd">    :param use_gpu: Boolean that specifies whether the executors are running on GPU</span>
+<span class="sd">        instances. This parameter is only supported on Databricks Runtime 9.0 ML and above.</span>
+<span class="sd">    :param use_external_storage: Boolean that specifices whether you want to use</span>
+<span class="sd">        external storage when training in a distributed manner. This allows using disk</span>
+<span class="sd">        as cache. Setting this to true is useful when you want better memory utilization</span>
+<span class="sd">        but is not needed for small test datasets. This parameter is only supported on</span>
+<span class="sd">        Databricks Runtime 9.0 ML and above.</span>
+<span class="sd">    :param baseMarginCol: To specify the base margins of the training and validation</span>
+<span class="sd">        dataset, set :py:attr:`sparkdl.xgboost.XgboostClassifier.baseMarginCol` parameter</span>
+<span class="sd">        instead of setting `base_margin` and `base_margin_eval_set` in the</span>
+<span class="sd">        `xgboost.XGBClassifier` fit method. Note: this isn&#39;t available for distributed</span>
+<span class="sd">        training. This parameter is only supported on Databricks Runtime 9.0 ML and above.</span>
 
 <span class="sd">    .. Note:: The Parameters chart above contains parameters that need special handling.</span>
 <span class="sd">        For a full list of parameters, see entries with `Param(parent=...` below.</span>
-
-<span class="sd">    .. Note:: XgboostClassifier currently only supports training on a single worker node,</span>
-<span class="sd">        and it would load all the training data into memory during training. If the</span>
-<span class="sd">        training data cannot fit into the worker&#39;s memory, an error will be raised.</span>
-<span class="sd">        XgboostClassifier supports predicting on multiple workers in parallel.</span>
 
 <span class="sd">    .. Note:: This API is experimental.</span>
 
@@ -325,7 +413,7 @@
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2016, Timothy Hunter and Joseph Bradley.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.2.1.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.5.1.
     </div>
   </body>
 </html>
