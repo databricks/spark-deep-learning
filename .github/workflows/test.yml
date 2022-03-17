@@ -17,4 +17,5 @@ jobs:
       - name: Make docs
         run: pushd docs/ && PYTHONPATH=.. make clean html && popd
       - name: Run tests
-        run: pytest
+        run: |
+          python -m pytest tests/
