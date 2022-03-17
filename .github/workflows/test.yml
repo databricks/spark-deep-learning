@@ -4,10 +4,10 @@ jobs:
   run-unti-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: action/checkout@v2
+    - uses: actions/checkout@v2
 
     - name: Set up python
-      uses: action/python3.7
+      uses: actions/python3.7
 
     - name: Install dependencies
       run: |
