@@ -4,7 +4,8 @@ jobs:
   run-unit-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Check out repository code
+        uses: actions/checkout@v2
       - name: Set up python
         uses: actions/python3.7
       - name: Install dependencies
