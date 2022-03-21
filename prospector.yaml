@@ -1,0 +1,39 @@
+strictness: high
+test-warnings: True
+doc-warnings: false
+
+ignore-paths:
+  - docs
+  - spark-warehouse
+  - cover
+
+max-line-length: 100
+
+pep8:
+  run: true
+  disable: 
+    - N802
+    - N803
+    - N806
+    - E302
+
+pylint:
+  run: true
+  disable:
+    - too-many-instance-attributes
+    - cyclic-import
+    - len-as-condition
+    - invalid-name
+    - no-else-return
+    - no-self-use
+    - import-error
+    - protected-access
+    - reimported
+
+mccabe:
+  disable:
+    - MC0001
+
+pyroma:
+  run: true
+  
