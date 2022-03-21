@@ -2,8 +2,8 @@ Deep Learning Pipelines for Apache Spark
 ============================================================
 [![Build Status][pkg-build-badge]][pkg-build-link] [![Coverage][pkg-cov-badge]][pkg-cov-link]
 
-  [pkg-build-badge]: https://travis-ci.org/databricks/spark-deep-learning.svg?branch=master
-  [pkg-build-link]: https://travis-ci.org/databricks/spark-deep-learning
+  [pkg-build-badge]: https://github.com/databricks/spark-deep-learning/actions/workflows/test.yml/badge.svg?branch=master
+  [pkg-build-link]: https://github.com/databricks/spark-deep-learning/actions/workflows/test.yml
   [pkg-cov-badge]: https://codecov.io/gh/databricks/spark-deep-learning/coverage.svg?branch=master
   [pkg-cov-link]: https://codecov.io/gh/databricks/spark-deep-learning/branch/master
 
